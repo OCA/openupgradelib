@@ -17,5 +17,8 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
     - python setup.py flake8
-    - python setup.py test
+    - python -m coverage run setup.py test
     - python setup.py install
+
+after_success:
+    - coveralls
