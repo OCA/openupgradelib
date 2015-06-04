@@ -97,8 +97,8 @@ def update_aliases(
     their alias' alias_parent_thread_id
     :param alias_defaults: Static dictionary, recorded as a string on each \
     alias
-    :param defaults_id_key: When defined, add this key to each alias' defaults \
-    dictionary with the resource id as its value.
+    :param defaults_id_key: When defined, add this key to each alias' \
+    defaults dictionary with the resource id as its value.
     """
     model_id = registry['ir.model'].search(
         cr, SUPERUSER_ID, [('model', '=', model_name)])[0]

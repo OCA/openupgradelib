@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import sys
 import types
 import logging
 from openerp import release
@@ -26,6 +27,9 @@ from openerp.osv.orm import TransientModel
 from openerp.osv import fields
 from openerp.openupgrade.openupgrade import table_exists
 from openerp.tools import config, safe_eval
+
+if sys.version_info.major == 3:
+    unicode = str
 
 # A collection of functions used in
 # openerp/modules/loading.py
