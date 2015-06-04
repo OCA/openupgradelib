@@ -28,9 +28,9 @@ from openerp.tools.yaml_import import yaml_import
 from openerp.osv import orm
 from openerp.tools.mail import plaintext2html
 from openerp.modules.registry import RegistryManager
-import openupgrade_tools
 import openerp.osv.fields
 import openerp.fields
+from . import openupgrade_tools
 
 if sys.version_info.major == 3:
     unicode = str
