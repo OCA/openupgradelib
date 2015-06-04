@@ -8,6 +8,7 @@ python:
   - "2.7"
   - "2.6"
   - "pypy"
+  - "pypy3"
 
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
@@ -17,7 +18,7 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
     - python setup.py flake8
-    - python -m coverage run setup.py test
+    - coverage run setup.py test
     - python setup.py install
 
 after_success:

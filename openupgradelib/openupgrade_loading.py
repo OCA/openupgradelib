@@ -28,7 +28,7 @@ from openerp.osv import fields
 from openerp.openupgrade.openupgrade import table_exists
 from openerp.tools import config, safe_eval
 
-if sys.version_info.major == 3:
+if sys.version_info[0] == 3:
     unicode = str
 
 # A collection of functions used in

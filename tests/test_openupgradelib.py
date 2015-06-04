@@ -21,7 +21,7 @@ def import_mock(name, *args):
         return openerp_mock
     return orig_import(name, *args)
 
-if sys.version_info.major == 3:
+if sys.version_info[0] == 3:
     import builtins
     import_str = 'builtins.__import__'
 else:

@@ -32,7 +32,7 @@ import openerp.osv.fields
 import openerp.fields
 from . import openupgrade_tools
 
-if sys.version_info.major == 3:
+if sys.version_info[0] == 3:
     unicode = str
 
 # The server log level has not been set at this point
