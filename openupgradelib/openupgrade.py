@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import sys
 import os
 import inspect
 import logging
@@ -30,6 +31,9 @@ from openerp.modules.registry import RegistryManager
 import openupgrade_tools
 import openerp.osv.fields
 import openerp.fields
+
+if sys.version_info.major == 3:
+    unicode = str
 
 # The server log level has not been set at this point
 # so to log at loglevel debug we need to set it
@@ -851,7 +855,7 @@ def migrate(no_version=False):
                 stage = frame.locals['stage']
                 module = frame.locals['pkg'].name
                 filename = frame.locals['fp'].name
-            except Exception, e:
+            except Exception as e:
                 logger.error(
                     "'migrate' decorator: failed to inspect "
                     "the frame above: %s" % e)
@@ -864,7 +868,7 @@ def migrate(no_version=False):
             try:
                 # The actual function is called here
                 func(cr, version)
-            except Exception, e:
+            except Exception as e:
                 logger.error(
                     "%s: error in migration script %s: %s" %
                     (module, filename, str(e).decode('utf8')))
