@@ -21,6 +21,7 @@ test_requirements = [
     'coverage',
     'flake8',
     'pep8-naming',
+    'mock',
 ]
 
 setup(
