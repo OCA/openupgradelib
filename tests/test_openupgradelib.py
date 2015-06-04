@@ -10,6 +10,8 @@ Tests for `openupgradelib` module.
 
 import unittest
 
+from openupgradelib import openupgrade
+
 class TestOpenupgradelib(unittest.TestCase):
 
     def setUp(self):
