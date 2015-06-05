@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 
 try:
     from setuptools import setup
@@ -14,7 +15,9 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
-with open('requirements.txt') as requirements_file:
+dirname = os.path.dirname(__file__)
+
+with open(os.path.join(dirname, 'requirements.txt')) as requirements_file:
     requirements = requirements_file.readlines()
 
 test_requirements = [
