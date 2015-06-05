@@ -1,7 +1,3 @@
-===============================
-OpenUpgrade Library
-===============================
-
 .. image:: https://img.shields.io/travis/OCA/openupgradelib.svg
     :target: https://travis-ci.org/OCA/openupgradelib
     :alt: Build Status
@@ -18,8 +14,11 @@ OpenUpgrade Library
    :target: https://pypi.python.org/pypi/openupgradelib
    :alt: Pypi Package
 
+===============================
+OpenUpgrade Library
+===============================
 
-A libary with support functions to be called from Odoo migration scripts.
+A library with support functions to be called from Odoo migration scripts.
 
 * Free software: AGPL-3 license
 * Documentation: https://openupgradelib.readthedocs.org.
