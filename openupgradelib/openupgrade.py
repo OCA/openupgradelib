@@ -44,6 +44,7 @@ logger.setLevel(logging.DEBUG)
 
 __all__ = [
     'migrate',
+    'log',
     'load_data',
     'copy_columns',
     'rename_columns',
@@ -832,6 +833,29 @@ def reactivate_workflow_transitions(cr, transition_conditions):
         cr.execute(
             'update wkf_transition set condition = %s where id = %s',
             (condition, transition_id))
+
+
+def log():
+    """Decorator for automatic logging of the executed method.
+    :param custom_logger: for defining an specific logger
+    :param details: if True, more details are given in the log"""
+    def wrap(func, custom_logger=None, details=False):
+        def wrapped_function(*args, **kwargs):
+            msg = "Executing method %s" % func.__name__
+            if details:
+                if args:
+                    msg += " with args %s" % str(args)
+                if kwargs:
+                    if args:
+                        msg += " and kwargs %s" % str(kwargs)
+                    else:
+                        msg += " with kwargs %s" % str(kwargs)
+            custom_logger.info(msg)
+            func(*args, **kwargs)
+        if custom_logger is None:
+            custom_logger = logger
+        return wrapped_function
+    return wrap
 
 
 def migrate(no_version=False):
