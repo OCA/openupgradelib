@@ -432,7 +432,7 @@ def warn_possible_dataloss(cr, pool, old_module, fields):
                     field['field'], field['new_module'], row[0])
 
 
-def set_defaults(cr, pool, default_spec, force=False):
+def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     """
     Set default value. Useful for fields that are newly required. Uses orm, so
     call from the post script.
@@ -447,15 +447,25 @@ def set_defaults(cr, pool, default_spec, force=False):
     process. Beware of issues with resources loaded from new data that \
     actually do require the model's default, in combination with the post \
     script possible being run multiple times.
+    :param use_orm: If set to True, the write operation of the default value \
+    will be triggered using ORM instead on an SQL clause (default).
     """
 
     def write_value(ids, field, value):
         logger.debug(
             "model %s, field %s: setting default value of resources %s to %s",
             model, field, ids, unicode(value))
-        for res_id in ids:
-            # Iterating over ids here as a workaround for lp:1131653
-            obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
+        if use_orm:
+            for res_id in ids:
+                # Iterating over ids here as a workaround for lp:1131653
+                obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
+        else:
+            cr.execute(
+                """
+                UPDATE %s
+                SET %s = %%s
+                WHERE id IN %%s
+                """ % (obj._table, field), (value, tuple(ids)))
 
     for model in default_spec.keys():
         obj = pool.get(model)
@@ -463,7 +473,6 @@ def set_defaults(cr, pool, default_spec, force=False):
             raise orm.except_orm(
                 "Error",
                 "Migration: error setting default, no such model: %s" % model)
-
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
             ids = obj.search(cr, SUPERUSER_ID, domain)
@@ -497,7 +506,7 @@ def set_defaults(cr, pool, default_spec, force=False):
                         "None default value not in %s' _defaults" % (
                             field, model))
                     logger.error(error)
-                    # this exeption seems to get lost in a higher up try block
+                    # this exception seems to get lost in a higher up try block
                     orm.except_orm("OpenUpgrade", error)
             else:
                 write_value(ids, field, value)
