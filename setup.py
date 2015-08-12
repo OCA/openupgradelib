@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+from pip.req import parse_requirements
+from pip.download import PipSession
 
 try:
     from setuptools import setup
@@ -17,8 +19,11 @@ with open('HISTORY.rst') as history_file:
 
 dirname = os.path.dirname(__file__)
 
-with open(os.path.join(dirname, 'requirements.txt')) as requirements_file:
-    requirements = requirements_file.readlines()
+requirements = [
+    str(ir.req)
+    for ir
+    in parse_requirements("requirements.txt", session=PipSession())
+]
 
 test_requirements = [
     'coverage',
@@ -29,7 +34,7 @@ test_requirements = [
 
 setup(
     name='openupgradelib',
-    version='0.1.2',
+    version='1.0.0',
     description="A library with support functions to be called from Odoo "
                 "migration scripts.",
     long_description=readme + '\n\n' + history,
@@ -44,7 +49,7 @@ setup(
     zip_safe=False,
     keywords='openupgradelib',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
