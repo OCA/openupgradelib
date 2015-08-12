@@ -2,8 +2,8 @@
     :target: https://travis-ci.org/OCA/openupgradelib
     :alt: Build Status
 
-.. image:: https://coveralls.io/repos/OCA/openupgradelib/badge.svg
-  :target: https://coveralls.io/r/OCA/openupgradelib
+.. image:: https://coveralls.io/repos/OCA/openupgradelib/badge.svg?service=github
+  :target: https://coveralls.io/github/OCA/openupgradelib
   :alt: Coverage Status
 
 .. image:: https://codeclimate.com/github/OCA/openupgradelib/badges/gpa.svg
