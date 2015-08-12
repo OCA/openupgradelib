@@ -29,7 +29,7 @@ test_requirements = [
 
 setup(
     name='openupgradelib',
-    version='0.1.2',
+    version='0.1.3',
     description="A library with support functions to be called from Odoo "
                 "migration scripts.",
     long_description=readme + '\n\n' + history,

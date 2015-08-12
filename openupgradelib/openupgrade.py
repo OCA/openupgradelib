@@ -23,6 +23,7 @@ import sys
 import os
 import inspect
 import logging
+import progressbar
 from openerp import release, tools, SUPERUSER_ID
 from openerp.tools.yaml_import import yaml_import
 from openerp.osv import orm
@@ -44,6 +45,8 @@ logger.setLevel(logging.DEBUG)
 
 __all__ = [
     'migrate',
+    'log',
+    'logged_progress',
     'load_data',
     'copy_columns',
     'rename_columns',
@@ -832,6 +835,48 @@ def reactivate_workflow_transitions(cr, transition_conditions):
         cr.execute(
             'update wkf_transition set condition = %s where id = %s',
             (condition, transition_id))
+
+
+def log():
+    """Decorator for automatic logging of the executed method.
+    :param custom_logger: for defining an specific logger
+    :param details: if True, more details are given in the log"""
+    def wrap(func, custom_logger=None, details=False):
+        def wrapped_function(*args, **kwargs):
+            msg = "Executing method %s" % func.__name__
+            if details:
+                if args:
+                    msg += " with args %s" % str(args)
+                if kwargs:
+                    if args:
+                        msg += " and kwargs %s" % str(kwargs)
+                    else:
+                        msg += " with kwargs %s" % str(kwargs)
+            custom_logger.info(msg)
+            func(*args, **kwargs)
+        if custom_logger is None:
+            custom_logger = logger
+        return wrapped_function
+    return wrap
+
+
+def logged_progress(func, iterator, title="", args=None, kwargs=None):
+    """Log the progress of a method that it's run across the elements of an
+    iterator. The passed method should have the individual element to treat
+    as the first argument. It can have more arguments that are passed as
+    a list and a dictionary arguments for the args and kwargs respectively.
+    This is due to the extra title argument, that doesn't allow the
+    "addressing" of the arguments.
+    """
+    widgets = [title + ' ', progressbar.Percentage(), ' ', progressbar.Bar(),
+               ' ', progressbar.ETA()]
+    if args is None:
+        args = []
+    if kwargs is None:
+        kwargs = {}
+    pbar = progressbar.ProgressBar(widgets=widgets)
+    for element in pbar(iterator):
+        func(element, *args, **kwargs)
 
 
 def migrate(no_version=False):
