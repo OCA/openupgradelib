@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-from pip.req import parse_requirements
-from pip.download import PipSession
 
 try:
     from setuptools import setup
@@ -19,11 +17,11 @@ with open('HISTORY.rst') as history_file:
 
 dirname = os.path.dirname(__file__)
 
-requirements = [
-    str(ir.req)
-    for ir
-    in parse_requirements("requirements.txt", session=PipSession())
-]
+with open(os.path.join(dirname, 'requirements.txt')) as requirements_file:
+    requirements = filter(
+        lambda s: not s.startswith('#'),
+        map(str.strip, requirements_file.readlines())
+    )
 
 test_requirements = [
     'coverage',
