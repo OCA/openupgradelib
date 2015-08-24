@@ -15,6 +15,9 @@ import mock
 orig_import = __import__
 # This will be the openerp module
 openerp_mock = mock.Mock()
+openerp_mock.release = mock.Mock()
+openerp_mock.release.version_info = (8, 0, 0, 'final', 0)
+
 
 def import_mock(name, *args):
     if name == 'openerp' or name.startswith("openerp."):
