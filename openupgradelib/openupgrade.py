@@ -94,6 +94,7 @@ __all__ = [
     'deactivate_workflow_transitions',
     'reactivate_workflow_transitions',
     'date_to_datetime_tz',
+    'merge_module_names',
 ]
 
 
@@ -1157,3 +1158,58 @@ def is_module_installed(cr, module):
         "SELECT id FROM ir_module_module "
         "WHERE name=%s and state IN ('installed', 'to upgrade')", (module,))
     return bool(cr.fetchone())
+
+
+def merge_module_names(cr, namespec):
+    """
+    Merge a source module into an existing target model.
+    Can be combined with update_module_names in order to
+    achieve a merge and a simulteneous renaming.
+    Can be used also with the odoo.py --init flag, which should
+    trigger the migration on not-yet-installed new module.
+    Also updates module meta info on loaded data (XML ids).
+    :param namespec: tuple of (source name, target name)
+    """
+    for (old_name, new_name) in namespec:
+        # Get the module id of the old module
+        query = ("SELECT id FROM ir_module_module WHERE name = %s")
+        cr.execute(query, [old_name])
+        id_old = cr.fetchone()[0]
+
+        # Delete meta entries, that might conflict.
+        # They will be recreated by the new module anyhow.
+        query = ("DELETE FROM ir_model_constraint "
+                 "WHERE module = %s")
+        logged_query(cr, query, [id_old])
+        query = ("DELETE FROM ir_model_relation "
+                 "WHERE module = %s")
+        logged_query(cr, query, [id_old])
+
+        # Module field was added on version 7
+        if release.version_info[0] > 7:
+            query = ("UPDATE ir_translation SET module = %s "
+                     "WHERE module = %s")
+            logged_query(cr, query, [new_name, old_name])
+
+        # Merge models and fields or delete, if already existing.
+        query = ("UPDATE ir_model_data SET module = %s "
+                 "WHERE module = %s AND name NOT IN "
+                 "(SELECT name FROM ir_model_data "
+                 "WHERE module = %s)")
+        logged_query(cr, query, [new_name, old_name, new_name])
+        query = ("DELETE FROM ir_model_data "
+                 "WHERE module = %s AND name IN "
+                 "(SELECT name FROM ir_model_data "
+                 "WHERE module = %s)")
+        logged_query(cr, query, [old_name, new_name])
+
+        # Update Dependencies and erase traces of old module.
+        query = ("DELETE FROM ir_module_module WHERE name = %s ")
+        logged_query(cr, query, [old_name])
+        query = ("DELETE FROM ir_model_data "
+                 "WHERE name = %s AND module = 'base' AND "
+                 "model='ir.module.module'")
+        logged_query(cr, query, ["module_%s" % old_name])
+        query = ("UPDATE ir_module_module_dependency SET name = %s "
+                 "WHERE name = %s")
+        logged_query(cr, query, [new_name, old_name])
