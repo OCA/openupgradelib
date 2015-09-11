@@ -703,6 +703,8 @@ def map_values(
     """
     Map old values to new values within the same model or table. Old values
     presumably come from a legacy column.
+    Unless special cases, you want to typically use it 
+    in the post-migrations scripts.
 
     :param cr: The database cursor
     :param source_column: the database column that contains old values to be \
