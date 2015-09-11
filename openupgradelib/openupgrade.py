@@ -154,7 +154,9 @@ def copy_columns(cr, column_spec):
     :param column_spec: a hash with table keys, with lists of tuples as \
     values. Tuples consist of (old_name, new_name, type). Use None for \
     new_name to trigger a conversion of old_name using get_legacy_name() \
-    Use None for type to use type of old field
+    Use None for type to use type of old field.
+    Make sure to quote properly, if your column name coincides with a
+    SQL directive. eg. '"column"'
 
     .. versionadded:: 8.0
     """
@@ -189,6 +191,8 @@ def rename_columns(cr, column_spec):
     :param column_spec: a hash with table keys, with lists of tuples as \
     values. Tuples consist of (old_name, new_name). Use None for new_name \
     to trigger a conversion of old_name using get_legacy_name()
+    Make sure to quote properly, if your column name coincides with a
+    SQL directive. eg. '"column"'
     """
     for table in column_spec.keys():
         for (old, new) in column_spec[table]:
