@@ -703,6 +703,7 @@ def map_values(
     """
     Map old values to new values within the same model or table. Old values
     presumably come from a legacy column.
+    Old value True represents "is set", False "is not set".
 
     :param cr: The database cursor
     :param source_column: the database column that contains old values to be \
@@ -734,20 +735,34 @@ def map_values(
             " columns : %s",
             source_column)
     for old, new in mapping:
+        new = "'%s'" % new
+
+        if old is True:
+            old = 'NOT NULL'
+            op = 'IS'
+        elif old is False:
+            old = 'NULL'
+            op = 'IS'
+        else:
+            old = "'%s'" % old
+            op = '='
+
         values = {
             'table': table,
             'source': source_column,
             'target': target_column,
             'old': old,
             'new': new,
+            'op': op,
         }
+
         if write == 'sql':
             query = """UPDATE %(table)s
-                       SET %(target)s = %%(new)s
-                       WHERE %(source)s = %%(old)s""" % values
+                       SET %(target)s = %(new)s
+                       WHERE %(source)s %(op)s %(old)s""" % values
         else:
             query = """SELECT id FROM %(table)s
-                       WHERE %(source)s = %%(old)s""" % values
+                       WHERE %(source)s %(op)s %(old)s""" % values
         logged_query(cr, query, values)
         if write == 'orm':
             model.write(
