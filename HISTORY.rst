@@ -31,3 +31,16 @@ History
 * Rerelease to pypi with proper upload
 * Include requirements.txt
 * Mark as Beta
+
+1.1.0 (2015-09-21)
+------------------
+
+* [IMP] set_defaults: Don't use ORM by default.
+* Remove pip imports which break coverage with pypy3
+* Add basic coverage configuration
+* Factor out duplicated metadata about package
+* [IMP] Google or NymPy docstrings
+* [IMP] docstrings `copy_columns`, `rename_columns`
+* [IMP] update_module_names: Handle ir_translation
+* [FIX] lib for working with old API (<= 7.0)
+* [FIX] set_defaults: Cope with inherited fields by delegation
