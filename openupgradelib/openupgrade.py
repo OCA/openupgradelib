@@ -26,11 +26,16 @@ import logging
 from openerp import release, tools, SUPERUSER_ID
 from openerp.tools.yaml_import import yaml_import
 from openerp.osv import orm
-from openerp.tools.mail import plaintext2html
 from openerp.modules.registry import RegistryManager
 import openerp.osv.fields
-import openerp.fields
 from . import openupgrade_tools
+if release.version_info[0] >= 7:
+    from openerp.tools.mail import plaintext2html
+if release.version_info[0] >= 8:
+    from openerp.fields import Many2many, One2many
+else:
+    Many2many = False
+    One2many = False
 
 if sys.version_info[0] == 3:
     unicode = str
@@ -627,7 +632,7 @@ def m2o_to_x2m(cr, model, table, field, source_field):
             "Error", "m2o_to_x2m: field %s doesn't exist in model %s" % (
                 field, model._name))
     if isinstance(model._columns[field], (openerp.osv.fields.many2many,
-                                          openerp.fields.Many2many)):
+                                          Many2many)):
         rel, id1, id2 = openerp.osv.fields.many2many._sql_names(
             model._columns[field], model)
         logged_query(
@@ -639,9 +644,9 @@ def m2o_to_x2m(cr, model, table, field, source_field):
             WHERE %s is not null
             """ %
             (rel, id1, id2, source_field, table, source_field))
-    elif isinstance(model._columns[field], (openerp.fields.One2many,
+    elif isinstance(model._columns[field], (One2many,
                                             openerp.osv.fields.one2many)):
-        if isinstance(model._columns[field], openerp.fields.One2many):
+        if isinstance(model._columns[field], One2many):
             target_table = (
                 model.pool[model._columns[field].comodel_name]._table)
             target_field = model._columns[field].inverse_name
@@ -1020,7 +1025,13 @@ def move_field_m2o(
 def convert_field_to_html(cr, table, field_name, html_field_name):
     """
     Convert field value to HTML value.
+
+    .. versionadded:: 7.0
     """
+    if release.version_info[0] < 7:
+        logger.error("You cannot use this method in an OpenUpgrade version "
+                     "prior to 7.0.")
+        return
     cr.execute(
         "SELECT id, %(field)s FROM %(table)s WHERE %(field)s IS NOT NULL" % {
             'field': field_name,
