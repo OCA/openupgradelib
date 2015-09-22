@@ -1113,6 +1113,10 @@ def date_to_datetime_tz(
 
 
 def is_module_installed(cr, module):
+    """ Check if `module` is installed.
+
+    :return: True / False
+    """
     cr.execute(
         "SELECT id FROM ir_module_module "
         "WHERE name=%s and state IN ('installed', 'to upgrade')", (module,))
