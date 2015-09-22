@@ -1110,3 +1110,10 @@ def date_to_datetime_tz(
                 AND rp.tz='%(timezone)s';
             """ % values)
     cr.execute("RESET TIMEZONE")
+
+
+def is_module_installed(cr, module):
+    cr.execute(
+        "SELECT id FROM ir_module_module "
+        "WHERE name=%s and state IN ('installed', 'to upgrade')", (module,))
+    return bool(cr.fetchone())
