@@ -23,22 +23,39 @@ import sys
 import os
 import inspect
 import logging
-from openerp import release, tools, SUPERUSER_ID
-from openerp.tools.yaml_import import yaml_import
-from openerp.osv import orm
-from openerp.modules.registry import RegistryManager
-import openerp.osv.fields
 from . import openupgrade_tools
-if release.version_info[0] >= 7:
-    from openerp.tools.mail import plaintext2html
-if release.version_info[0] >= 8:
-    from openerp.fields import Many2many, One2many
+try:
+    from openerp import release
+except ImportError:
+    import release
+Many2many = False
+One2many = False
+if not hasattr(release, 'version_info'):
+    version_info = tuple(map(int, release.version.split('.')))
 else:
-    Many2many = False
-    One2many = False
+    version_info = release.version_info
+if version_info[0] > 6 or version_info[0:2] == (6, 1):
+    from openerp import tools, SUPERUSER_ID
+    from openerp.tools.yaml_import import yaml_import
+    from openerp.osv.orm import except_orm
+    from openerp.modules.registry import RegistryManager
+    from openerp.osv.fields import many2many, one2many
+    if version_info[0] >= 7:
+        from openerp.tools.mail import plaintext2html
+    if version_info[0] >= 8:
+        from openerp.fields import Many2many, One2many
+else:
+    # version < 6.1
+    import tools
+    SUPERUSER_ID = 1
+    from tools.yaml_import import yaml_import
+    from osv.osv import except_osv as except_orm
+    RegistryManager = None
+    from osv.fields import many2many, one2many
 
 if sys.version_info[0] == 3:
     unicode = str
+
 
 # The server log level has not been set at this point
 # so to log at loglevel debug we need to set it
@@ -499,7 +516,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     for model in default_spec.keys():
         obj = pool.get(model)
         if not obj:
-            raise orm.except_orm(
+            raise except_orm(
                 "Error",
                 "Migration: error setting default, no such model: %s" % model)
         for field, value in default_spec[model]:
@@ -536,7 +553,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                             field, model))
                     logger.error(error)
                     # this exception seems to get lost in a higher up try block
-                    orm.except_orm("OpenUpgrade", error)
+                    except_orm("OpenUpgrade", error)
             else:
                 write_value(ids, field, value)
 
@@ -593,7 +610,7 @@ def update_module_names(cr, namespec):
         query = ("UPDATE ir_module_module_dependency SET name = %s "
                  "WHERE name = %s")
         logged_query(cr, query, (new_name, old_name))
-        if release.version_info[0] > 7:
+        if version_info[0] > 7:
             query = ("UPDATE ir_translation SET module = %s "
                      "WHERE module = %s")
             logged_query(cr, query, (new_name, old_name))
@@ -625,8 +642,8 @@ def get_legacy_name(original_name):
     :param original_name: the original name of the column
     :param version: current version as passed to migrate()
     """
-    return 'openupgrade_legacy_'+('_').join(
-        map(str, release.version_info[0:2]))+'_'+original_name
+    return 'openupgrade_legacy_' + '_'.join(
+        map(str, version_info[0:2])) + '_' + original_name
 
 
 def m2o_to_x2m(cr, model, table, field, source_field):
@@ -648,13 +665,15 @@ def m2o_to_x2m(cr, model, table, field, source_field):
     .. versionadded:: 8.0
     """
     if not model._columns.get(field):
-        raise orm.except_orm(
+        raise except_orm(
             "Error", "m2o_to_x2m: field %s doesn't exist in model %s" % (
                 field, model._name))
-    if isinstance(model._columns[field], (openerp.osv.fields.many2many,
-                                          Many2many)):
-        rel, id1, id2 = openerp.osv.fields.many2many._sql_names(
-            model._columns[field], model)
+    if isinstance(model._columns[field], (many2many, Many2many)):
+        column = model._columns[field]
+        if version_info[0] > 6 or version_info[0:2] == (6, 1):
+            rel, id1, id2 = many2many._sql_names(column, model)
+        else:
+            rel, id1, id2 = column._rel, column._id1, column._id2
         logged_query(
             cr,
             """
@@ -664,8 +683,7 @@ def m2o_to_x2m(cr, model, table, field, source_field):
             WHERE %s is not null
             """ %
             (rel, id1, id2, source_field, table, source_field))
-    elif isinstance(model._columns[field], (One2many,
-                                            openerp.osv.fields.one2many)):
+    elif isinstance(model._columns[field], (One2many, one2many)):
         if isinstance(model._columns[field], One2many):
             target_table = (
                 model.pool[model._columns[field].comodel_name]._table)
@@ -685,7 +703,7 @@ def m2o_to_x2m(cr, model, table, field, source_field):
                    'source_field': source_field,
                    'source_table': table})
     else:
-        raise orm.except_orm(
+        raise except_orm(
             "Error", "m2o_to_x2m: field %s of model %s is not a "
                      "many2many/one2many one" % (field, model._name))
 
@@ -1048,7 +1066,7 @@ def convert_field_to_html(cr, table, field_name, html_field_name):
 
     .. versionadded:: 7.0
     """
-    if release.version_info[0] < 7:
+    if version_info[0] < 7:
         logger.error("You cannot use this method in an OpenUpgrade version "
                      "prior to 7.0.")
         return
