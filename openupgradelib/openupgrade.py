@@ -256,7 +256,7 @@ def rename_models(cr, model_spec):
         cr.execute('UPDATE ir_model_data SET model = %s '
                    'WHERE model = %s', (new, old,))
         cr.execute('UPDATE ir_attachment SET res_model = %s '
-                   'WHERE model = %s', (new, old,))
+                   'WHERE res_model = %s', (new, old,))
     # TODO: signal where the model occurs in references to ir_model
 
 
