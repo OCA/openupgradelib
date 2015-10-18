@@ -764,6 +764,7 @@ def map_values(
     :param target_column: the database column, or model field (if 'write' is \
     'orm') that the new values are written to
     :para mapping: list of tuples [(old value, new value)]
+    Old value True represents "is set", False "is not set".
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
@@ -788,20 +789,34 @@ def map_values(
             " columns : %s",
             source_column)
     for old, new in mapping:
+        new = "'%s'" % new
+
+        if old is True:
+            old = 'NOT NULL'
+            op = 'IS'
+        elif old is False:
+            old = 'NULL'
+            op = 'IS'
+        else:
+            old = "'%s'" % old
+            op = '='
+
         values = {
             'table': table,
             'source': source_column,
             'target': target_column,
             'old': old,
             'new': new,
+            'op': op,
         }
+
         if write == 'sql':
             query = """UPDATE %(table)s
-                       SET %(target)s = %%(new)s
-                       WHERE %(source)s = %%(old)s""" % values
+                       SET %(target)s = %(new)s
+                       WHERE %(source)s %(op)s %(old)s""" % values
         else:
             query = """SELECT id FROM %(table)s
-                       WHERE %(source)s = %%(old)s""" % values
+                       WHERE %(source)s %(op)s %(old)s""" % values
         logged_query(cr, query, values)
         if write == 'orm':
             model.write(
