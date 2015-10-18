@@ -23,3 +23,11 @@ script:
 
 after_success:
     - coveralls
+
+deploy:
+  provider: pypi
+  user: oca
+  password:
+    secure: JPa04EKscnmQ8qk+9EMUXbJndFQwiSPa/6vmdPKC+l1wOPPwO01nisDp9OrT6KFYTSu78VaYnua4BrW3xVu3uvp602RFCRS+uoNmFcwZfzWZrZ1aeWZmXZeMZZBsgJy5wknFu52cQRuBnKQ43mK87FlwIpN5xGojFdgSkZMIs29S1iNlQEbiJstjFwKVbOo1FmH909TGc1dE5INOAwdrfYW/GCgyu5EVGLafoq9HsCz82HCt5BVZL1I1SerzURxRvopdFnWFK20xT/dulN4xfdRd9sCCgimY2w2V+d8/a0mvZVn3nyOoC9XuAcM5cvNDPnHVRmvHP4XyjjgW6JtE7bLoKZqVGUJCINanpcWSV2+34vImYLdKzjIKqYmpG78ci4v/aC1Wtq3n5VWa7MfC19xp7pAPKv4q29DWoZvYf7fTnGiwB9ifMxnMPKsTjhBwGkQaExGKcgfa0Gi9pxPCvkdZf4pSf/dTJpUCLLGfD39EoYmrutrmrp4laSZYy2ctwU+pGyHqPg66aJRkiJOJB981AlTI/lheQ/fxufimQao25bRCNbHRpMJl/6wPm0mHLoLeWP4L5cQb4mVA5U1jIkPV7X1b0RCn9QUnRgYY22hWSk0xN0bzIuEAroLbsWxEL1bb9fF6Gu1PUW1MT7LQnOw0Mx/Aw9ML0QE1o/aQvKA=
+  on:
+    tags: true
