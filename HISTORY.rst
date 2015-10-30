@@ -44,3 +44,13 @@ History
 * [IMP] update_module_names: Handle ir_translation
 * [FIX] lib for working with old API (<= 7.0)
 * [FIX] set_defaults: Cope with inherited fields by delegation
+
+1.1.1 (2015-10-30)
+------------------
+
+* [IMP] New function 'is_module_installed()'
+* [ADD] when renaming a model, also move link in ir_attachment
+* [FIX] Compatibility for OpenERP versions prior to 6.1
+* [FIX] use correct column name in rename_models
+* [IMP] .travis.yml: Add auto-deployment
+* [IMP] map_values: Support set & notset selectors
