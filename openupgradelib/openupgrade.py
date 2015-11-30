@@ -1096,7 +1096,7 @@ def convert_field_to_html(cr, table, field_name, html_field_name):
     )
     for row in cr.fetchall():
         logged_query(
-            cr, "UPDATE %(table)s SET %(field)s = %s WHERE id = %s" % {
+            cr, "UPDATE %(table)s SET %(field)s = %%s WHERE id = %%s" % {
                 'field': html_field_name,
                 'table': table,
             }, (plaintext2html(row[1]), row[0])
