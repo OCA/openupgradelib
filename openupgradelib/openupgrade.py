@@ -24,7 +24,6 @@ import os
 import inspect
 import logging
 from contextlib import contextmanager
-from psycopg2 import errorcodes, ProgrammingError
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -115,6 +114,11 @@ def allow_pgcodes(cr, *codes):
         error class) or 5 (indicating a concrete error). Any other errors
         will be raised.
     """
+    try:
+        from psycopg2 import errorcodes, ProgrammingError
+    except ImportError:
+        from psycopg2cffi import errorcodes, ProgrammingError
+
     try:
         with cr.savepoint():
             yield
