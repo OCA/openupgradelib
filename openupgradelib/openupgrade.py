@@ -23,6 +23,8 @@ import sys
 import os
 import inspect
 import logging
+from contextlib import contextmanager
+from psycopg2 import errorcodes, ProgrammingError
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -95,6 +97,37 @@ __all__ = [
     'reactivate_workflow_transitions',
     'date_to_datetime_tz',
 ]
+
+
+@contextmanager
+def allow_pgcodes(cr, *codes):
+    """Context manager that will omit specified error codes.
+
+    E.g., suppose you expect a migration to produce unique constraint
+    violations and you want to ignore them. Then you could just do::
+
+        with allow_pgcodes(cr, psycopg2.errorcodes.UNIQUE_VIOLATION):
+            cr.execute("INSERT INTO me (name) SELECT name FROM you")
+
+    :param *str codes:
+        Undefined amount of error codes found in :mod:`psycopg2.errorcodes`
+        that are allowed. Codes can have either 2 characters (indicating an
+        error class) or 5 (indicating a concrete error). Any other errors
+        will be raised.
+    """
+    try:
+        with cr.savepoint():
+            yield
+    except ProgrammingError as error:
+        msg = "Code: {code}. Class: {class_}. Error: {error}.".format(
+            code=error.pgcode,
+            class_=errorcodes.lookup(error.pgcode[:2]),
+            error=errorcodes.lookup(error.pgcode))
+        if error.pgcode not in codes and error.pgcode[:2] in codes:
+            logger.debug(msg)
+        else:
+            logger.exception(msg)
+            raise
 
 
 def check_values_selection_field(cr, table_name, field_name, allowed_values):
