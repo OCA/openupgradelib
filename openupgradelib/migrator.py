@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from functools import wraps
 from psycopg2 import errorcodes, ProgrammingError
 from openerp import api, SUPERUSER_ID
+from .openupgrade import allow_pgcodes
 
 _logger = logging.getLogger(__name__)
 
@@ -95,27 +96,8 @@ class Migrator(object):
     @wip
     @contextmanager
     def _allow_pgcodes(self, *codes):
-        """Context manager that will omit specified error codes.
-
-        :param *str codes:
-            Undefined amount of error codes found in :mod:`psycopg2.errorcodes`
-            that are allowed. Codes can have either 2 characters (indicating an
-            error class) or 5 (indicating a concrete error). Any other errors
-            will be raised.
-        """
-        try:
-            with self.env.cr.savepoint():
-                yield
-        except ProgrammingError as error:
-            msg = "Code: {code}. Class: {class_}. Error: {error}.".format(
-                code=error.pgcode,
-                class_=errorcodes.lookup(error.pgcode[:2]),
-                error=errorcodes.lookup(error.pgcode))
-            if error.pgcode not in codes and error.pgcode[:2] in codes:
-                _logger.debug(msg)
-            else:
-                _logger.exception(msg)
-                raise
+        """Shortcut for :meth:`~.allow_pgcodes` that uses instanced cursor."""
+        return allow_pgcodes(self.env.cr, *codes)
 
     def _execute(self, query, params=None, log_exceptions=True):
         """Wrapper that logs before executing.
