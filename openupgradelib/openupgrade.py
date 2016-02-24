@@ -108,6 +108,18 @@ def allow_pgcodes(cr, *codes):
         with allow_pgcodes(cr, psycopg2.errorcodes.UNIQUE_VIOLATION):
             cr.execute("INSERT INTO me (name) SELECT name FROM you")
 
+    .. warning::
+        **All** sentences inside this context will be rolled back if **a single
+        error** is raised, so the above example would insert **nothing** if a
+        single row violates a unique constraint.
+
+        This would ignore duplicate files but insert the others::
+
+            cr.execute("SELECT name FROM you")
+            for row in cr.fetchall():
+                with allow_pgcodes(cr, psycopg2.errorcodes.UNIQUE_VIOLATION):
+                    cr.execute("INSERT INTO me (name) VALUES (%s)", row[0])
+
     :param *str codes:
         Undefined amount of error codes found in :mod:`psycopg2.errorcodes`
         that are allowed. Codes can have either 2 characters (indicating an
@@ -128,7 +140,7 @@ def allow_pgcodes(cr, *codes):
             class_=errorcodes.lookup(error.pgcode[:2]),
             error=errorcodes.lookup(error.pgcode))
         if error.pgcode not in codes and error.pgcode[:2] in codes:
-            logger.debug(msg)
+            logger.info(msg)
         else:
             logger.exception(msg)
             raise
