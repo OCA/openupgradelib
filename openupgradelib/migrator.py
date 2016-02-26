@@ -93,11 +93,29 @@ class Migrator(object):
         self.addon = addon
         self.table_names = table_names or None
 
-    @wip
     @contextmanager
     def _allow_pgcodes(self, *codes):
-        """Shortcut for :meth:`~.allow_pgcodes` that uses instanced cursor."""
-        return allow_pgcodes(self.env.cr, *codes)
+        """Context manager that will omit specified error codes.
+
+        :param *str codes:
+            Undefined amount of error codes found in :mod:`psycopg2.errorcodes`
+            that are allowed. Codes can have either 2 characters (indicating an
+            error class) or 5 (indicating a concrete error). Any other errors
+            will be raised.
+        """
+        try:
+            with self.env.cr.savepoint():
+                yield
+        except (IntegrityError, ProgrammingError) as error:
+            msg = "Code: {code}. Class: {class_}. Error: {error}.".format(
+                code=error.pgcode,
+                class_=errorcodes.lookup(error.pgcode[:2]),
+                error=errorcodes.lookup(error.pgcode))
+            if error.pgcode not in codes and error.pgcode[:2] in codes:
+                _logger.debug(msg)
+            else:
+                _logger.exception(msg)
+                raise
 
     def _execute(self, query, params=None, log_exceptions=True):
         """Wrapper that logs before executing.
@@ -143,19 +161,6 @@ class Migrator(object):
                     WHERE module = %s AND model = %s AND res_id IN %s
                 """,
                 (self.addon, model_name, ids))
-
-    def _table_constraint_remove(self, table_name, constraint_name):
-        """Remove a constraint from a table.
-
-        :param str table_name:
-            Table name for whom to get the constraints. E.g. ``res_partner``.
-
-        :param str constraint_name:
-            Constraint to drop.
-        """
-        self._execute(
-            'ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s"' %
-            (table_name, constraint_name))
 
     @wip
     def _table_fk(self, table_name):
@@ -215,6 +220,129 @@ class Migrator(object):
             except (AttributeError, KeyError):
                 pass
         return model_name.replace(".", "_")
+
+    def field_copy_data(self, source_model, source_fields,
+                        destination_model=None, destination_fields=None,
+                        avoid_duplicates=tuple(), destination_addon=None):
+        """Copy all data from some fields of a model to another place.
+
+        This is the same as calling :meth:`field_copy_data_step` until the end.
+        Parameters in this method are the same as in that one.
+
+        :returns tuple:
+            Each element will be the result from :meth:`field_copy_data_step`.
+        """
+        return tuple(
+            self.field_copy_data_step(
+                source_model,
+                source_fields,
+                destination_model,
+                destination_fields,
+                avoid_duplicates,
+                destination_addon))
+
+    def field_copy_data_step(self, source_model, source_fields,
+                             destination_model=None, destination_fields=None,
+                             avoid_duplicates=False, destination_addon=None):
+        """Move data from some fields in one model to another place.
+
+        :return dict:
+            It returns a ``dict`` with these keys:
+
+            - ``inserted``: ``bool`` that indicates wether a new row has been
+              inserted. ``False`` when a row is skipped because of
+              :param:`avoid_duplicates`.
+            - ``old_id``: ``int`` indicating the DBID of the record in
+              :param:`source_model` that was copied.
+            - ``new_id``: ``int`` indicating the DBID of the record inserted
+              in :param:`destination_model`. If ``inserted`` is ``False``, this
+              will be the DBID of the already-existing record in that model
+              that would cause a duplicate if the insert were performed.
+
+        :param str source_model:
+            The source model name formatted like ``res.partner``. Data will be
+            extracted from this model.
+
+        :param tuple source_fields:
+            Field names from :param:`source_model`.
+
+        :param str destination_model:
+            The destination model name formatted like ``res.partner``. Data
+            will be copied to this model. If left empty, it becomes the same as
+            :param:`source_model`.
+
+        :param tuple destination_fields:
+            Field names in :param:`destination_model`, following the same order
+            as :param:`source_fields` and having the same amount. They will be
+            written that way. If left empty, it becomes the same as
+            :param:`source_fields`.
+
+        :param tuple/bool avoid_duplicates:
+            If ``False`` (default), blind writing will be performed, not caring
+            about duplicates. In case of error, a :class:`MigrationException`
+            will be raised.
+
+            If it is a ``tuple``, it will be checked that the upcoming insert
+            does not generate duplicates in the fields found in the tuple.
+
+            ``True`` is the same as passing the same ``tuple`` as
+            :param:`source_fields`.
+
+        :param str destination_addon:
+            If set, the XMLID of updated records will point to the new record
+            instead.
+        """
+        source_table = self._table_name(source_model)
+        source_fields_str = ",".join(source_fields)
+        avoid_duplicates = (source_fields if avoid_duplicates is True
+                            else avoid_duplicates or tuple())
+        destination_model = destination_model or source_model
+        destination_table = self._table_name(destination_model)
+        destination_fields = destination_fields or source_fields
+        destination_fields_str = ",".join(destination_fields)
+
+        # Compex queries
+        q_insert = "INSERT INTO %s (%s) VALUES (%%s) RETURNING id" % (
+            destination_table, destination_fields_str)
+        q_insert %= ",".join(["%s"] * len(destination_fields))
+        q_dupes = "SELECT id FROM %s WHERE %%s" % destination_table
+        q_dupes %= " AND ".join("%s = %%s" % f for f in avoid_duplicates)
+        q_xmlid = """UPDATE ir_model_data
+                     SET module = %s, model = %s, res_id = %s
+                     WHERE module = %s AND model = %s AND res_id = %s"""
+
+        # Read from source table
+        self._execute("SELECT id, %s FROM %s" % (source_fields_str,
+                                                 source_table))
+        for row in self.env.cr.fetchall():
+            # Skip insert if duplicate is found
+            if avoid_duplicates:
+                self._execute(q_dupes, row[1:])
+                if self.env.cr.rowcount:
+                    yield {
+                        "inserted": False,
+                        "old_id": row[0],
+                        "new_id": self.env.cr.fetchone()[0],
+                    }
+                    break
+
+            # Insert data in destination
+            self._execute(q_insert, row[1:])
+            last_id = self.env.cr.fetchone()[0]
+
+            # Move XMLIDs
+            if last_id and destination_addon:
+                with self._allow_pgcodes(errorcodes.UNIQUE_VIOLATION):
+                    self._execute(
+                        q_xmlid,
+                        (destination_addon, destination_model, last_id,
+                         self.addon, source_model, row[0]))
+
+            yield {
+                "inserted": True,
+                "old_id": row[0],
+                "new_id": last_id,
+            }
 
     @wip
     def field_relocate(self, model_name, field_name, destination_addon):
@@ -323,6 +451,12 @@ class Migrator(object):
     def model_remove(self, model_name, remove_table=True):
         """Remove a model from database.
 
+        You could get hit by an error telling you that a foreign key exists
+        that prevents the removal of this model. That error is not
+        automatically ignored because it could be important in some situations.
+        In most cases you can prevent it with the appropiate call to
+        :meth:`~.table_constraint_remove` before removing the model.
+
         :param str model_name:
             Model name. E.g. ``res.partner``.
 
@@ -411,3 +545,16 @@ class Migrator(object):
             [("name", "like", "%s,%%" % old_name)])
         for r in records:
             r.name = r.name.replace(old_name, new_name, 1)
+
+    def table_constraint_remove(self, table_name, constraint_name):
+        """Remove a constraint from a table.
+
+        :param str table_name:
+            Table name for whom to get the constraints. E.g. ``res_partner``.
+
+        :param str constraint_name:
+            Constraint to drop.
+        """
+        self._execute(
+            'ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s"' %
+            (table_name, constraint_name))
