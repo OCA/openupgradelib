@@ -429,7 +429,7 @@ class Migrator(object):
             with self._allow_pgcodes():
                 r.write(update)
 
-    def model_remove(self, model_name, remove_table=True):
+    def model_remove(self, model_name, remove_table=True, cascade=False):
         """Remove a model from database.
 
         You could get hit by an error telling you that a foreign key exists
@@ -443,8 +443,16 @@ class Migrator(object):
 
         :param bool remove_table:
             Specifies wether the database tables should be dropped.
+
+        :param bool cascade:
+            Automatically remove any views or foreign keys that depend on this
+            table. Be careful with this, it's probably better to call
+            :meth:`~.table_constraint_remove` on the constraints you do not
+            want before calling :meth:`~.model_remove` than setting this to
+            ``True``.
         """
         model_id = self._model_id(model_name)
+        mode = "CASCADE" if cascade else "RESTRICT"
 
         # Clean model info for Odoo
         self._execute(
@@ -466,8 +474,8 @@ class Migrator(object):
         # Remove database table
         if remove_table:
             table = self._table_name(model_name)
-            self._execute('DROP TABLE IF EXISTS "%s"' % table)
-            self._execute('DROP VIEW IF EXISTS "%s"' % table)
+            self._execute('DROP TABLE IF EXISTS "%s" %s' % (table, mode))
+            self._execute('DROP VIEW IF EXISTS "%s" %s' % (table, mode))
 
     @wip
     def model_rename(self, old_name, new_name):
