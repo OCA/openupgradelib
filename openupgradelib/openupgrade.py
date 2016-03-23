@@ -994,7 +994,8 @@ def migrate(no_version=False):
                 (module, stage, version))
             try:
                 # The actual function is called here
-                func(cr, version)
+                with cr.savepoint():
+                    func(cr, version)
             except Exception as e:
                 logger.error(
                     "%s: error in migration script %s: %s" %
