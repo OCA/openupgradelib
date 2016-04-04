@@ -22,6 +22,7 @@
 import sys
 import os
 import inspect
+import uuid
 import logging
 from contextlib import contextmanager
 from . import openupgrade_tools
@@ -992,8 +993,18 @@ def migrate(no_version=False):
                 (module, stage, version))
             try:
                 # The actual function is called here
-                with cr.savepoint():
-                    func(cr, version)
+                if hasattr(cr, 'savepoint'):
+                    with cr.savepoint():
+                        func(cr, version)
+                else:
+                    name = uuid.uuid1().hex
+                    cr.execute('SAVEPOINT "%s"' % name)
+                    try:
+                        func(cr, version)
+                        cr.execute('RELEASE SAVEPOINT "%s"' % name)
+                    except:
+                        cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
+                        raise
             except Exception as e:
                 logger.error(
                     "%s: error in migration script %s: %s" %
