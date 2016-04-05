@@ -227,8 +227,8 @@ def copy_columns(cr, column_spec):
     values. Tuples consist of (old_name, new_name, type). Use None for \
     new_name to trigger a conversion of old_name using get_legacy_name() \
     Use None for type to use type of old field.
-    Make sure to quote properly, if your column name coincides with a
-    SQL directive. eg. '"column"'
+        Make sure to quote properly, if your column name coincides with a
+        SQL directive. eg. '"column"'
 
     .. versionadded:: 8.0
     """
@@ -795,7 +795,7 @@ def float_to_integer(cr, table, field):
         "TYPE integer" % {
             'table': table,
             'field': field,
-            })
+        })
 
 
 def map_values(
@@ -811,8 +811,8 @@ def map_values(
     mapped
     :param target_column: the database column, or model field (if 'write' is \
     'orm') that the new values are written to
-    :para mapping: list of tuples [(old value, new value)]
-    Old value True represents "is set", False "is not set".
+    :param mapping: list of tuples [(old value, new value)]
+        Old value True represents "is set", False "is not set".
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
