@@ -3,6 +3,16 @@
 History
 -------
 
+1.1.2 (2016-06-13)
+------------------
+
+* [FIX] missing %% in convert_field_to_html()
+* [FIX] Remove wrong docs
+* [FIX] Avoid broken updates
+* [IMP] Add new context manager allow_pgcodes
+* [FIX] support OpenERP version that don't have cr.savepoint
+
+
 1.1.1 (2015-10-30)
 ------------------
 
