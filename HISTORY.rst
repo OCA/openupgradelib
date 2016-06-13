@@ -3,34 +3,15 @@
 History
 -------
 
-0.1.0 (2015-05-04)
+1.1.1 (2015-10-30)
 ------------------
 
-* First release on PyPI.
-
-0.1.1 (2015-05-05)
-------------------
-
-* Fixes to the tests
-* Add more badges
-* Fix pip install issue with required.txt
-
-0.1.2 (2015-06-23)
-------------------
-
-* Rewrite history with git filter-branch
-* Remove unneeded files from history
-  * openupgrade_loading.py
-  * deferred80.py
-  * openupgrade_log.py
-  * #openupgrade_loading.py#
-
-1.0.0 (2015-08-10)
-------------------
-
-* Rerelease to pypi with proper upload
-* Include requirements.txt
-* Mark as Beta
+* [IMP] New function 'is_module_installed()'
+* [ADD] when renaming a model, also move link in ir_attachment
+* [FIX] Compatibility for OpenERP versions prior to 6.1
+* [FIX] use correct column name in rename_models
+* [IMP] .travis.yml: Add auto-deployment
+* [IMP] map_values: Support set & notset selectors
 
 1.1.0 (2015-09-21)
 ------------------
@@ -45,12 +26,31 @@ History
 * [FIX] lib for working with old API (<= 7.0)
 * [FIX] set_defaults: Cope with inherited fields by delegation
 
-1.1.1 (2015-10-30)
+1.0.0 (2015-08-10)
 ------------------
 
-* [IMP] New function 'is_module_installed()'
-* [ADD] when renaming a model, also move link in ir_attachment
-* [FIX] Compatibility for OpenERP versions prior to 6.1
-* [FIX] use correct column name in rename_models
-* [IMP] .travis.yml: Add auto-deployment
-* [IMP] map_values: Support set & notset selectors
+* Rerelease to pypi with proper upload
+* Include requirements.txt
+* Mark as Beta
+
+0.1.2 (2015-06-23)
+------------------
+
+* Rewrite history with git filter-branch
+* Remove unneeded files from history
+  * openupgrade_loading.py
+  * deferred80.py
+  * openupgrade_log.py
+  * #openupgrade_loading.py#
+
+0.1.1 (2015-05-05)
+------------------
+
+* Fixes to the tests
+* Add more badges
+* Fix pip install issue with required.txt
+
+0.1.0 (2015-05-04)
+------------------
+
+* First release on PyPI.
