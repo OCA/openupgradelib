@@ -874,11 +874,11 @@ def map_values(
         }
         query = ("SELECT {source_column!s} FROM {table!s}").format(**values)
         cr.execute(query)
-        
+
         set1 = set([i[0] for i in cr.fetchall()])
         set2 = set([i[0] for i in mapping])
         missing = set1 - set2
-        
+
         if (missing - set([None])):
             for dbid in missing:
                 logger.error((
