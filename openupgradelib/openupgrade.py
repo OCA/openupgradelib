@@ -799,13 +799,12 @@ def float_to_integer(cr, table, field):
 
 
 def map_values(
-        cr, source_column, target_column, mapping,
-        model=None, table=None, write='sql'):
+        cr, source_column, target_column, mapping, xml_mapping=False,
+        model=None, table=None, write='sql', check_completeness=False):
     """
     Map old values to new values within the same model or table. Old values
     presumably come from a legacy column.
     You will typically want to use it in post-migration scripts.
-
     :param cr: The database cursor
     :param source_column: the database column that contains old values to be \
     mapped
@@ -813,15 +812,47 @@ def map_values(
     'orm') that the new values are written to
     :param mapping: list of tuples [(old value, new value)]
         Old value True represents "is set", False "is not set".
+    :param xml_mapping: If True, mapping is expected to be a fully qualified \
+    external ID as for example in "account.1_account_tax_1234".
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
     the new values (if 'write' is 'sql')
     :param write: Either 'orm' or 'sql'. Note that old ids are always \
     identified by an sql read.
+    :param check_completeness: True verifies, that all source entries \
+    have been accounted for in the mapping table and raises otherwise.
 
+    This moethod does not support mapping values across tables, neither \
+    relational nor property fields (it does not support resiliant \
+    handling of their respective relational tables - you still can use \
+    this method on those relational tables in sql mode).
     .. versionadded:: 8.0
     """
+    def use_xml_mapping(cr, mapping):
+        from openerp.modules.registry import RegistryManager
+        gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+        result = []
+
+        def get_id(cr, xml):
+            if xml == 'NULL':
+                return 'NULL'
+            try:
+                return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+            except:
+                logger.error((
+                    "'map_values_by_xml' faild to retrieve a Database ID "
+                    "for External ID {0}. This mapping will be ignored."
+                ).format(xml))
+                pass
+        for rec in mapping:
+            val = (get_id(cr, rec[0]), get_id(cr, rec[1]))
+            if val[0] and val[1]:
+                result.append(val)
+        return result
+
+    if xml_mapping:
+        mapping = use_xml_mapping(cr, xml_mapping)
 
     if write not in ('sql', 'orm'):
         logger.exception(
@@ -836,6 +867,24 @@ def map_values(
             "map_values is called with the same value for source and old"
             " columns : %s",
             source_column)
+    if check_completeness:
+        values = {
+            'table': table,
+            'source_column': source_column,
+        }
+        query = ("SELECT {source_column!s} FROM {table!s}").format(**values)
+        cr.execute(query)
+
+        missing = set([i[0] for i in cr.fetchall()]) - \
+                  set([i[0] for i in mapping])
+        if (missing - set([None])):
+            for dbid in missing:
+                logger.error((
+                    "'map_values_by_xml' has detected a missing mapping for "
+                    "Database ID {0} in Source Column (check_completness "
+                    "enabled)."
+                ).format(dbid))
+            raise
     for old, new in mapping:
         new = "'%s'" % new
 
@@ -871,67 +920,6 @@ def map_values(
                 cr, SUPERUSER_ID,
                 [row[0] for row in cr.fetchall()],
                 {target_column: new})
-
-
-def map_values_by_xml(cr, source_column, target_column, xml_mapping, table, 
-    check_completeness=False):
-    """
-    Map old values to new values within the same model or table. Old values
-    presumably come from a legacy column. Signature is similar to map_values()
-    which is called by this function.
-    You will typically want to use it in post-migration scripts.
-    :param cr: The database cursor
-    :param source_column: the database column that contains old values to be \
-    mapped
-    :param target_column: the database column, or model field that the new \
-    values are written to
-    :param mapping: list of tuples [(old value, new value)] as list of fully \
-    qualified xml ids. in the format "module.externalid"
-        Fully qualified refers to the format "model.externalid". \
-        See 'ir.model.data' in the 'base' module for more details.
-    :param table: the database table used to query the old values, and write \
-    the new values
-    :param check_commleteness: Set to True, if you want to check if you have \
-    accounted for all source column values in your mapping list. 
-    .. versionadded:: 9.0
-    """
-    from openerp.modules.registry import RegistryManager
-    imd = RegistryManager.get(cr.dbname)['ir.model.data']
-    def use_xml_mapping(cr, mapping):
-        result = []
-        def get_id(cr, xml):
-            if xml == 'NULL': return 'NULL'
-            try:
-                return imd.xmlid_to_res_id(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
-            except Exception as e:
-                logger.error("""'map_values_by_xml' faild to retrieve a Database ID for External ID {0}. This mapping will be ignored.""".format(xml))
-                pass
-        for rec in mapping:
-            val = (get_id(cr, rec[0]),get_id(cr, rec[1]))
-            if val[0] and val[1]:
-                result.append(val)
-        return result
-    mapping = use_xml_mapping(cr, xml_mapping)
-
-    if check_completeness:
-        values = {
-            'table': table,
-            'source_column': source_column,
-        }
-        query = ("SELECT {source_column!s} FROM {table!s}").format(**values)
-        cr.execute(query)
-
-        missing = set([i[0] for i in cr.fetchall()]) - set([i[0] for i in mapping])
-        if (missing - set([None])):
-            for dbid in missing:
-                logger.error(
-                    """'map_values_by_xml' has detected a missing mapping for 
-                    Database ID {0} in Source Column 
-                    (check_completness enabled).""".format(dbid))
-            raise
-
-    return map_values(cr, source_column, target_column, 
-        mapping, table=table)
 
 
 def message(cr, module, table, column,
