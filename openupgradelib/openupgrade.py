@@ -852,7 +852,7 @@ def map_values(
         return result
 
     if xml_mapping:
-        mapping = use_xml_mapping(cr, xml_mapping)
+        mapping = use_xml_mapping(cr, mapping)
 
     if write not in ('sql', 'orm'):
         logger.exception(
