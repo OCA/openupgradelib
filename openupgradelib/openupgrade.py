@@ -896,37 +896,33 @@ def map_values_by_xml(cr, source_column, target_column, xml_mapping, table,
     .. versionadded:: 9.0
     """
     from openerp.modules.registry import RegistryManager
-    registry = RegistryManager.get(cr.dbname)
-    imd = registry['ir.model.data']
-    def use_xml_mapping(mapping):
+    imd = RegistryManager.get(cr.dbname)['ir.model.data']
+    def use_xml_mapping(cr, mapping):
         result = []
-        def get_id(xml):
+        def get_id(cr, xml):
             if xml == 'NULL': return 'NULL'
             try:
-                return imd.xmlid_to_res_id(xml, raise_if_not_found=True)
-            except as e:
-                logger.error("""'map_values_by_xml' faild to retrieve a 
-                                Database ID for External ID {0}\n
-                                This mapping will be ignored.""".format(xml))
+                return imd.xmlid_to_res_id(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+            except Exception as e:
+                logger.error("""'map_values_by_xml' faild to retrieve a Database ID for External ID {0}. This mapping will be ignored.""".format(xml))
                 pass
         for rec in mapping:
-            val = (map(get_id,rec[0]),map(get_id,rec[1]))
+            val = (get_id(cr, rec[0]),get_id(cr, rec[1]))
             if val[0] and val[1]:
                 result.append(val)
         return result
-
-    res = map_values(cr, source_column, target_column, 
-        use_xml_mapping(xml_mapping), table=table)
+    mapping = use_xml_mapping(cr, xml_mapping)
 
     if check_completeness:
         values = {
             'table': table,
             'source_column': source_column,
         }
-        query = """SELECT {source_column!s} FROM {table!s}""".format(values)
+        query = ("SELECT {source_column!s} FROM {table!s}").format(**values)
         cr.execute(query)
-        missing = set([i[0] for i in cr.fetchall()]) - set([i[0] for i in res])
-        if missing:
+
+        missing = set([i[0] for i in cr.fetchall()]) - set([i[0] for i in mapping])
+        if (missing - set([None])):
             for dbid in missing:
                 logger.error(
                     """'map_values_by_xml' has detected a missing mapping for 
@@ -934,7 +930,8 @@ def map_values_by_xml(cr, source_column, target_column, xml_mapping, table,
                     (check_completness enabled).""".format(dbid))
             raise
 
-    return res
+    return map_values(cr, source_column, target_column, 
+        mapping, table=table)
 
 
 def message(cr, module, table, column,
