@@ -876,7 +876,7 @@ def map_values(
         cr.execute(query)
 
         missing = set([i[0] for i in cr.fetchall()]) - \
-                  set([i[0] for i in mapping])
+        set([i[0] for i in mapping])
         if (missing - set([None])):
             for dbid in missing:
                 logger.error((
