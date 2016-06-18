@@ -398,6 +398,27 @@ def drop_columns(cr, column_spec):
                         table, column)
 
 
+def drop_m2m_table(cr, table_spec):
+    """
+    Drop a many2many relation table properly.
+    You will typically want to use it in post-migration scripts after you \
+    have migrated the values of your many2many fields.
+    
+    :param cr: The database cursor
+    :param table_spec: list of strings ['table one', 'table two']
+    
+    .. versionadded:: 9.0
+    """
+    imr = RegistryManager.get(cr.dbname)['ir.model.relation']
+    drop = imr._module_data_uninstall
+    for table in table_spec:
+        query = """SELECT id FROM ir_model_relation
+                   WHERE name='{0}'""".fromat(table)
+        cr.execute(query)
+        ids = [x[0] for x in cr.fetchall()]
+        drop(cr, SUPERUSER_ID, ids)
+
+
 def update_workflow_workitems(cr, pool, ref_spec_actions):
     """Find all the workflow items from the target state to set them to
     the wanted state.
