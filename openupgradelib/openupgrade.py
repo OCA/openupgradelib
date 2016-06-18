@@ -413,7 +413,7 @@ def drop_m2m_table(cr, table_spec):
     drop = imr._module_data_uninstall
     for table in table_spec:
         query = """SELECT id FROM ir_model_relation
-                   WHERE name='{0}'""".fromat(table)
+                   WHERE name='{0}'""".format(table)
         cr.execute(query)
         ids = [x[0] for x in cr.fetchall()]
         drop(cr, SUPERUSER_ID, ids)
