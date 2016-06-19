@@ -46,6 +46,7 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
         from openerp.tools.mail import plaintext2html
     if version_info[0] >= 8:
         from openerp.fields import Many2many, One2many
+        from openerp import api
 else:
     # version < 6.1
     import tools
@@ -960,7 +961,7 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False):
+def migrate(no_version=False, context=None):
     """
     This is the decorator for the migrate() function
     in migration scripts.
@@ -995,13 +996,25 @@ def migrate(no_version=False):
                 # The actual function is called here
                 if hasattr(cr, 'savepoint'):
                     with cr.savepoint():
-                        func(cr, version)
+                        if version_info[0] >= 8:
+                            with api.Environment.manage():
+                                with api.Environment(cr, SUPERUSER_ID, context or dict()) as Env:
+                                    func(Env, version)
+                        else:
+                            func(cr, version)
                 else:
                     name = uuid.uuid1().hex
                     cr.execute('SAVEPOINT "%s"' % name)
                     try:
-                        func(cr, version)
-                        cr.execute('RELEASE SAVEPOINT "%s"' % name)
+                        if version_info[0] >= 8:
+                            with api.Environment.manage():
+                                with api.Environment(cr, SUPERUSER_ID, context or dict()) as Env:
+                                    func(Env, version)
+                                    cr.execute('RELEASE SAVEPOINT "%s"' % name)
+                        else:
+                            func(cr, version)
+                            cr.execute('RELEASE SAVEPOINT "%s"' % name)
+                            
                     except:
                         cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
                         raise
