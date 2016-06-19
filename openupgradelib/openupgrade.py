@@ -862,6 +862,9 @@ def map_values(
     :param write: Either 'orm' or 'sql'. Note that old ids are always \
     identified by an sql read.
 
+    This method does not support mapping m2m, o2m or property fields. \
+    For o2m you can migrate the inverse field's column instead.
+
     .. versionadded:: 8.0
     """
 
