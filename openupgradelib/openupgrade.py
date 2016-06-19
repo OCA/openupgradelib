@@ -822,11 +822,6 @@ def map_values(
     identified by an sql read.
     :param check_completeness: True verifies, that all source entries \
     have been accounted for in the mapping table and raises otherwise.
-
-    This moethod does not support mapping values across tables, neither \
-    relational nor property fields (it does not support resiliant \
-    handling of their respective relational tables - you still can use \
-    this method on those relational tables in sql mode).
     .. versionadded:: 8.0
     """
     def use_xml_mapping(cr, mapping):
