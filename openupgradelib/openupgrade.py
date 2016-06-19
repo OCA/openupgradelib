@@ -798,14 +798,35 @@ def float_to_integer(cr, table, field):
         })
 
 
-def map_values(
-        cr, source_column, target_column, mapping,
-        model=None, table=None, write='sql'):
+def use_xml_mapping(cr, mapping):
+    from openerp.modules.registry import RegistryManager
+    gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+    result = []
+
+    def get_id(cr, xml):
+        if xml == 'NULL':
+            return 'NULL'
+        try:
+            return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+        except:
+            logger.error((
+                "'map_values_by_xml' faild to retrieve a Database ID "
+                "for External ID {0}. This mapping will be ignored."
+            ).format(xml))
+            pass
+    for rec in mapping:
+        val = (get_id(cr, rec[0]), get_id(cr, rec[1]))
+        if val[0] and val[1]:
+            result.append(val)
+    return result
+
+
+def map_values_orm(cr, **mapping_spec, check_completeness=False):
     """
     Map old values to new values within the same model or table. Old values
-    presumably come from a legacy column.
+    presumably come from a legacy column. Writing through ORM enables \
+    graceful handling of 2many fields.
     You will typically want to use it in post-migration scripts.
-
     :param cr: The database cursor
     :param source_column: the database column that contains old values to be \
     mapped
@@ -813,29 +834,84 @@ def map_values(
     'orm') that the new values are written to
     :param mapping: list of tuples [(old value, new value)]
         Old value True represents "is set", False "is not set".
-    :param model: used for writing if 'write' is 'orm', or to retrieve the \
-    table if 'table' is not given.
-    :param table: the database table used to query the old values, and write \
-    the new values (if 'write' is 'sql')
-    :param write: Either 'orm' or 'sql'. Note that old ids are always \
-    identified by an sql read.
-
+    :param model: string of model name.
+    :param xml_mapping: If True, mapping is expected to be a fully qualified \
+    external ID as for example in "account.1_account_tax_1234".
+    :param check_completeness: True verifies, that all source entries \
+    have been accounted for in the mapping table and raises otherwise.
     .. versionadded:: 8.0
     """
+
+    from openerp.modules.registry import RegistryManager
+    model = RegistryManager.get(cr.dbname)[to_model]
+    ids = model.search(cr, SUPERUSER_ID, [])
+    recs = model.browse(ids)
+    table = model._table
+
+    if xml:
+        mapping = use_xml_mapping(cr, mapping)
 
     if write not in ('sql', 'orm'):
         logger.exception(
             "map_values is called with unknown value for write param: %s",
             write)
-    if not table:
-        if not model:
-            logger.exception("map_values is called with no table and no model")
-        table = model._table
-    if source_column == target_column:
+    if ex_field == to_field:
         logger.exception(
-            "map_values is called with the same value for source and old"
-            " columns : %s",
-            source_column)
+            "map_values is called with the same value for source and "
+            "target fields : %s",
+            ex_field)
+    mf = model._fields
+    if mf[ex_field].type == 'one2many' or mf[to_field].type == 'one2many':
+        logger.exception(
+            "map_values cannot handle migrations on one2many fields. "
+            "Please migrate the corresponding inverse field (many2one) of "
+            "the related model instead.")
+    if check_completeness:
+        if mf[ex_field].relational:
+            values = recs.mapped(ex_field + '.id')
+        else:
+            values = recs.mapped(ex_field)
+
+        missing = set(values) - set([i[0] for i in mapping])
+        if (missing - set([None])):
+            for value in missing:
+                logger.error((
+                    "'map_values' has detected a missing mapping for "
+                    "Value {0} in Source Column (check_completness "
+                    "enabled)."
+                ).format(value))
+
+    if mf[ex_field].type == mf[to_field].type == 'many2many':
+        def get_vals(r):
+            res = []
+            for rel in r[ex_field]:
+                if rel.id not in mapping.keys():
+                    res.append(rel.id)
+                else:
+                    res.append(mapping[rel.id])
+            return res
+        recs.mapped(lambda r: r.write(cr, SUPERUSER_ID, r.id,
+                    {to_field: (6, _, get_vals(r))}))
+
+    elif mf[ex_field].relational and mf[to_field].relational:
+        def get_vals(r):
+            if r[ex_field].id not in mapping.keys():
+                return r[ex_field].id
+            else:
+                return mapping[ex_field]
+        recs.mapped(lambda r: r.write(cr, SUPERUSER_ID, r.id,
+                    {to_field: get_vals(r)}))
+
+    else:
+        def get_vals(r):
+            if r[ex_field] not in mapping.keys():
+                return r[ex_field]
+            else:
+                return mapping[ex_field]
+        recs.mapped(lambda r: r.write(cr, SUPERUSER_ID, r.id,
+                    {to_field: get_vals(r)}))
+
+
     for old, new in mapping:
         new = "'%s'" % new
 
@@ -871,6 +947,39 @@ def map_values(
                 cr, SUPERUSER_ID,
                 [row[0] for row in cr.fetchall()],
                 {target_column: new})
+
+
+def map_values(
+        cr, source_column, target_column, mapping, xml_mapping=False,
+        model=None, table=None, write='sql', check_completeness=False):
+    """
+    Compatibility wrapper, use map_values_orm or map_values_sql instead.
+    Sceduled for deprecation in 1.5
+    """
+    model_name = model._name
+
+    logger.warning(
+        "'map_values' will be deprecated in future releases!"
+        "Use map_values_orm or map_values_sql instead."
+    )
+
+    if table:
+        logger.exception(
+            "'map_values' table keyword argument has been deprecated. "
+            "Please use model name in the format res.partner instead. "
+            "Unfortunately, you will need to update your migration "
+            "scripts now. Apologies."
+        )
+
+    mapping = {
+        'to_model': model_name,
+        'ex_field': source_column,
+        'to_field': target_column,
+        'xml_ids': xml_mapping,
+        'mapping': mapping
+    }
+    if write='orm':
+        map_values_orm(cr, **mapping, check_completeness=False)
 
 
 def message(cr, module, table, column,
