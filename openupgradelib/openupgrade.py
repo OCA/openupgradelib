@@ -693,7 +693,7 @@ def get_legacy_name(original_name, version=None):
     :param version: current version as passed to migrate()
     """
     if version:
-        vstr = '_'.join('.',split(version))
+        vstr = '_'.join(version.split('.'))
     else:
         vstr = '_'.join(map(str, version_info[0:2]))
     return 'openupgrade_legacy_' + vstr + '_' + original_name
