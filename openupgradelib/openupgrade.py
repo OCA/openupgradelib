@@ -692,8 +692,8 @@ def get_legacy_name(original_name):
     :param original_name: the original name of the column
     :param version: current version as passed to migrate()
     """
-    return 'openupgrade_legacy_' + '_'.join(
-        map(str, version_info[0:2])) + '_' + original_name
+    return 'x_ou_legacy_' + '_'.join(
+        map(str, version_info[0:])) + '_' + original_name
 
 
 def m2o_to_x2m(cr, model, table, field, source_field):
