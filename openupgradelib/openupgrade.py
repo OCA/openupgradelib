@@ -799,8 +799,8 @@ def float_to_integer(cr, table, field):
 
 
 def map_values(
-        cr, source_column, target_column, mapping, xml_mapping=False,
-        model=None, table=None, write='sql', check_completeness=False):
+        cr, source_column, target_column, mapping, model=None,
+        table=None, write='sql', xml_mapping=False, check_completeness=False):
     """
     Map old values to new values within the same model or table. Old values
     presumably come from a legacy column.
