@@ -880,13 +880,12 @@ def map_values(
         missing = set1 - set2
 
         if (missing - set([None])):
-            for dbid in missing:
-                logger.error((
-                    "'map_values_by_xml' has detected a missing mapping for "
-                    "Database ID {0} in Source Column (check_completness "
-                    "enabled)."
-                ).format(dbid))
-            raise
+            logger.excpetion((
+                "'map_values' has detected missing mappings for "
+                "following values in Source Column (check_completness "
+                "enabled):\n{0}"
+            ).format(('\n').join(missing))
+
     for old, new in mapping:
         new = "'%s'" % new
 
