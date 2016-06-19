@@ -683,7 +683,7 @@ def add_ir_model_fields(cr, columnspec):
         logged_query(cr, query, [])
 
 
-def get_legacy_name(original_name):
+def get_legacy_name(original_name, version=None):
     """
     Returns a versioned name for legacy tables/columns/etc
     Use this function instead of some custom name to avoid
@@ -692,8 +692,11 @@ def get_legacy_name(original_name):
     :param original_name: the original name of the column
     :param version: current version as passed to migrate()
     """
-    return 'openupgrade_legacy_' + '_'.join(
-        map(str, version_info[0:])) + '_' + original_name
+    if version:
+        vstr = '_'.join('.',split(version))
+    else:
+        vstr = '_'.join(map(str, version_info[0:2]))
+    return 'openupgrade_legacy_' + vstr + '_' + original_name
 
 
 def m2o_to_x2m(cr, model, table, field, source_field):
