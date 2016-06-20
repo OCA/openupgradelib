@@ -25,6 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+from functools import wrap # for better debuggin support
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -961,7 +962,7 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False, context=None):
+def migrate(no_version=False, context=None, *args, **kwargs):
     """
     This is the decorator for the migrate() function
     in migration scripts.
@@ -973,7 +974,9 @@ def migrate(no_version=False, context=None):
     logging purposes.
     """
     def wrap(func):
-        def wrapped_function(cr, version):
+        @wraps(func)
+        def wrapped_function(cr, version, no_version=no_version,
+                             context=context, *args, **kwargs):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
@@ -998,19 +1001,21 @@ def migrate(no_version=False, context=None):
                     with cr.savepoint():
                         if version_info[0] >= 8:
                             with api.Environment.manage():
-                                with api.Environment(cr, SUPERUSER_ID, context or dict()) as Env:
-                                    func(Env, version)
+                                context['migrate_version'] = version
+                                Env = api.Environment(cr, SUPERUSER_ID, context)
+                                return func(Env, *args, **kwargs)
                         else:
-                            func(cr, version)
+                            return func(cr, version)
                 else:
                     name = uuid.uuid1().hex
                     cr.execute('SAVEPOINT "%s"' % name)
                     try:
                         if version_info[0] >= 8:
                             with api.Environment.manage():
-                                with api.Environment(cr, SUPERUSER_ID, context or dict()) as Env:
-                                    func(Env, version)
-                                    cr.execute('RELEASE SAVEPOINT "%s"' % name)
+                                context['migrate_version'] = version
+                                Env = api.Environment(cr, SUPERUSER_ID, context)
+                                func(Env, *args, **kwargs)
+                                cr.execute('RELEASE SAVEPOINT "%s"' % name)
                         else:
                             func(cr, version)
                             cr.execute('RELEASE SAVEPOINT "%s"' % name)
