@@ -25,7 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
-from functools import wrap # for better debuggin support
+from functools import wraps  # for better debuggin support
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -1002,8 +1002,10 @@ def migrate(no_version=False, context=None, *args, **kwargs):
                         if version_info[0] >= 8:
                             with api.Environment.manage():
                                 context['migrate_version'] = version
-                                Env = api.Environment(cr, SUPERUSER_ID, context)
-                                return func(Env, *args, **kwargs)
+                                env = api.Environment(
+                                    cr, SUPERUSER_ID, context
+                                )
+                                return func(env, *args, **kwargs)
                         else:
                             return func(cr, version)
                 else:
@@ -1013,13 +1015,15 @@ def migrate(no_version=False, context=None, *args, **kwargs):
                         if version_info[0] >= 8:
                             with api.Environment.manage():
                                 context['migrate_version'] = version
-                                Env = api.Environment(cr, SUPERUSER_ID, context)
-                                func(Env, *args, **kwargs)
+                                env = api.Environment(
+                                    cr, SUPERUSER_ID, context
+                                )
+                                func(env, *args, **kwargs)
                                 cr.execute('RELEASE SAVEPOINT "%s"' % name)
                         else:
                             func(cr, version)
                             cr.execute('RELEASE SAVEPOINT "%s"' % name)
-                            
+
                     except:
                         cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
                         raise
