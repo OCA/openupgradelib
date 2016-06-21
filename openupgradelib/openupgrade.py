@@ -1009,12 +1009,12 @@ def migrate(no_version=False, v8api=False, context=None, *args, **kwargs):
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
             versioncheck = (version_info[0] >= 8 and v9env) or version_info > 9
-            if not versioncheck and not v9env:
+            if not versioncheck:
                 logger.warning(
                     "You are are using the decorator without the Environment "
                     "creation feature. As of Odoo Version 10 Migrations, the "
                     "Environment will be enabled by default. Make sure to "
-                    "gat aquiainted with the slightly different migrate() "
+                    "get acquainted with the slightly different migrate() "
                     "signature in time: `def migrate(env, *args, **kwargs)`"
                 )
             try:
