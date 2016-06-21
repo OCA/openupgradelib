@@ -962,16 +962,29 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False, context=None, *args, **kwargs):
+def migrate(no_version=False, v8api=False, context=None, *args, **kwargs):
     """
-    This is the decorator for the migrate() function
-    in migration scripts.
-    Set argument 'no_version' to True if the method as to be taken into account
-    if the module is installed during a migration.
-    Return when the 'version' argument is not defined and no_version is False,
-    and log execeptions.
-    Retrieve debug context data from the frame above for
-    logging purposes.
+    This is the decorator for the migrate() function in migration scripts.
+    It returns if `version` is not defined and `no_version` is False,
+    and logs execeptions. It also retrieves debug context data from the
+    frame above for logging purposes. Optionally it provides a fully fledged
+    Odoo Environment (with `v8api` = True). An arbitrary context can be
+    preloaded into the Environment via `context` dict.
+
+    :param no_version: Set to `True` if the migrate method has to be taken
+    into account if the module is installed during a migration.
+    :param v8api: Set to `True` gives you a fully fledged Odoo Environment.
+    The wrapped function signature changes to `migrate(env, *args, **kwargs):`
+        Obtain Version: env.context['migrate_version']
+        Obtain Cursor: env.cr
+        To genuinely support calling legacy methods you should do:
+        ```
+        def migrate(env, *args, **kwargs):
+            version = env.context['migrate_version']
+            cr = env.cr
+        ```
+    :param context: An arbitrary odoo context you might want to set up. You
+    can access this through `env.context`, where the Environment is present.
     """
     def wrap(func):
         @wraps(func)
@@ -995,11 +1008,21 @@ def migrate(no_version=False, context=None, *args, **kwargs):
             logger.info(
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
+            def call_funct
+            versioncheck = (version_info[0] >= 8 and v9env) or version_info > 9
+            if not versioncheck and not v9env:
+                logger.warning(
+                    "You are are using the decorator without the Environment "
+                    "creation feature. As of Odoo Version 10 Migrations, the "
+                    "Environment will be enabled by default. Make sure to "
+                    "gat aquiainted with the slightly different migrate() "
+                    "signature in time: `def migrate(env, *args, **kwargs)`"
+                )
             try:
                 # The actual function is called here
                 if hasattr(cr, 'savepoint'):
                     with cr.savepoint():
-                        if version_info[0] >= 8:
+                        if versioncheck:
                             with api.Environment.manage():
                                 context['migrate_version'] = version
                                 env = api.Environment(
@@ -1012,7 +1035,7 @@ def migrate(no_version=False, context=None, *args, **kwargs):
                     name = uuid.uuid1().hex
                     cr.execute('SAVEPOINT "%s"' % name)
                     try:
-                        if version_info[0] >= 8:
+                        if versioncheck:
                             with api.Environment.manage():
                                 context['migrate_version'] = version
                                 env = api.Environment(
