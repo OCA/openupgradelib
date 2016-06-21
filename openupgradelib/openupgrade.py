@@ -962,18 +962,18 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False, v8api=False, context=None, *args, **kwargs):
+def migrate(no_version=False, v9env=False, context=None, *args, **kwargs):
     """
     This is the decorator for the migrate() function in migration scripts.
     It returns if `version` is not defined and `no_version` is False,
     and logs execeptions. It also retrieves debug context data from the
     frame above for logging purposes. Optionally it provides a fully fledged
-    Odoo Environment (with `v8api` = True). An arbitrary context can be
+    Odoo Environment (with `v9env` = True). An arbitrary context can be
     preloaded into the Environment via `context` dict.
 
     :param no_version: Set to `True` if the migrate method has to be taken
     into account if the module is installed during a migration.
-    :param v8api: Set to `True` gives you a fully fledged Odoo Environment.
+    :param v9env: Set to `True` gives you a fully fledged Odoo Environment.
     The wrapped function signature changes to `migrate(env, *args, **kwargs):`
         Obtain Version: env.context['migrate_version']
         Obtain Cursor: env.cr
