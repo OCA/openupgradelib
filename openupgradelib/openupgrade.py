@@ -1010,7 +1010,7 @@ def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
             versioncheck = (version_info[0] >= 8 and v9env) or (
-                version_info > 9 and not v9env == False
+                version_info > 9 and v9env is not False
             )
             if not versioncheck:
                 logger.warning(
