@@ -962,7 +962,7 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False, v9env=False, context=None, *args, **kwargs):
+def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
     """
     This is the decorator for the migrate() function in migration scripts.
     It returns if `version` is not defined and `no_version` is False,
@@ -974,6 +974,7 @@ def migrate(no_version=False, v9env=False, context=None, *args, **kwargs):
     :param no_version: Set to `True` if the migrate method has to be taken
     into account if the module is installed during a migration.
     :param v9env: Set to `True` gives you a fully fledged Odoo Environment.
+    As per v10, you automatically get it, but can disable with `False`.
     The wrapped function signature changes to `migrate(env, *args, **kwargs):`
         Obtain Version: env.context['migrate_version']
         Obtain Cursor: env.cr
@@ -1008,7 +1009,9 @@ def migrate(no_version=False, v9env=False, context=None, *args, **kwargs):
             logger.info(
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
-            versioncheck = (version_info[0] >= 8 and v9env) or version_info > 9
+            versioncheck = (version_info[0] >= 8 and v9env) or (
+                version_info > 9 and not v9env == False
+            )
             if not versioncheck:
                 logger.warning(
                     "You are are using the decorator without the Environment "
