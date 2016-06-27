@@ -798,6 +798,30 @@ def float_to_integer(cr, table, field):
         })
 
 
+def _get_id_by_xml(cr, xml):
+    from openerp.modules.registry import RegistryManager
+    gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+    if xml in ['NULL', 'TRUE', 'FALSE', 'NOT NULL', True, False, None]:
+        return xml
+    try:
+        return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+    except:
+        logger.error((
+            "'get_id_by_xml' faild to retrieve a Database ID "
+            "for External ID {0}. This mapping will be ignored."
+        ).format(xml))
+        pass
+
+
+def _use_xml_mapping(cr, mapping):
+    result = []
+    for rec in mapping:
+        val = (_get_id_by_xml(cr, rec[0]), _get_id_by_xml(cr, rec[1]))
+        if val[0] and val[1]:
+            result.append(val)
+    return result
+
+
 def map_values(
         cr, source_column, target_column, mapping, model=None,
         table=None, write='sql', xml_mapping=False, check_completeness=False):
@@ -814,6 +838,9 @@ def map_values(
         Old value True represents "is set", False "is not set".
     :param xml_mapping: If True, mapping is expected to be a fully qualified \
     external ID as for example in "account.1_account_tax_1234".
+    Magic mappings are False, True, None for ORM writes (only) and \
+    'NULL', 'TRUE', 'FALSE' for DB writes and source column values \
+    (the letter are always read from DB)
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
@@ -824,30 +851,9 @@ def map_values(
     have been accounted for in the mapping table and raises otherwise.
     .. versionadded:: 8.0
     """
-    def use_xml_mapping(cr, mapping):
-        from openerp.modules.registry import RegistryManager
-        gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
-        result = []
-
-        def get_id(cr, xml):
-            if xml == 'NULL':
-                return 'NULL'
-            try:
-                return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
-            except:
-                logger.error((
-                    "'map_values_by_xml' faild to retrieve a Database ID "
-                    "for External ID {0}. This mapping will be ignored."
-                ).format(xml))
-                pass
-        for rec in mapping:
-            val = (get_id(cr, rec[0]), get_id(cr, rec[1]))
-            if val[0] and val[1]:
-                result.append(val)
-        return result
 
     if xml_mapping:
-        mapping = use_xml_mapping(cr, mapping)
+        mapping = _use_xml_mapping(cr, mapping)
 
     if write not in ('sql', 'orm'):
         logger.exception(
@@ -875,24 +881,26 @@ def map_values(
         missing = set1 - set2
 
         if (missing - set([None])):
-            logger.excpetion((
+            logger.excpetion(
                 "'map_values' has detected missing mappings for "
                 "following values in Source Column (check_completness "
-                "enabled):\n{0}"
-            ).format(('\n').join(missing))
+                "enabled):\n{0}".format('\n'.join(missing))
+            )
 
     for old, new in mapping:
         new = "'%s'" % new
 
-        if old is True:
-            old = 'NOT NULL'
-            op = 'IS'
-        elif old is False:
-            old = 'NULL'
+        if old in [True, False, None, 'NULL', 'TRUE', 'FALSE', 'NOT NULL']:
             op = 'IS'
         else:
-            old = "'%s'" % old
             op = '='
+
+        if old in [False, None]:
+            old = 'NULL'
+        elif old is True:
+            old = 'NOT NULL'
+        else:
+            old = "'%s'" % old
 
         values = {
             'table': table,
