@@ -962,14 +962,14 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
+def migrate(no_version=False, env=None, context=None, *args, **kwargs):
     """
     This is the decorator for the migrate() function in migration scripts.
-    It returns if `version` is not defined and `no_version` is False,
-    and logs execeptions. It also retrieves debug context data from the
-    frame above for logging purposes. Optionally it provides a fully fledged
-    Odoo Environment (with `v9env` = True). An arbitrary context can be
-    preloaded into the Environment via `context` dict.
+    It retrieves debug context data from the frame above for logging purposes.
+    Optionally it provides a fully fledged Odoo Environment
+    (with `env` = True). An arbitrary context can be preloaded into the
+    Environment via `context` dict. Otherwise returns, if the 'version'
+    argument is not defined and no_version is False, and logs exception.
 
     :param no_version: Set to `True` if the migrate method has to be taken
     into account if the module is installed during a migration.
@@ -989,8 +989,11 @@ def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
     """
     def wrap(func):
         @wraps(func)
-        def wrapped_function(cr, version, no_version=no_version,
+        def wrapped_function(cr, version, no_version=no_version, env=env,
                              context=context, *args, **kwargs):
+            context = context or {}
+
+            # Stack Inspection Part
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
@@ -1004,13 +1007,20 @@ def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
                     "'migrate' decorator: failed to inspect "
                     "the frame above: %s" % e)
                 pass
+
+            # Applicability Validation Part
+            # Are we supposed to proceed?
             if not version and not no_version:
                 return
+
+            # Let's continue!
             logger.info(
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
-            versioncheck = (version_info[0] >= 8 and v9env) or (
-                version_info > 9 and v9env is not False
+
+            # New-Style Environment Check
+            versioncheck = (version_info[0] >= 8 and env) or (
+                version_info > 9 and env is not False
             )
             if not versioncheck:
                 logger.warning(
@@ -1020,6 +1030,8 @@ def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
                     "get acquainted with the slightly different migrate() "
                     "signature in time: `def migrate(env, *args, **kwargs)`"
                 )
+
+            # Let's go for it!
             try:
                 # The actual function is called here
                 if hasattr(cr, 'savepoint'):
@@ -1034,21 +1046,14 @@ def migrate(no_version=False, v9env=None, context=None, *args, **kwargs):
                         else:
                             return func(cr, version)
                 else:
+                    # If we get here,
+                    # we are effectively on quite
+                    # some old odoo versions.
                     name = uuid.uuid1().hex
                     cr.execute('SAVEPOINT "%s"' % name)
                     try:
-                        if versioncheck:
-                            with api.Environment.manage():
-                                context['migrate_version'] = version
-                                env = api.Environment(
-                                    cr, SUPERUSER_ID, context
-                                )
-                                func(env, *args, **kwargs)
-                                cr.execute('RELEASE SAVEPOINT "%s"' % name)
-                        else:
-                            func(cr, version)
-                            cr.execute('RELEASE SAVEPOINT "%s"' % name)
-
+                        func(cr, version)
+                        cr.execute('RELEASE SAVEPOINT "%s"' % name)
                     except:
                         cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
                         raise
