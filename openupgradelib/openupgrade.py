@@ -25,6 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+from functools import wraps  # for better debuggin support
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -46,6 +47,7 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
         from openerp.tools.mail import plaintext2html
     if version_info[0] >= 8:
         from openerp.fields import Many2many, One2many
+        from openerp import api
 else:
     # version < 6.1
     import tools
@@ -960,19 +962,38 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False):
+def migrate(no_version=False, env=None, context=None, *args, **kwargs):
     """
-    This is the decorator for the migrate() function
-    in migration scripts.
-    Set argument 'no_version' to True if the method as to be taken into account
-    if the module is installed during a migration.
-    Return when the 'version' argument is not defined and no_version is False,
-    and log execeptions.
-    Retrieve debug context data from the frame above for
-    logging purposes.
+    This is the decorator for the migrate() function in migration scripts.
+    It retrieves debug context data from the frame above for logging purposes.
+    Optionally it provides a fully fledged Odoo Environment
+    (with `env` = True). An arbitrary context can be preloaded into the
+    Environment via `context` dict. Otherwise returns, if the 'version'
+    argument is not defined and no_version is False, and logs exception.
+
+    :param no_version: Set to `True` if the migrate method has to be taken
+    into account if the module is installed during a migration.
+    :param v9env: Set to `True` gives you a fully fledged Odoo Environment.
+    As per v10, you automatically get it, but can disable with `False`.
+    The wrapped function signature changes to `migrate(env, *args, **kwargs):`
+        Obtain Version: env.context['migrate_version']
+        Obtain Cursor: env.cr
+        To genuinely support calling legacy methods you should do:
+        ```
+        def migrate(env, *args, **kwargs):
+            version = env.context['migrate_version']
+            cr = env.cr
+        ```
+    :param context: An arbitrary odoo context you might want to set up. You
+    can access this through `env.context`, where the Environment is present.
     """
     def wrap(func):
-        def wrapped_function(cr, version):
+        @wraps(func)
+        def wrapped_function(cr, version, no_version=no_version, env=env,
+                             context=context, *args, **kwargs):
+            context = context or {}
+
+            # Stack Inspection Part
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
@@ -986,17 +1007,48 @@ def migrate(no_version=False):
                     "'migrate' decorator: failed to inspect "
                     "the frame above: %s" % e)
                 pass
+
+            # Applicability Validation Part
+            # Are we supposed to proceed?
             if not version and not no_version:
                 return
+
+            # Let's continue!
             logger.info(
                 "%s: %s-migration script called with version %s" %
                 (module, stage, version))
+
+            # New-Style Environment Check
+            versioncheck = (version_info[0] >= 8 and env) or (
+                version_info > 9 and env is not False
+            )
+            if not versioncheck:
+                logger.warning(
+                    "You are are using the decorator without the Environment "
+                    "creation feature. As of Odoo Version 10 Migrations, the "
+                    "Environment will be enabled by default. Make sure to "
+                    "get acquainted with the slightly different migrate() "
+                    "signature in time: `def migrate(env, *args, **kwargs)`"
+                )
+
+            # Let's go for it!
             try:
                 # The actual function is called here
                 if hasattr(cr, 'savepoint'):
                     with cr.savepoint():
-                        func(cr, version)
+                        if versioncheck:
+                            with api.Environment.manage():
+                                context['migrate_version'] = version
+                                env = api.Environment(
+                                    cr, SUPERUSER_ID, context
+                                )
+                                return func(env, *args, **kwargs)
+                        else:
+                            return func(cr, version)
                 else:
+                    # If we get here,
+                    # we are effectively on quite
+                    # some old odoo versions.
                     name = uuid.uuid1().hex
                     cr.execute('SAVEPOINT "%s"' % name)
                     try:
