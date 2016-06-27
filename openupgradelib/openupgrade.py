@@ -690,9 +690,8 @@ def get_legacy_name(original_name):
     collisions with future or past legacy tables/columns/etc
 
     :param original_name: the original name of the column
-    :param version: current version as passed to migrate()
     """
-    return 'openupgrade_legacy_' + '_'.join(
+    return 'x_ou_' + '_'.join(
         map(str, version_info[0:2])) + '_' + original_name
 
 
