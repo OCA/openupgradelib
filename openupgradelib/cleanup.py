@@ -20,6 +20,7 @@
 ##############################################################################
 
 import logging
+from .openupgrade import column_exists
 # from .openupgrade import version_info
 
 logger = logging.getLogger('OpenUpgradeCleanup')
