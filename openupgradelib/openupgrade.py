@@ -379,44 +379,15 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
 
 
 def drop_columns(cr, column_spec):
-    """
-    Drop columns but perform an additional check if a column exists.
-    This covers the case of function fields that may or may not be stored.
-    Consider that this may not be obvious: an additional module can govern
-    a function fields' store properties.
-
-    :param column_spec: a list of (table, column) tuples
-    """
-    for (table, column) in column_spec:
-        logger.info("table %s: drop column %s",
-                    table, column)
-        if column_exists(cr, table, column):
-            cr.execute('ALTER TABLE "%s" DROP COLUMN "%s"' %
-                       (table, column))
-        else:
-            logger.warn("table %s: column %s did not exist",
-                        table, column)
-
-
-def drop_m2m_table(cr, table_spec):
-    """
-    Drop a many2many relation table properly.
-    You will typically want to use it in post-migration scripts after you \
-    have migrated the values of your many2many fields.
-
-    :param cr: The database cursor
-    :param table_spec: list of strings ['table one', 'table two']
-
-    .. versionadded:: 9.0
-    """
-    imr = RegistryManager.get(cr.dbname)['ir.model.relation']
-    drop = imr._module_data_uninstall
-    for table in table_spec:
-        query = """SELECT id FROM ir_model_relation
-                   WHERE name='{0}'""".format(table)
-        cr.execute(query)
-        ids = [x[0] for x in cr.fetchall()]
-        drop(cr, SUPERUSER_ID, ids)
+    logger.warning(
+        'drop_columns has been moved to openupgradelib.cleanup'
+        'opneupgradlib.cleanup is a place to gather cleanup methods.'
+        'Please consider adapting your migration scripts.'
+        'Utilizing cleanup methods is not encouraged, consider using '
+        'the module database_cleanup instead.'
+    )
+    from .cleanup import drop_columns as _dc
+    _dc(cr=cr, column_sepc=column_spec)
 
 
 def update_workflow_workitems(cr, pool, ref_spec_actions):
