@@ -25,6 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+from psycopg2.extensions import AsIs
 from . import openupgrade_tools
 try:
     from openerp import release
@@ -96,6 +97,7 @@ __all__ = [
     'deactivate_workflow_transitions',
     'reactivate_workflow_transitions',
     'date_to_datetime_tz',
+    'lift_constraints',
 ]
 
 
@@ -1218,3 +1220,35 @@ def is_module_installed(cr, module):
         "SELECT id FROM ir_module_module "
         "WHERE name=%s and state IN ('installed', 'to upgrade')", (module,))
     return bool(cr.fetchone())
+
+
+def lift_constraints(cr, table, column):
+    """Lift all constraints on column in table.
+    Typically, you use this in a pre-migrate script where you adapt references
+    for many2one fields with changed target objects.
+    If everything went right, the constraints will be recreated"""
+    cr.execute(
+        'select relname, array_agg(conname) from '
+        '(select t1.relname, c.conname '
+        'from pg_constraint c '
+        'join pg_attribute a '
+        'on c.confrelid=a.attrelid and a.attnum=any(c.conkey) '
+        'join pg_class t on t.oid=a.attrelid '
+        'join pg_class t1 on t1.oid=c.conrelid '
+        'where t.relname=%(table)s and attname=%(column)s '
+        'union select t.relname, c.conname '
+        'from pg_constraint c '
+        'join pg_attribute a '
+        'on c.conrelid=a.attrelid and a.attnum=any(c.conkey) '
+        'join pg_class t on t.oid=a.attrelid '
+        'where relname=%(table)s and attname=%(column)s) in_out '
+        'group by relname',
+        {
+            'table': table,
+            'column': column,
+        })
+    for table, constraints in cr.fetchall():
+        cr.execute(
+            'alter table %s drop constraint %s',
+            (AsIs(table), AsIs(', drop constraint '.join(constraints)))
+        )
