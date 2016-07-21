@@ -25,6 +25,25 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+try:
+    from contextlib import ExitStack
+except ImportError:
+
+    # we're on python 2.x, reimplement what we use of ExitStack
+    class ExitStack:
+        def __init__(self):
+            self._cms = []
+
+        def enter_context(self, cm):
+            self._cms.append(cm)
+            cm.__enter__()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            while self._cms:
+                self._cms.pop().__exit__(exc_type, exc_value, traceback)
 from psycopg2.extensions import AsIs
 from . import openupgrade_tools
 try:
@@ -58,6 +77,9 @@ else:
 
 if sys.version_info[0] == 3:
     unicode = str
+
+if version_info[0] > 7:
+    from openerp import api
 
 
 # The server log level has not been set at this point
@@ -964,14 +986,28 @@ def reactivate_workflow_transitions(cr, transition_conditions):
             (condition, transition_id))
 
 
-def migrate(no_version=False):
+def migrate(no_version=False, use_env=None, uid=None, context=None):
     """
     This is the decorator for the migrate() function
     in migration scripts.
-    Set argument 'no_version' to True if the method as to be taken into account
+
+    Set argument `no_version` to True if the method as to be taken into account
     if the module is installed during a migration.
-    Return when the 'version' argument is not defined and no_version is False,
+
+    Set argument `pass_env` if you want an v8+ environment instead of a plain
+    cursor. Starting from version 10, this is the default
+
+    The arguments `uid` and `context` can be set when an evironment is
+    requested. In the cursor case, they're ignored.
+
+    The migration function's signature must be `func(cr, version)` if
+    `pass_env` is `False` or not set and the version is below 10, or
+    `func(env, version)` if `pass_env` is `True` or not set and the version is
+    10 or higher.
+
+    Return when the `version` argument is not defined and `no_version` is False
     and log execeptions.
+
     Retrieve debug context data from the frame above for
     logging purposes.
     """
@@ -980,41 +1016,41 @@ def migrate(no_version=False):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
-            try:
-                frame = inspect.getargvalues(inspect.stack()[1][0])
-                stage = frame.locals['stage']
-                module = frame.locals['pkg'].name
-                filename = frame.locals['fp'].name
-            except Exception as e:
-                logger.error(
-                    "'migrate' decorator: failed to inspect "
-                    "the frame above: %s" % e)
-                pass
-            if not version and not no_version:
-                return
-            logger.info(
-                "%s: %s-migration script called with version %s" %
-                (module, stage, version))
-            try:
-                # The actual function is called here
-                if hasattr(cr, 'savepoint'):
-                    with cr.savepoint():
-                        func(cr, version)
-                else:
-                    name = uuid.uuid1().hex
-                    cr.execute('SAVEPOINT "%s"' % name)
-                    try:
-                        func(cr, version)
-                        cr.execute('RELEASE SAVEPOINT "%s"' % name)
-                    except:
-                        cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
-                        raise
-            except Exception as e:
-                logger.error(
-                    "%s: error in migration script %s: %s" %
-                    (module, filename, str(e).decode('utf8')))
-                logger.exception(e)
-                raise
+            with ExitStack() as contextmanagers:
+                contextmanagers.enter_context(savepoint(cr))
+                use_env2 = use_env is None and version_info[0] > 10 or use_env
+                if use_env2:
+                    assert version_info[0] >= 8, 'you need at least v8'
+                    contextmanagers.enter_context(api.Environment.manage())
+                try:
+                    frame = inspect.getargvalues(inspect.stack()[1][0])
+                    stage = frame.locals['stage']
+                    module = frame.locals['pkg'].name
+                    filename = frame.locals['fp'].name
+                except Exception as e:
+                    logger.error(
+                        "'migrate' decorator: failed to inspect "
+                        "the frame above: %s" % e)
+                    pass
+                if not version and not no_version:
+                    return
+                logger.info(
+                    "%s: %s-migration script called with version %s" %
+                    (module, stage, version))
+                try:
+                    # The actual function is called here
+                    func(
+                        use_env2 and
+                        api.Environment(
+                            cr, uid or SUPERUSER_ID, context or {}) or
+                        cr,
+                        version)
+                except Exception as e:
+                    logger.error(
+                        "%s: error in migration script %s: %s" %
+                        (module, filename, str(e).decode('utf8')))
+                    logger.exception(e)
+                    raise
         return wrapped_function
     return wrap
 
@@ -1252,3 +1288,19 @@ def lift_constraints(cr, table, column):
             'alter table %s drop constraint %s',
             (AsIs(table), AsIs(', drop constraint '.join(constraints)))
         )
+
+
+@contextmanager
+def savepoint(cr):
+    """return a context manager wrapping postgres savepoints"""
+    if hasattr(cr, 'savepoint'):
+        with cr.savepoint():
+            yield
+    else:
+        name = uuid.uuid1().hex
+        cr.execute('SAVEPOINT "%s"' % name)
+        try:
+            yield
+            cr.execute('RELEASE SAVEPOINT "%s"' % name)
+        except:
+            cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
