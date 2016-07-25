@@ -326,6 +326,22 @@ def rename_models(cr, model_spec):
                    'WHERE res_model = %s', (new, old,))
         cr.execute('UPDATE ir_model_fields SET model = %s '
                    'WHERE model = %s', (new, old,))
+        cr.execute('UPDATE ir_translation set '
+                   "name=%s || substr(name, strpos(name, ',')) "
+                   'where name like %s',
+                   (new, old + ',%'),)
+        if is_module_installed(cr, 'mail'):
+            # fortunately, the data model didn't change up to now
+            cr.execute(
+                'UPDATE mail_message SET model=%s where model=%s', (new, old),
+            )
+            if table_exists(cr, 'mail_followers'):
+                cr.execute(
+                    'UPDATE mail_followers SET res_model=%s '
+                    'where res_model=%s',
+                    (new, old),
+                )
+
     # TODO: signal where the model occurs in references to ir_model
 
 
