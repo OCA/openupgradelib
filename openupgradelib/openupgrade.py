@@ -840,14 +840,37 @@ def float_to_integer(cr, table, field):
         })
 
 
+def _get_id_by_xml(cr, xml):
+    from openerp.modules.registry import RegistryManager
+    gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+    if xml in ['NULL', 'TRUE', 'FALSE', 'NOT NULL', True, False, None]:
+        return xml
+    try:
+        return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+    except:
+        logger.error((
+            "'get_id_by_xml' faild to retrieve a Database ID "
+            "for External ID {0}. This mapping will be ignored."
+        ).format(xml))
+        pass
+
+
+def _use_xml_mapping(cr, mapping):
+    result = []
+    for rec in mapping:
+        val = (_get_id_by_xml(cr, rec[0]), _get_id_by_xml(cr, rec[1]))
+        if val[0] and val[1]:
+            result.append(val)
+    return result
+
+
 def map_values(
-        cr, source_column, target_column, mapping,
-        model=None, table=None, write='sql'):
+        cr, source_column, target_column, mapping, model=None,
+        table=None, write='sql', xml_mapping=False, check_completeness=False):
     """
     Map old values to new values within the same model or table. Old values
     presumably come from a legacy column.
     You will typically want to use it in post-migration scripts.
-
     :param cr: The database cursor
     :param source_column: the database column that contains old values to be \
     mapped
@@ -855,15 +878,24 @@ def map_values(
     'orm') that the new values are written to
     :param mapping: list of tuples [(old value, new value)]
         Old value True represents "is set", False "is not set".
+    :param xml_mapping: If True, mapping is expected to be a fully qualified \
+    external ID as for example in "account.1_account_tax_1234".
+    Magic mappings are False, True, None for ORM writes (only) and \
+    'NULL', 'TRUE', 'FALSE' for DB writes and source column values \
+    (the letter are always read from DB)
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
     the new values (if 'write' is 'sql')
     :param write: Either 'orm' or 'sql'. Note that old ids are always \
     identified by an sql read.
-
+    :param check_completeness: True verifies, that all source entries \
+    have been accounted for in the mapping table and raises otherwise.
     .. versionadded:: 8.0
     """
+
+    if xml_mapping:
+        mapping = _use_xml_mapping(cr, mapping)
 
     if write not in ('sql', 'orm'):
         logger.exception(
@@ -878,18 +910,39 @@ def map_values(
             "map_values is called with the same value for source and old"
             " columns : %s",
             source_column)
+    if check_completeness:
+        values = {
+            'table': table,
+            'source_column': source_column,
+        }
+        query = ("SELECT {source_column!s} FROM {table!s}").format(**values)
+        cr.execute(query)
+
+        set1 = set([i[0] for i in cr.fetchall()])
+        set2 = set([i[0] for i in mapping])
+        missing = set1 - set2
+
+        if (missing - set([None])):
+            logger.excpetion(
+                "'map_values' has detected missing mappings for "
+                "following values in Source Column (check_completness "
+                "enabled):\n{0}".format('\n'.join(missing))
+            )
+
     for old, new in mapping:
         new = "'%s'" % new
 
-        if old is True:
-            old = 'NOT NULL'
-            op = 'IS'
-        elif old is False:
-            old = 'NULL'
+        if old in [True, False, None, 'NULL', 'TRUE', 'FALSE', 'NOT NULL']:
             op = 'IS'
         else:
-            old = "'%s'" % old
             op = '='
+
+        if old in [False, None]:
+            old = 'NULL'
+        elif old is True:
+            old = 'NOT NULL'
+        else:
+            old = "'%s'" % old
 
         values = {
             'table': table,
