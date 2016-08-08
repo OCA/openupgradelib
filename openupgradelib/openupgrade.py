@@ -96,6 +96,7 @@ __all__ = [
     'column_exists',
     'convert_field_to_html',
     'copy_columns',
+    'copy_columns_orm',
     'date_to_datetime_tz',
     'deactivate_workflow_transitions',
     'delete_model_workflow',
@@ -114,6 +115,8 @@ __all__ = [
     'move_field_m2o',
     'reactivate_workflow_transitions',
     'rename_columns',
+    'rename_columns_orm',
+    'rename_columns_sql',
     'rename_models',
     'rename_tables',
     'rename_xmlids',
@@ -282,10 +285,156 @@ def copy_columns(cr, column_spec):
             })
 
 
-def rename_columns(cr, column_spec):
+def copy_columns_orm(env, field_spec):
+    """
+    Copy fields in Database and Registry, so you can access them like if
+    they where normal fields through the ORM or directly via SQL by it's
+    column name. This method supports m2m fields.
+
+    :param env: The Environment created y the @migrate() decorator.
+    :param field_spec: a dict with model names as in 'res.partner', with
+        lists of old names. To ensure ORM 'x_' prefix, construction of
+        new names is exclusively done by get_legacy_name()
+
+    .. versionadded:: 9.0
+    """
+    SUPPORTED_TTYPES = [
+        "reference",
+        "datetime",
+        "many2many",
+        "text",
+        "monetary",
+        "selection",
+        "float",
+        "binary",
+        "one2many",
+        "char",
+        "many2one",
+        "html",
+        "date",
+        "boolean",
+        "integer",
+    ]
+
+    for model_name in field_spec.keys():
+        m = env[model_name]
+        for old in field_spec[model_name]:
+            qvals = {'model': m._model, 'name': old}
+            query = """SELECT * FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            env.cr.execute(query)
+            field = env.cr.dictfetchall()[0]
+            if not field['ttype'] in SUPPORTED_TTYPES:
+                logger.exception(
+                    "map_columns_orm does not support coping fields "
+                    "of type {0} yet."
+                ).format(field['ttype'])
+            if field['name'].startswith('property_'):
+                logger.exception(
+                    "map_columns_orm is not know to support property "
+                    " fields yet. Apologies. Field: {0}"
+                ).format(field['name'])
+
+            # Transform the queried field definition
+            old_name = field['name']
+            field['name'] = l(env, old)
+            field['state'] = 'manual'
+            del field['id']
+            if field['ttype'] in ['many2many']:
+                old_rel_table = field['relation_table']
+                field['relation_table'] = l(env, field['relation_table'])
+
+            qvals = [(k, v) for (k, v) in field.iteritems()]
+            qvals = zip(*qvals)
+            qvals[1] = [v.replace("'", "''") if isinstance(v, unicode) else v for v in qvals[1]]
+            qvals[1] = [unicode("'" + v + "'") if isinstance(v, unicode) else v for v in qvals[1]]
+            qvals[1] = [unicode("'" + v + "'") if isinstance(v, str) else v for v in qvals[1]]
+            qvals[1] = [unicode(v) if isinstance(v, int) else v for v in qvals[1]]
+            qvals[1] = ['NULL' if v is None else v for v in qvals[1]]
+            qvals[1] = ['TRUE' if v is True else v for v in qvals[1]]
+            qvals[1] = ['FALSE' if v is False else v for v in qvals[1]]
+            qarg = {
+                'cols': ', '.join(qvals[0]),
+                'vals': ', '.join(qvals[1])
+            }
+            query = """INSERT INTO ir_model_fields ({cols!s})
+                       VALUES ({vals!s})""".format(**qarg)
+            logged_query(env.cr, query)
+
+            if field['ttype'] in ['many2many']:
+                query = ("""
+                    CREATE TABLE {0} AS
+                    SELECT *
+                    FROM {1}
+                """).format(field['relation_table'], old_rel_table)
+                logged_query(env.cr, query)
+
+            else:
+
+                env.cr.execute("""
+                        SELECT data_type
+                        FROM information_schema.columns
+                        WHERE table_name=%s
+                            AND column_name = %s;
+                        """, (m._table, old_name))
+                field_type = env.cr.fetchone()[0]
+
+                logged_query(env.cr, """
+                    ALTER TABLE %(table_name)s
+                    ADD COLUMN %(new)s %(field_type)s;
+                    UPDATE %(table_name)s SET %(new)s=%(old)s;
+                    """ % {
+                    'table_name': m._table,
+                    'old': old_name,
+                    'field_type': field_type,
+                    'new': field['name'],
+                })
+    # Now, that everything is set up, let the ORM do it's magic.
+
+def rename_columns_orm(env, field_spec):
+    """
+    Copy and then drop fields in Database and Registry.
+    This shells out to copy_columns_orm and has the same sginature, so
+    please read there for details. This method just does a cleaning
+    afterwards so columns apear to be renamed.
+
+    .. versionadded:: 9.0
+    """
+
+    copy_columns_orm(env=env, field_spec=field_spec)
+
+    for model_name in field_spec.keys():
+        m = env[model_name]
+        for old in field_spec[model_name]:
+            qvals = {'model': m._model, 'name': old}
+            query = """SELECT * FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            env.cr.execute(query)
+            field = env.cr.dictfetchall()[0]
+            query = """DELETE FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            logged_query(env.cr, query)
+
+            if field['ttype'] in ['many2many']:
+                query = ("""
+                    DROP TABLE {0}
+                """).format(field['relation_table'])
+
+            else:
+                qvals = {'table': m._table, 'old': old}
+                query = ("""
+                    ALTER TABLE {table!s}
+                    DROP COLUMN {old!s}
+                """).format(**qvals)
+
+            logged_query(env.cr, query)
+
+def rename_columns_sql(cr, column_spec):
     """
     Rename table columns. Typically called in the pre script.
-
     :param column_spec: a hash with table keys, with lists of tuples as \
     values. Tuples consist of (old_name, new_name). Use None for new_name \
     to trigger a conversion of old_name using get_legacy_name()
@@ -299,6 +448,19 @@ def rename_columns(cr, column_spec):
             cr.execute(
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"' % (table, old, new,))
             cr.execute('DROP INDEX IF EXISTS "%s_%s_index"' % (table, old))
+
+
+def rename_columns(cr, column_spec):
+    """
+    This is a compatibility wrapper for rename_columns_sql(). It will be
+    deprecated in future releases. Please use rename_columns_sql() or
+    rename_columns_orm() instead.
+    """
+    logger.warning(
+        "'rename_columns' will be deprecated in future releases!"
+        "Use rename_columms_orm or rename_columms_sql instead."
+    )
+    rename_columns_sql(cr=cr, column_spec=column_spec)
 
 
 def rename_tables(cr, table_spec):
