@@ -24,6 +24,7 @@ import os
 import inspect
 import uuid
 import logging
+import warnings
 from contextlib import contextmanager
 from . import openupgrade_tools
 try:
@@ -379,12 +380,12 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
 
 
 def drop_columns(cr, column_spec):
-    logger.warning(
+    warnings.warn(
         'drop_columns has been moved to openupgradelib.cleanup'
         'opneupgradlib.cleanup is a place to gather cleanup methods.'
         'Please consider adapting your migration scripts.'
         'Utilizing cleanup methods is not encouraged, consider using '
-        'the module database_cleanup instead.'
+        'the module database_cleanup instead.', DeprecationWarning
     )
     from .cleanup import drop_columns as _dc
     _dc(cr=cr, column_sepc=column_spec)

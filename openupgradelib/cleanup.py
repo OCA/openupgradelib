@@ -28,7 +28,7 @@ logger.setLevel(logging.DEBUG)
 
 ###########################################
 #
-# NOTE: Please try to homologate this library with
+# NOTE: Please try to syntesize this library with
 # database_cleanup module as you contribute
 # You can find it here:
 # https://github.com/OCA/server-tools/tree/9.0/database_cleanup
@@ -54,7 +54,7 @@ def drop_m2m_table(env, table_spec):
     :param cr: The database cursor
     :param table_spec: list of strings ['table one', 'table two']
 
-    .. versionadded:: 9.0
+    Note: You can use this method from version 8.0 onwards.
     """
     drop = env['ir.model.relation']._module_data_uninstall
     for table in table_spec:
@@ -63,6 +63,9 @@ def drop_m2m_table(env, table_spec):
         env.cr.execute(query)
         ids = [x[0] for x in env.cr.fetchall()]
         drop(ids)
+        query = """DELETE FROM ir_model_relation
+                   WHERE name='{0}'""".format(table)
+        env.cr.execute(query)
 
 
 def drop_columns(cr, column_spec):
