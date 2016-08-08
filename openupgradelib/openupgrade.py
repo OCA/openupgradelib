@@ -90,36 +90,38 @@ logger = logging.getLogger('OpenUpgrade')
 logger.setLevel(logging.DEBUG)
 
 __all__ = [
-    'migrate',
-    'load_data',
-    'copy_columns',
-    'rename_columns',
-    'rename_tables',
-    'rename_models',
-    'rename_xmlids',
+    'add_ir_model_fields',
     'add_xmlid',
-    'drop_columns',
-    'delete_model_workflow',
-    'update_workflow_workitems',
-    'warn_possible_dataloss',
-    'set_defaults',
-    'logged_query',
+    'check_values_selection_field',
     'column_exists',
+    'convert_field_to_html',
+    'copy_columns',
+    'date_to_datetime_tz',
+    'deactivate_workflow_transitions',
+    'delete_model_workflow',
+    'drop_columns',
+    'float_to_integer',
+    'get_id_by_xml',
+    'get_legacy_name',
+    'lift_constraints',
+    'load_data',
+    'logged_query',
+    'm2o_to_x2m',
+    'map_values',
+    'map_values_orm',
+    'message',
+    'migrate',
+    'move_field_m2o',
+    'reactivate_workflow_transitions',
+    'rename_columns',
+    'rename_models',
+    'rename_tables',
+    'rename_xmlids',
+    'set_defaults',
     'table_exists',
     'update_module_names',
-    'add_ir_model_fields',
-    'get_legacy_name',
-    'm2o_to_x2m',
-    'float_to_integer',
-    'message',
-    'check_values_selection_field',
-    'move_field_m2o',
-    'convert_field_to_html',
-    'map_values',
-    'deactivate_workflow_transitions',
-    'reactivate_workflow_transitions',
-    'date_to_datetime_tz',
-    'lift_constraints',
+    'update_workflow_workitems',
+    'warn_possible_dataloss',
 ]
 
 
@@ -838,6 +840,143 @@ def float_to_integer(cr, table, field):
             'table': table,
             'field': field,
         })
+
+
+def get_id_by_xml(cr, xml):
+    gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+    if xml == 'NULL':
+        return 'NULL'
+    if xml == None:
+        return None
+    try:
+        return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+    except:
+        logger.error((
+            "'get_id_by_xml' faild to retrieve a Database ID "
+            "for External ID {0}. This mapping will be ignored."
+        ).format(xml))
+        pass
+
+
+def _use_xml_mapping(cr, mapping):
+    result = []
+    for rec in mapping:
+        val = (get_id_by_xml(cr, rec[0]), get_id_by_xml(cr, rec[1]))
+        if val[0] and val[1]:
+            result.append(val)
+    return result
+
+
+def map_values_orm(env, mapping_spec, check_completeness=False):
+    """
+    Map old values to new values within the same model or table. Old values
+    presumably come from a legacy column. Writing through ORM enables \
+    graceful handling of 2many fields.
+    You will typically want to use it in post-migration scripts.
+    :param env: The Environment Object
+    :param mapping_spec: A dict of the form:
+        {
+        to_model: str(model.name) with which to work
+        ex_field: str(source-field-name)
+        to_field: str(target-field-name)
+        xml_ids: bool(True) (optional) - indicating that the mapping \
+        uses xml_ids
+        scope: list(xml_ids) of records on which to limit the mapping
+        mapping: list(tuple(old, new))
+        }
+    :param check_completeness: True verifies, that all source entries \
+    have been accounted for in the mapping table and raises otherwise.
+    .. versionadded:: 8.0
+    """
+
+    (
+        to_model,
+        ex_field,
+        to_field,
+        xml_ids,
+        scope,
+        mapping
+    ) = (
+        mapping_spec.get('to_model'),
+        mapping_spec.get('ex_field'),
+        mapping_spec.get('to_field'),
+        mapping_spec.get('xml_ids', False),
+        mapping_spec.get('scope', []),
+        mapping_spec.get('mapping'),
+    )
+
+    logger.debug(
+        "map_values_orm mapping values from field "
+        "{0} to {1} in model {2}.".format(ex_field, to_field, to_model)
+    )
+
+    if xml_ids:
+        mapping = _use_xml_mapping(env.cr, mapping)
+    if scope:
+        scope = [get_id_by_xml(x) for x in scope]
+
+    model = env[to_model]
+    recs = model.search(scope)
+    # Some abbreviations for the code to follow
+    mf, ef, tf = model._fields, ex_field, to_field
+
+    if ef == tf:
+        logger.exception(
+            "map_values is called with the same value for source and "
+            "target fields : %s",
+            ef)
+
+    if mf[ef].type == 'one2many' or mf[tf].type == 'one2many':
+        logger.exception(
+            "map_values cannot handle migrations on one2many fields. "
+            "Please migrate the corresponding inverse field (many2one) of "
+            "the related model instead.")
+    if check_completeness:
+        if mf[ef].relational:
+            values = recs.mapped(ef + '.id')
+        else:
+            values = recs.mapped(ef)
+
+        missing = set(values) - set([i[0] for i in mapping])
+        if (missing - set([None])):
+            for value in missing:
+                logger.error((
+                    "'map_values' has detected a missing mapping for "
+                    "Value {0} in Source Column (check_completness "
+                    "enabled)."
+                ).format(value))
+
+    # We need a dictionary from here on
+    mapping = dict(mapping)
+    if mf[ef].type == mf[tf].type == 'many2many':
+        def get_vals(r):
+            res = []
+            for iid in r[ef].ids:
+                if iid not in mapping.keys():
+                    res.append(iid)
+                else:
+                    res.append(mapping[iid])
+            return res
+        recs.mapped(lambda r: r.write(
+                    {tf: [(6, 0, get_vals(r))]}))
+
+    elif mf[ef].relational and mf[tf].relational:
+        def get_vals(r):
+            if r[ef].id not in mapping.keys():
+                return r[ef].id
+            else:
+                return mapping[r[ef].id]
+        recs.mapped(lambda r: r.write(
+                    {tf: get_vals(r)}))
+
+    else:
+        def get_vals(r):
+            if r[ef] not in mapping.keys():
+                return r[ef]
+            else:
+                return mapping[r[ef]]
+        recs.mapped(lambda r: r.write(
+                    {tf: get_vals(r)}))
 
 
 def map_values(
