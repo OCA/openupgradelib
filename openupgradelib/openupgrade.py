@@ -90,36 +90,41 @@ logger = logging.getLogger('OpenUpgrade')
 logger.setLevel(logging.DEBUG)
 
 __all__ = [
-    'migrate',
-    'load_data',
-    'copy_columns',
-    'rename_columns',
-    'rename_tables',
-    'rename_models',
-    'rename_xmlids',
+    'add_ir_model_fields',
     'add_xmlid',
-    'drop_columns',
-    'delete_model_workflow',
-    'update_workflow_workitems',
-    'warn_possible_dataloss',
-    'set_defaults',
-    'logged_query',
+    'check_values_selection_field',
     'column_exists',
+    'convert_field_to_html',
+    'copy_columns',
+    'copy_columns_orm',
+    'date_to_datetime_tz',
+    'deactivate_workflow_transitions',
+    'delete_model_workflow',
+    'drop_columns',
+    'float_to_integer',
+    'get_id_by_xml',
+    'get_legacy_name',
+    'lift_constraints',
+    'load_data',
+    'logged_query',
+    'm2o_to_x2m',
+    'map_values',
+    'map_values_orm',
+    'message',
+    'migrate',
+    'move_field_m2o',
+    'reactivate_workflow_transitions',
+    'rename_columns',
+    'rename_columns_orm',
+    'rename_columns_sql',
+    'rename_models',
+    'rename_tables',
+    'rename_xmlids',
+    'set_defaults',
     'table_exists',
     'update_module_names',
-    'add_ir_model_fields',
-    'get_legacy_name',
-    'm2o_to_x2m',
-    'float_to_integer',
-    'message',
-    'check_values_selection_field',
-    'move_field_m2o',
-    'convert_field_to_html',
-    'map_values',
-    'deactivate_workflow_transitions',
-    'reactivate_workflow_transitions',
-    'date_to_datetime_tz',
-    'lift_constraints',
+    'update_workflow_workitems',
+    'warn_possible_dataloss',
 ]
 
 
@@ -280,10 +285,156 @@ def copy_columns(cr, column_spec):
             })
 
 
-def rename_columns(cr, column_spec):
+def copy_columns_orm(env, field_spec):
+    """
+    Copy fields in Database and Registry, so you can access them like if
+    they where normal fields through the ORM or directly via SQL by it's
+    column name. This method supports m2m fields.
+
+    :param env: The Environment created y the @migrate() decorator.
+    :param field_spec: a dict with model names as in 'res.partner', with
+        lists of old names. To ensure ORM 'x_' prefix, construction of
+        new names is exclusively done by get_legacy_name()
+
+    .. versionadded:: 9.0
+    """
+    SUPPORTED_TTYPES = [
+        "reference",
+        "datetime",
+        "many2many",
+        "text",
+        "monetary",
+        "selection",
+        "float",
+        "binary",
+        "one2many",
+        "char",
+        "many2one",
+        "html",
+        "date",
+        "boolean",
+        "integer",
+    ]
+
+    for model_name in field_spec.keys():
+        m = env[model_name]
+        for old in field_spec[model_name]:
+            qvals = {'model': m._model, 'name': old}
+            query = """SELECT * FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            env.cr.execute(query)
+            field = env.cr.dictfetchall()[0]
+            if not field['ttype'] in SUPPORTED_TTYPES:
+                logger.exception(
+                    "map_columns_orm does not support coping fields "
+                    "of type {0} yet."
+                ).format(field['ttype'])
+            if field['name'].startswith('property_'):
+                logger.exception(
+                    "map_columns_orm is not know to support property "
+                    " fields yet. Apologies. Field: {0}"
+                ).format(field['name'])
+
+            # Transform the queried field definition
+            old_name = field['name']
+            field['name'] = l(env, old)
+            field['state'] = 'manual'
+            del field['id']
+            if field['ttype'] in ['many2many']:
+                old_rel_table = field['relation_table']
+                field['relation_table'] = l(env, field['relation_table'])
+
+            qvals = [(k, v) for (k, v) in field.iteritems()]
+            qvals = zip(*qvals)
+            qvals[1] = [v.replace("'", "''") if isinstance(v, unicode) else v for v in qvals[1]]
+            qvals[1] = [unicode("'" + v + "'") if isinstance(v, unicode) else v for v in qvals[1]]
+            qvals[1] = [unicode("'" + v + "'") if isinstance(v, str) else v for v in qvals[1]]
+            qvals[1] = [unicode(v) if isinstance(v, int) else v for v in qvals[1]]
+            qvals[1] = ['NULL' if v is None else v for v in qvals[1]]
+            qvals[1] = ['TRUE' if v is True else v for v in qvals[1]]
+            qvals[1] = ['FALSE' if v is False else v for v in qvals[1]]
+            qarg = {
+                'cols': ', '.join(qvals[0]),
+                'vals': ', '.join(qvals[1])
+            }
+            query = """INSERT INTO ir_model_fields ({cols!s})
+                       VALUES ({vals!s})""".format(**qarg)
+            logged_query(env.cr, query)
+
+            if field['ttype'] in ['many2many']:
+                query = ("""
+                    CREATE TABLE {0} AS
+                    SELECT *
+                    FROM {1}
+                """).format(field['relation_table'], old_rel_table)
+                logged_query(env.cr, query)
+
+            else:
+
+                env.cr.execute("""
+                        SELECT data_type
+                        FROM information_schema.columns
+                        WHERE table_name=%s
+                            AND column_name = %s;
+                        """, (m._table, old_name))
+                field_type = env.cr.fetchone()[0]
+
+                logged_query(env.cr, """
+                    ALTER TABLE %(table_name)s
+                    ADD COLUMN %(new)s %(field_type)s;
+                    UPDATE %(table_name)s SET %(new)s=%(old)s;
+                    """ % {
+                    'table_name': m._table,
+                    'old': old_name,
+                    'field_type': field_type,
+                    'new': field['name'],
+                })
+    # Now, that everything is set up, let the ORM do it's magic.
+
+def rename_columns_orm(env, field_spec):
+    """
+    Copy and then drop fields in Database and Registry.
+    This shells out to copy_columns_orm and has the same sginature, so
+    please read there for details. This method just does a cleaning
+    afterwards so columns apear to be renamed.
+
+    .. versionadded:: 9.0
+    """
+
+    copy_columns_orm(env=env, field_spec=field_spec)
+
+    for model_name in field_spec.keys():
+        m = env[model_name]
+        for old in field_spec[model_name]:
+            qvals = {'model': m._model, 'name': old}
+            query = """SELECT * FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            env.cr.execute(query)
+            field = env.cr.dictfetchall()[0]
+            query = """DELETE FROM ir_model_fields
+                       WHERE model = '{model!s}'
+                       AND name = '{name!s}'""".format(**qvals)
+            logged_query(env.cr, query)
+
+            if field['ttype'] in ['many2many']:
+                query = ("""
+                    DROP TABLE {0}
+                """).format(field['relation_table'])
+
+            else:
+                qvals = {'table': m._table, 'old': old}
+                query = ("""
+                    ALTER TABLE {table!s}
+                    DROP COLUMN {old!s}
+                """).format(**qvals)
+
+            logged_query(env.cr, query)
+
+def rename_columns_sql(cr, column_spec):
     """
     Rename table columns. Typically called in the pre script.
-
     :param column_spec: a hash with table keys, with lists of tuples as \
     values. Tuples consist of (old_name, new_name). Use None for new_name \
     to trigger a conversion of old_name using get_legacy_name()
@@ -297,6 +448,19 @@ def rename_columns(cr, column_spec):
             cr.execute(
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"' % (table, old, new,))
             cr.execute('DROP INDEX IF EXISTS "%s_%s_index"' % (table, old))
+
+
+def rename_columns(cr, column_spec):
+    """
+    This is a compatibility wrapper for rename_columns_sql(). It will be
+    deprecated in future releases. Please use rename_columns_sql() or
+    rename_columns_orm() instead.
+    """
+    logger.warning(
+        "'rename_columns' will be deprecated in future releases!"
+        "Use rename_columms_orm or rename_columms_sql instead."
+    )
+    rename_columns_sql(cr=cr, column_spec=column_spec)
 
 
 def rename_tables(cr, table_spec):
@@ -838,6 +1002,143 @@ def float_to_integer(cr, table, field):
             'table': table,
             'field': field,
         })
+
+
+def get_id_by_xml(cr, xml):
+    gid = RegistryManager.get(cr.dbname)['ir.model.data'].xmlid_to_res_id
+    if xml == 'NULL':
+        return 'NULL'
+    if xml == None:
+        return None
+    try:
+        return gid(cr, SUPERUSER_ID, xml, raise_if_not_found=True)
+    except:
+        logger.error((
+            "'get_id_by_xml' faild to retrieve a Database ID "
+            "for External ID {0}. This mapping will be ignored."
+        ).format(xml))
+        pass
+
+
+def _use_xml_mapping(cr, mapping):
+    result = []
+    for rec in mapping:
+        val = (get_id_by_xml(cr, rec[0]), get_id_by_xml(cr, rec[1]))
+        if val[0] and val[1]:
+            result.append(val)
+    return result
+
+
+def map_values_orm(env, mapping_spec, check_completeness=False):
+    """
+    Map old values to new values within the same model or table. Old values
+    presumably come from a legacy column. Writing through ORM enables \
+    graceful handling of 2many fields.
+    You will typically want to use it in post-migration scripts.
+    :param env: The Environment Object
+    :param mapping_spec: A dict of the form:
+        {
+        to_model: str(model.name) with which to work
+        ex_field: str(source-field-name)
+        to_field: str(target-field-name)
+        xml_ids: bool(True) (optional) - indicating that the mapping \
+        uses xml_ids
+        scope: list(xml_ids) of records on which to limit the mapping
+        mapping: list(tuple(old, new))
+        }
+    :param check_completeness: True verifies, that all source entries \
+    have been accounted for in the mapping table and raises otherwise.
+    .. versionadded:: 8.0
+    """
+
+    (
+        to_model,
+        ex_field,
+        to_field,
+        xml_ids,
+        scope,
+        mapping
+    ) = (
+        mapping_spec.get('to_model'),
+        mapping_spec.get('ex_field'),
+        mapping_spec.get('to_field'),
+        mapping_spec.get('xml_ids', False),
+        mapping_spec.get('scope', []),
+        mapping_spec.get('mapping'),
+    )
+
+    logger.debug(
+        "map_values_orm mapping values from field "
+        "{0} to {1} in model {2}.".format(ex_field, to_field, to_model)
+    )
+
+    if xml_ids:
+        mapping = _use_xml_mapping(env.cr, mapping)
+    if scope:
+        scope = [get_id_by_xml(x) for x in scope]
+
+    model = env[to_model]
+    recs = model.search(scope)
+    # Some abbreviations for the code to follow
+    mf, ef, tf = model._fields, ex_field, to_field
+
+    if ef == tf:
+        logger.exception(
+            "map_values is called with the same value for source and "
+            "target fields : %s",
+            ef)
+
+    if mf[ef].type == 'one2many' or mf[tf].type == 'one2many':
+        logger.exception(
+            "map_values cannot handle migrations on one2many fields. "
+            "Please migrate the corresponding inverse field (many2one) of "
+            "the related model instead.")
+    if check_completeness:
+        if mf[ef].relational:
+            values = recs.mapped(ef + '.id')
+        else:
+            values = recs.mapped(ef)
+
+        missing = set(values) - set([i[0] for i in mapping])
+        if (missing - set([None])):
+            for value in missing:
+                logger.error((
+                    "'map_values' has detected a missing mapping for "
+                    "Value {0} in Source Column (check_completness "
+                    "enabled)."
+                ).format(value))
+
+    # We need a dictionary from here on
+    mapping = dict(mapping)
+    if mf[ef].type == mf[tf].type == 'many2many':
+        def get_vals(r):
+            res = []
+            for iid in r[ef].ids:
+                if iid not in mapping.keys():
+                    res.append(iid)
+                else:
+                    res.append(mapping[iid])
+            return res
+        recs.mapped(lambda r: r.write(
+                    {tf: [(6, 0, get_vals(r))]}))
+
+    elif mf[ef].relational and mf[tf].relational:
+        def get_vals(r):
+            if r[ef].id not in mapping.keys():
+                return r[ef].id
+            else:
+                return mapping[r[ef].id]
+        recs.mapped(lambda r: r.write(
+                    {tf: get_vals(r)}))
+
+    else:
+        def get_vals(r):
+            if r[ef] not in mapping.keys():
+                return r[ef]
+            else:
+                return mapping[r[ef]]
+        recs.mapped(lambda r: r.write(
+                    {tf: get_vals(r)}))
 
 
 def map_values(
