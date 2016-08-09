@@ -1610,6 +1610,119 @@ def lift_constraints(cr, table, column):
         )
 
 
+def get_values_diff(Model, f, cf):
+    """
+    Detects value differences between two columns/fields.
+    Both fields must be of the same type.
+
+    ..param Model: The Model Obj of scope.
+    ..param f: The new Field.
+    ..param cf: The old Copied Field.
+
+    Returns []List of {}Dicts, dict being:
+        { <record id> :
+            { <field name> :
+                # Nomral Case
+                <new values>
+                # M2m Case
+                <something like [(3,x,0),(4,y,0)]>
+            }
+        }
+    """
+    def _get_values_diff_m2m(r):
+        a, b = frozenset(r[f].ids), frozenset(r[cf].ids)
+        new = [
+            (4, v, 0) for v in frozenset.difference(a, b)
+        ]
+        rem = [
+            (3, v, 0) for v in frozenset.difference(b, a)
+        ]
+        return {r['id']: {f: [new + rem]}} if a != a & b else None
+
+    fobj = Model._fields[f]
+
+    assert fobj.type == Model._fields[cf].type, (
+        "I told you in the docstring that both fields ({0},{1})"
+        " must be of the same type. But we have {2} and {3}!"
+    ).foramt(f, cf, fobj.type, Model._fields[cf].type)
+
+    recs = Model.search([])
+
+    if fobj.relational:
+        if fobj.type == 'many2many':
+
+            return recs.mapped(_get_values_diff_m2m())
+
+        elif fobj.type == 'many2one':
+            return recs.mapped(
+                lambda r:
+                {r['id']: {f: r[f].id}} if r[f].id != r[cf].id else None
+            )
+        else:
+            logger.exception(
+                "'get_values_diff' does not support the requested "
+                "field type '{0}' of field '{1}'. Apologies."
+            ).format(fobj.type, f)
+    else:
+        return recs.mapped(
+            lambda r:
+            {r['id']: {f: r[f]}} if r[f] != r[cf] else None
+        )
+
+
+def get_updated_records(env, field_spec):
+    """
+    Take a field spec dictionary, detect changes with respect
+    to previously copied columns (using l() naming) and generate
+    a dict of updated values per model.
+
+    ..param env: The Odoo Environment Obj
+    ..param field_spec: Json;like field spec in the form:
+        {
+            <model.name.first>: [
+                <field name>,
+                <field name>
+            ]
+            <model.name.second>: [...],
+            ...
+        }
+
+    Returns:
+        {
+            <model.name.first>: {
+                <id1>: {<field1>: <value1>, <field2>: <value2>, ...},
+                <id2>: {...},
+            }
+            <model.name.second>: {...},
+            ...
+        }
+    """
+    res = {}
+
+    for model_name in field_spec.keys():
+        Model = env[model_name]
+        fieldsmap = map(
+            lambda x: tuple(
+                x,
+                get_legacy_name(x)
+            ), field_spec[model_name]
+        )
+        recs = []
+        for f, cf in fieldsmap:
+            recs.extend(get_values_diff(Model, f, cf))
+        recs_clean = {}
+        for r in recs:
+            # {id: {'field': value}}
+            rid = r.keys()[0]
+            if rid not in recs_clean:
+                recs_clean.setdefault(rid, r[rid])
+            else:
+                recs_clean[rid].update(r[rid])
+        res.setdefault(model_name, recs_clean)
+
+    return res
+
+
 @contextmanager
 def savepoint(cr):
     """return a context manager wrapping postgres savepoints"""
