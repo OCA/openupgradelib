@@ -1033,8 +1033,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     """
     def wrap(func):
         @wraps(func)
-        def wrapped_function(cr, version, no_version=no_version, use_env=use_env,
-                             uid=uid, context=context):
+        def wrapped_function(cr, version):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
@@ -1061,15 +1060,15 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     "%s: %s-migration script called with version %s" %
                     (module, stage, version))
                 # Set up useful default context values
-                context = context or {}
-                context['migrate_version'] = version and version or None
-                context['module_name'] = module and module or None
+                context2 = context or {}
+                context2['migrate_version'] = version and version or None
+                context2['module_name'] = module and module or None
                 try:
                     # The actual function is called here
                     func(
                         use_env2 and
                         api.Environment(
-                            cr, uid or SUPERUSER_ID, context) or
+                            cr, uid or SUPERUSER_ID, context2) or
                         cr,
                         version)
                 except Exception as e:
