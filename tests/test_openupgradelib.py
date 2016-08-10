@@ -56,7 +56,7 @@ class TestOpenupgradelib(unittest.TestCase):
         def migrate_with_cr(cr, version):
             self.assertTrue(isinstance(cr, mock.Mock))
 
-        @openupgrade.migrate(use_env=True, context=None)
+        @openupgrade.migrate(use_env=True)
         def migrate_with_env(env, version):
             self.assertTrue(isinstance(env.cr, mock.Mock))
 
