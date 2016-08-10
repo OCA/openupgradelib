@@ -1058,8 +1058,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     "%s: %s-migration script called with version %s" %
                     (module, stage, version))
                 # Set up useful default context values
-                if not context:
-                    context = {}
+                context = context or {}
                 context['migrate_version'] = version and version or None
                 context['module_name'] = module and module or None
                 try:
