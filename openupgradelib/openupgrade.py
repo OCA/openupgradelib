@@ -1035,6 +1035,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
+            
             with ExitStack() as contextmanagers:
                 contextmanagers.enter_context(savepoint(cr))
                 use_env2 = use_env is None and version_info[0] >= 10 or use_env
@@ -1057,6 +1058,8 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     "%s: %s-migration script called with version %s" %
                     (module, stage, version))
                 # Set up useful default context values
+                if not context:
+                    context = {}
                 context['migrate_version'] = version and version or None
                 context['module_name'] = module and module or None
                 try:
@@ -1064,7 +1067,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     func(
                         use_env2 and
                         api.Environment(
-                            cr, uid or SUPERUSER_ID, context or {}) or
+                            cr, uid or SUPERUSER_ID, context) or
                         cr,
                         version)
                 except Exception as e:
