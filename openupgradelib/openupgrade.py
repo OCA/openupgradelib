@@ -25,6 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+from functools import wraps
 try:
     from contextlib import ExitStack
 except ImportError:
@@ -1031,7 +1032,9 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     logging purposes.
     """
     def wrap(func):
-        def wrapped_function(cr, version):
+        @wraps(func)
+        def wrapped_function(cr, version, no_version=no_version, use_env=use_env,
+                             uid=uid, context=context):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
