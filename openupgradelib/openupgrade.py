@@ -1010,7 +1010,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     This is the decorator for the migrate() function
     in migration scripts.
 
-    Set argument `no_version` to True if the method as to be taken into account
+    Set argument `no_version` to True if the method has to be taken into account
     if the module is installed during a migration.
 
     Set argument `pass_env` if you want an v8+ environment instead of a plain
