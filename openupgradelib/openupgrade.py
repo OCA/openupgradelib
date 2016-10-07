@@ -241,6 +241,7 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
 # for backwards compatibility
 load_xml = load_data
 table_exists = openupgrade_tools.table_exists
+column_exists = openupgrade_tools.column_exists
 
 
 def copy_columns(cr, column_spec):
@@ -665,17 +666,6 @@ to cursor.execute().
     logger.debug('Running %s', query % args)
     logger.debug('%s rows affected', cr.rowcount)
     return cr.rowcount
-
-
-def column_exists(cr, table, column):
-    """ Check whether a certain column exists """
-    cr.execute(
-        'SELECT count(attname) FROM pg_attribute '
-        'WHERE attrelid = '
-        '( SELECT oid FROM pg_class WHERE relname = %s ) '
-        'AND attname = %s',
-        (table, column))
-    return cr.fetchone()[0] == 1
 
 
 def update_module_names(cr, namespec):

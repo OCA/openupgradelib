@@ -27,3 +27,13 @@ def table_exists(cr, table):
     """ Check whether a certain table or view exists """
     cr.execute('SELECT 1 FROM pg_class WHERE relname = %s', (table,))
     return cr.fetchone()
+
+def column_exists(cr, table, column):
+    """ Check whether a certain column exists """
+    cr.execute(
+        'SELECT count(attname) FROM pg_attribute '
+        'WHERE attrelid = '
+        '( SELECT oid FROM pg_class WHERE relname = %s ) '
+        'AND attname = %s',
+        (table, column))
+    return cr.fetchone()[0] == 1
