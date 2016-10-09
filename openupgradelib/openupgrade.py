@@ -44,28 +44,53 @@ except ImportError:
         def __exit__(self, exc_type, exc_value, traceback):
             while self._cms:
                 self._cms.pop().__exit__(exc_type, exc_value, traceback)
+
 from psycopg2.extensions import AsIs
 from . import openupgrade_tools
-try:
-    from openerp import release
-except ImportError:
+
+core = None
+# The order matters here. We can import odoo in 9.0, but then we get odoo.py
+try:  # < 10.0
+    import openerp as core
+except ImportError:  # >= 10.0
+    import odoo as core
+if hasattr(core, 'release'):
+    release = core.release
+else:
     import release
+
 Many2many = False
 One2many = False
+one2many = False
+many2many = False
+except_orm = False
+UserError = False
+
 if not hasattr(release, 'version_info'):
     version_info = tuple(map(int, release.version.split('.')))
 else:
     version_info = release.version_info
+
 if version_info[0] > 6 or version_info[0:2] == (6, 1):
-    from openerp import tools, SUPERUSER_ID
-    from openerp.tools.yaml_import import yaml_import
-    from openerp.osv.orm import except_orm
-    from openerp.modules.registry import RegistryManager
-    from openerp.osv.fields import many2many, one2many
+    tools = core.tools
+    SUPERUSER_ID = core.SUPERUSER_ID
+    yaml_import = tools.yaml_import
+    RegistryManager = core.modules.registry
+
+    if hasattr(core, 'osv') and hasattr(core.osv, 'fields'):
+        except_orm = core.osv.orm.except_orm
+        many2many = core.osv.fields.many2many
+        one2many = core.osv.fields.one2many
+
     if version_info[0] >= 7:
-        from openerp.tools.mail import plaintext2html
+        plaintext2html = tools.mail.plaintext2html
     if version_info[0] >= 8:
-        from openerp.fields import Many2many, One2many
+        Many2many = core.fields.Many2many
+        One2many = core.fields.One2many
+        try:  # version 10
+            from odoo.exceptions import UserError
+        except ImportError:  # version 8 and 9
+            from openerp.exceptions import Warning as UserError
 else:
     # version < 6.1
     import tools
@@ -75,11 +100,17 @@ else:
     RegistryManager = None
     from osv.fields import many2many, one2many
 
+
+def do_raise(error):
+    if UserError:
+        raise UserError(error)
+    raise except_orm('Error', error)
+
 if sys.version_info[0] == 3:
     unicode = str
 
 if version_info[0] > 7:
-    from openerp import api
+    api = core.api
 
 
 # The server log level has not been set at this point
@@ -601,8 +632,8 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                     query, params = "UPDATE %s SET %s = %%s WHERE id IN %%s" %\
                         (pool[model_name]._table, field), (value, tuple(nids))
             if not query:
-                raise Exception("Can't set default for %s on %s!",
-                                field, obj._name)
+                do_raise("Can't set default for %s on %s!" % (
+                    field, obj._name))
             # cope with really big tables
             for sub_ids in cr.split_for_in_conditions(params[1]):
                 cr.execute(query, (params[0], sub_ids))
@@ -610,8 +641,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     for model in default_spec.keys():
         obj = pool.get(model)
         if not obj:
-            raise except_orm(
-                "Error",
+            do_raise(
                 "Migration: error setting default, no such model: %s" % model)
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
@@ -748,9 +778,8 @@ def m2o_to_x2m(cr, model, table, field, source_field):
     .. versionadded:: 8.0
     """
     if not model._columns.get(field):
-        raise except_orm(
-            "Error", "m2o_to_x2m: field %s doesn't exist in model %s" % (
-                field, model._name))
+        do_raise("m2o_to_x2m: field %s doesn't exist in model %s" % (
+            field, model._name))
     if isinstance(model._columns[field], (many2many, Many2many)):
         column = model._columns[field]
         if version_info[0] > 6 or version_info[0:2] == (6, 1):
@@ -786,9 +815,9 @@ def m2o_to_x2m(cr, model, table, field, source_field):
                    'source_field': source_field,
                    'source_table': table})
     else:
-        raise except_orm(
-            "Error", "m2o_to_x2m: field %s of model %s is not a "
-                     "many2many/one2many one" % (field, model._name))
+        do_raise(
+            "m2o_to_x2m: field %s of model %s is not a "
+            "many2many/one2many one" % (field, model._name))
 
 
 # Backwards compatibility
@@ -1001,8 +1030,8 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     This is the decorator for the migrate() function
     in migration scripts.
 
-    Set argument `no_version` to True if the method has to be taken into account
-    if the module is installed during a migration.
+    Set argument `no_version` to True if the method has to be taken into
+    account if the module is installed during a migration.
 
     Set argument `pass_env` if you want an v8+ environment instead of a plain
     cursor. Starting from version 10, this is the default
