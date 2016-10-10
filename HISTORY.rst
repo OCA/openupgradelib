@@ -3,6 +3,20 @@
 History
 -------
 
+1.2.0 (2016-10-10)
+------------------
+
+* [IMP] Lift constraints
+* [IMP] Update module field in ir_model_fields when calling rename_models
+* [ADD] allow to create an environment automatically
+* [ADD] rename references to the model in mail related records
+* [ADD] rename_property
+* [IMP] clarifying docstring
+* [FIX] doc typo
+* [FIX] .travis.yml: remove Python 2.6 test
+* [RFR] Move column_exists so it can be used during loading
+* [MIG] 10.0 imports
+
 1.1.2 (2016-06-13)
 ------------------
 
