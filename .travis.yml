@@ -13,7 +13,6 @@ python:
 install:
     - pip install -r requirements.txt
     - pip install coveralls flake8 pep8-naming
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OpenUpgrade/7.0/requirements.txt; fi
     - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OpenUpgrade/8.0/requirements.txt; fi
     - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OpenUpgrade/9.0/requirements.txt; fi
 
