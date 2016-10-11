@@ -52,8 +52,10 @@ core = None
 # The order matters here. We can import odoo in 9.0, but then we get odoo.py
 try:  # < 10.0
     import openerp as core
+    from openerp.modules import registry as RegistryManager
 except ImportError:  # >= 10.0
     import odoo as core
+    from odoo.modules import registry as RegistryManager
 if hasattr(core, 'release'):
     release = core.release
 else:
@@ -75,7 +77,6 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
     tools = core.tools
     SUPERUSER_ID = core.SUPERUSER_ID
     yaml_import = tools.yaml_import
-    RegistryManager = core.modules.registry
 
     if hasattr(core, 'osv') and hasattr(core.osv, 'fields'):
         except_orm = core.osv.orm.except_orm
