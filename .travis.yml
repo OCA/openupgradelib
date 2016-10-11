@@ -15,13 +15,11 @@ install:
     - pip install coveralls flake8 pep8-naming
     - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/8.0/requirements.txt; fi
     - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/9.0/requirements.txt; fi
-    - echo $TRAVIS_PYTHON_VERSION
 
 # command to run tests, e.g. python setup.py test
 script:
     - flake8 OCA/openupgradelib
-    - echo $TRAVIS_PYTHON_VERSION
-    - export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH
+    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH; fi
     - coverage run setup.py test
     - python setup.py install
 
