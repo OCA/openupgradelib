@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from sys import version_info
+import os
 from . import test_openupgradelib
-# only run openupgrade tests with python 2.7
-if version_info[0] < 3:
+# only run openupgrade tests with python 2.7 on travis
+if os.environ.get('TRAVIS_PYTHON_VERSION') == '2.7':
     from . import test_openupgradelib_with_openupgrade
 else:
     import unittest
