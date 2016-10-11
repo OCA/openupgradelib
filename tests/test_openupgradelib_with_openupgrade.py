@@ -30,6 +30,9 @@ class TestOpenupgradelibWithOpenUpgrade(unittest.TestCase):
 
     def _test_openupgrade_generic(self, version):
         """run openupgrade in a new interpreter to see if all imports work"""
+        # don't do anything if we're on the wrong python version
+        if 'openupgradelib' not in os.environ.get('PYTHONPATH', ''):
+            return
         ou_dir = self._get_openupgrade(version)
         try:
             subprocess.check_output([
