@@ -1034,19 +1034,19 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     Set argument `no_version` to True if the method has to be taken into
     account if the module is installed during a migration.
 
-    Set argument `pass_env` if you want an v8+ environment instead of a plain
+    Set argument `use_env` if you want an v8+ environment instead of a plain
     cursor. Starting from version 10, this is the default
 
     The arguments `uid` and `context` can be set when an evironment is
     requested. In the cursor case, they're ignored.
 
     The migration function's signature must be `func(cr, version)` if
-    `pass_env` is `False` or not set and the version is below 10, or
-    `func(env, version)` if `pass_env` is `True` or not set and the version is
+    `use_env` is `False` or not set and the version is below 10, or
+    `func(env, version)` if `use_env` is `True` or not set and the version is
     10 or higher.
 
-    Return when the `version` argument is not defined and `no_version` is False
-    and log execeptions.
+    Return when the `version` argument is not defined and `no_version` is
+    False and log execeptions.
 
     Retrieve debug context data from the frame above for
     logging purposes.
