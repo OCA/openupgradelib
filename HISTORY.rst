@@ -3,6 +3,11 @@
 History
 -------
 
+1.2.1 (2016-11-07)
+------------------
+* [FIX] Broken compatibility of 1.2.0 with Odoo 8.0
+* [FIX] Fix argument name in migrate __doc__ to actual argument
+
 1.2.0 (2016-10-10)
 ------------------
 
