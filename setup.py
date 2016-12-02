@@ -18,12 +18,6 @@ with open('HISTORY.rst') as history_file:
 
 dirname = os.path.dirname(__file__)
 
-with open(os.path.join(dirname, 'requirements.txt')) as requirements_file:
-    requirements = filter(
-        lambda s: not s.startswith('#'),
-        map(str.strip, requirements_file.readlines())
-    )
-
 test_requirements = [
     'coverage',
     'flake8',
@@ -42,7 +36,7 @@ setup(
     packages=['openupgradelib'],
     package_dir={'openupgradelib': 'openupgradelib'},
     include_package_data=True,
-    install_requires=requirements,
+    install_requires=[],
     license=openupgradelib.__license__,
     zip_safe=False,
     keywords='openupgradelib',
