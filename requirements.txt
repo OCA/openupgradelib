@@ -1,1 +1,5 @@
-wheel==0.23.0
+wheel
+coveralls
+# Version locked due to https://gitlab.com/pycqa/flake8/issues/268
+flake8==3.2.0
+pep8-naming
