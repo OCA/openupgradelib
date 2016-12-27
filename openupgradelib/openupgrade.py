@@ -700,27 +700,40 @@ to cursor.execute().
     return cr.rowcount
 
 
-def update_module_names(cr, namespec):
-    """
-    Deal with changed module names of certified modules
-    in order to prevent  'certificate not unique' error,
-    as well as updating the module reference in the
-    XML id.
+def update_module_names(cr, namespec, merge_modules=False):
+    """Deal with changed module names, making all the needed changes on the
+    related tables, like XML-IDs, translations, and so on.
 
-    :param namespec: tuple of (old name, new name)
+    :param namespec: list of tuples of (old name, new name)
+    :param merge_modules: Specify if the operation should be a merge instead
+        of just a renaming.
     """
     for (old_name, new_name) in namespec:
-        query = ("UPDATE ir_module_module SET name = %s "
-                 "WHERE name = %s")
-        logged_query(cr, query, (new_name, old_name))
+        if merge_modules:
+            # Delete meta entries, that will avoid the entry removal
+            # They will be recreated by the new module anyhow.
+            query = "SELECT id FROM ir_module_module WHERE name = %s"
+            cr.execute(query, [old_name])
+            row = cr.fetchone()
+            if row:
+                old_id = row[0]
+                query = "DELETE FROM ir_model_constraint WHERE module = %s"
+                logged_query(cr, query, [old_id])
+                query = "DELETE FROM ir_model_relation WHERE module = %s"
+                logged_query(cr, query, [old_id])
+        else:
+            query = "UPDATE ir_module_module SET name = %s WHERE name = %s"
+            logged_query(cr, query, (new_name, old_name))
+            query = ("UPDATE ir_model_data SET name = %s "
+                     "WHERE name = %s AND module = 'base' AND "
+                     "model='ir.module.module' ")
+            logged_query(cr, query,
+                         ("module_%s" % new_name, "module_%s" % old_name))
+        # The subselect allows to avoid duplicated XML-IDs
         query = ("UPDATE ir_model_data SET module = %s "
-                 "WHERE module = %s ")
-        logged_query(cr, query, (new_name, old_name))
-        query = ("UPDATE ir_model_data SET name = %s "
-                 "WHERE name = %s AND module = 'base' AND "
-                 "model='ir.module.module' ")
-        logged_query(cr, query,
-                     ("module_%s" % new_name, "module_%s" % old_name))
+                 "WHERE module = %s AND name NOT IN "
+                 "(SELECT name FROM ir_model_data WHERE module = %s)")
+        logged_query(cr, query, (new_name, old_name, new_name))
         query = ("UPDATE ir_module_module_dependency SET name = %s "
                  "WHERE name = %s")
         logged_query(cr, query, (new_name, old_name))
@@ -728,6 +741,9 @@ def update_module_names(cr, namespec):
             query = ("UPDATE ir_translation SET module = %s "
                      "WHERE module = %s")
             logged_query(cr, query, (new_name, old_name))
+        if merge_modules:
+            query = "DELETE FROM ir_module_module WHERE name = %s"
+            logged_query(cr, query, [old_name])
 
 
 def add_ir_model_fields(cr, columnspec):
