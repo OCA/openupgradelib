@@ -368,6 +368,8 @@ def rename_models(cr, model_spec):
     functionality you will want to update references in for instance
     relation fields.
 
+    WARNING: This method doesn't rename the associated tables. For that,
+    you need to call `rename_tables` method.
     """
     for (old, new) in model_spec:
         logger.info("model %s: renaming to %s",
