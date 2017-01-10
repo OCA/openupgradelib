@@ -736,6 +736,13 @@ def update_module_names(cr, namespec, merge_modules=False):
                  "WHERE module = %s AND name NOT IN "
                  "(SELECT name FROM ir_model_data WHERE module = %s)")
         logged_query(cr, query, (new_name, old_name, new_name))
+        # Rename the remaining occurrences for let Odoo's update process
+        # to auto-remove related resources
+        query = ("UPDATE ir_model_data "
+                 "SET name = name || '_openupgrade_' || id, "
+                 "module = %s"
+                 "WHERE module = %s")
+        logged_query(cr, query, (new_name, old_name))
         query = ("UPDATE ir_module_module_dependency SET name = %s "
                  "WHERE name = %s")
         logged_query(cr, query, (new_name, old_name))
