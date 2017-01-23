@@ -9,9 +9,6 @@ the 8.0 -> 9.0 migration.
 from openupgradelib import openupgrade
 import logging
 
-logger = logging.getLogger('OpenUpgrade')
-logger.setLevel(logging.DEBUG)
-
 
 def convert_binary_field_to_attachment(env, field_spec):
     """This method converts the 8.0 binary fields to attachments like Odoo 9.0
@@ -38,13 +35,14 @@ def convert_binary_field_to_attachment(env, field_spec):
               the second element is None, then the column name is taken
               calling `get_legacy_name` method, which is the typical technique.
     """
+    logger = logging.getLogger('OpenUpgrade')
     attachment_model = env['ir.attachment']
     for model_name in field_spec:
         model = env[model_name]
         for field, column in field_spec[model_name]:
             if column is None:
                 column = openupgrade.get_legacy_name(field)
-            logging.info(
+            logger.info(
                 "Converting to attachment field {} from model {} stored in "
                 "column {}".format(field, model_name, column)
             )
