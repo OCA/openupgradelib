@@ -25,6 +25,7 @@ import inspect
 import uuid
 import logging
 from contextlib import contextmanager
+from functools import wraps
 try:
     from contextlib import ExitStack
 except ImportError:
@@ -1077,13 +1078,15 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     logging purposes.
     """
     def wrap(func):
+        @wraps(func)
         def wrapped_function(cr, version):
             stage = 'unknown'
             module = 'unknown'
             filename = 'unknown'
+            
             with ExitStack() as contextmanagers:
                 contextmanagers.enter_context(savepoint(cr))
-                use_env2 = use_env is None and version_info[0] > 10 or use_env
+                use_env2 = use_env is None and version_info[0] >= 10 or use_env
                 if use_env2:
                     assert version_info[0] >= 8, 'you need at least v8'
                     contextmanagers.enter_context(api.Environment.manage())
@@ -1102,12 +1105,16 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                 logger.info(
                     "%s: %s-migration script called with version %s" %
                     (module, stage, version))
+                # Set up useful default context values
+                context2 = context or {}
+                context2['migrate_version'] = version and version or None
+                context2['module_name'] = module and module or None
                 try:
                     # The actual function is called here
                     func(
                         use_env2 and
                         api.Environment(
-                            cr, uid or SUPERUSER_ID, context or {}) or
+                            cr, uid or SUPERUSER_ID, context2) or
                         cr,
                         version)
                 except Exception as e:
