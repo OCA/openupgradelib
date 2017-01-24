@@ -3,6 +3,10 @@
 History
 -------
 
+1.2.3 (2017-01-24)
+------------------
+* New decorator to log function calls.
+
 1.2.2 (2016-12-27)
 ------------------
 * New argument merge_modules in update_module_names for merging several
