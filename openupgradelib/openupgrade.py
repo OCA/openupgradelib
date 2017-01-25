@@ -1056,7 +1056,7 @@ def reactivate_workflow_transitions(cr, transition_conditions):
 openupgrade_call_logging = {}
 
 
-def logging(args_details=False, logging_step=False):
+def logging(args_details=False, step=False):
     """
     This is a decorator for any sub functions called in an OpenUpgrade script.
     (pre or post migration script)
@@ -1067,7 +1067,7 @@ def logging(args_details=False, logging_step=False):
     is called.
 
     :param args_details: if True, arguments details are given in the log
-    :param logging_step: The log will be done only every logging_step times.
+    :param step: The log will be done only every step times.
 
     Typical use::
 
@@ -1075,7 +1075,7 @@ def logging(args_details=False, logging_step=False):
         def migrate_stock_warehouses(cr)
             # some custom code
 
-        @openupgrade.logging(logging_step=1000)
+        @openupgrade.logging(step=1000)
         def migrate_partner(cr, partner):
             # some custom code
 
@@ -1094,22 +1094,22 @@ def logging(args_details=False, logging_step=False):
             msg = "Executing method %s" % func.__name__
 
             # Count calls
-            if logging_step:
+            if step:
                 # Compute unique name
                 unique_name = '%s.%s' % (func.__module__, func.__name__)
                 if unique_name not in openupgrade_call_logging:
                     openupgrade_call_logging[unique_name] = 0
                 openupgrade_call_logging[unique_name] += 1
                 current = openupgrade_call_logging[unique_name]
-                if current == 1 or current % logging_step == 0:
+                if current == 1 or current % step == 0:
                     msg += " ; Calls quantity : %d" % current
                     if current == 1:
-                        msg += " ; Logging Step : %d" % logging_step
+                        msg += " ; Logging Step : %d" % step
                 else:
                     to_log = False
 
             # Log Args
-            if args_details:
+            if args_details and to_log:
                 if args:
                     msg += " ; args : %s" % str(args)
                 if kwargs:

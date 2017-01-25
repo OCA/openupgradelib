@@ -3,14 +3,6 @@
 History
 -------
 
-1.2.3 (2017-01-24)
-------------------
-* [ADD] Add New decorator 'logging' to log function calls
-* [RFR] Local logger; don't force debug level
-* [IMP] docstring for 'rename_models'
-* [FIX] 'update_module_names' : Rename non updated XML-ID occurences
-* [ADD] add 'convert_binary_field_to_attachment' (8.0 -> 9.0)
-
 1.2.2 (2016-12-27)
 ------------------
 * New argument merge_modules in update_module_names for merging several
