@@ -1083,7 +1083,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
             filename = 'unknown'
             with ExitStack() as contextmanagers:
                 contextmanagers.enter_context(savepoint(cr))
-                use_env2 = use_env is None and version_info[0] > 10 or use_env
+                use_env2 = use_env is None and version_info[0] >= 10 or use_env
                 if use_env2:
                     assert version_info[0] >= 8, 'you need at least v8'
                     contextmanagers.enter_context(api.Environment.manage())
@@ -1105,11 +1105,9 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                 try:
                     # The actual function is called here
                     func(
-                        use_env2 and
                         api.Environment(
-                            cr, uid or SUPERUSER_ID, context or {}) or
-                        cr,
-                        version)
+                            cr, uid or SUPERUSER_ID, context or {})
+                        if use_env2 else cr, version)
                 except Exception as e:
                     logger.error(
                         "%s: error in migration script %s: %s" %
