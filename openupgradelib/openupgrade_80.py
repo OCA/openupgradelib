@@ -26,8 +26,14 @@
 
 
 from datetime import datetime
-from openerp import SUPERUSER_ID
-from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT as DATETIME_FMT
+try:
+    from openerp import SUPERUSER_ID
+except ImportError:
+    from odoo import SUPERUSER_ID
+try:
+    from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT as DATETIME_FMT
+except ImportError:
+    from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DATETIME_FMT
 
 
 def get_last_post_for_model(cr, uid, ids, model_pool):
