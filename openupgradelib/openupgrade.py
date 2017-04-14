@@ -123,6 +123,7 @@ logger.setLevel(logging.DEBUG)
 
 __all__ = [
     'migrate',
+    'logging',
     'load_data',
     'copy_columns',
     'rename_columns',
@@ -1049,6 +1050,77 @@ def reactivate_workflow_transitions(cr, transition_conditions):
         cr.execute(
             'update wkf_transition set condition = %s where id = %s',
             (condition, transition_id))
+
+
+# Global var to count call quantity to an openupgrade function
+openupgrade_call_logging = {}
+
+
+def logging(args_details=False, step=False):
+    """
+    This is a decorator for any sub functions called in an OpenUpgrade script.
+    (pre or post migration script)
+
+    Decorate functions that can take time, or for debug / development purpose.
+
+    if a function is decorated, a log will be written each time the function
+    is called.
+
+    :param args_details: if True, arguments details are given in the log
+    :param step: The log will be done only every step times.
+
+    Typical use::
+
+        @openupgrade.logging()
+        def migrate_stock_warehouses(cr)
+            # some custom code
+
+        @openupgrade.logging(step=1000)
+        def migrate_partner(cr, partner):
+            # some custom code
+
+        @openupgrade.migrate()
+        def migrate(cr, version):
+            # some custom code
+            migrate_stock_warehouses(cr)
+
+            for partner in partners:
+                migrate_partner(cr, partner)
+
+    """
+    def wrap(func):
+        def wrapped_function(*args, **kwargs):
+            to_log = True
+            msg = "Executing method %s" % func.__name__
+
+            # Count calls
+            if step:
+                # Compute unique name
+                unique_name = '%s.%s' % (func.__module__, func.__name__)
+                if unique_name not in openupgrade_call_logging:
+                    openupgrade_call_logging[unique_name] = 0
+                openupgrade_call_logging[unique_name] += 1
+                current = openupgrade_call_logging[unique_name]
+                if current == 1 or current % step == 0:
+                    msg += " ; Calls quantity : %d" % current
+                    if current == 1:
+                        msg += " ; Logging Step : %d" % step
+                else:
+                    to_log = False
+
+            # Log Args
+            if args_details and to_log:
+                if args:
+                    msg += " ; args : %s" % str(args)
+                if kwargs:
+                    msg += " ; kwargs : %s" % str(kwargs)
+
+            if to_log:
+                logger.info(msg)
+
+            return func(*args, **kwargs)
+        return wrapped_function
+    return wrap
 
 
 def migrate(no_version=False, use_env=None, uid=None, context=None):
