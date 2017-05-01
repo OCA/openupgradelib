@@ -3,6 +3,16 @@
 History
 -------
 
+1.3.0 (2017-05-01)
+------------------
+* [IMP] rename_models: Add warning on docstring
+* [FIX] update_module_names: Rename non updated XML-ID occurences
+* [ADD] convert_binary_field_to_attachment
+* [RFR] Local logger; don't force debug level
+* [FIX] Adapt code to docstring by passing env by default starting from 10.0
+* [FIX] protect openerp imports
+* [ADD] new logging decorator
+
 1.2.2 (2016-12-27)
 ------------------
 * New argument merge_modules in update_module_names for merging several
