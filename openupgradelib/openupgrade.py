@@ -804,14 +804,27 @@ def m2o_to_x2m(cr, model, table, field, source_field):
 
     .. versionadded:: 8.0
     """
-    if not model._columns.get(field):
+    columns = getattr(model, '_columns', getattr(model, '_fields'))
+    if not columns.get(field):
         do_raise("m2o_to_x2m: field %s doesn't exist in model %s" % (
             field, model._name))
-    if isinstance(model._columns[field], (many2many, Many2many)):
-        column = model._columns[field]
-        if version_info[0] > 6 or version_info[0:2] == (6, 1):
+    m2m_types = []
+    if many2many:
+        m2m_types.append(many2many)
+    if Many2many:
+        m2m_types.append(Many2many)
+    o2m_types = []
+    if one2many:
+        o2m_types.append(one2many)
+    if One2many:
+        o2m_types.append(One2many)
+    if isinstance(columns[field], tuple(m2m_types)):
+        column = columns[field]
+        if hasattr(many2many, '_sql_names'):  # >= 6.1 and < 10.0
             rel, id1, id2 = many2many._sql_names(column, model)
-        else:
+        elif hasattr(column, 'relation'):  # >= 10.0
+            rel, id1, id2 = column.relation, column.column1, column.column2
+        else:  # <= 6.0
             rel, id1, id2 = column._rel, column._id1, column._id2
         logged_query(
             cr,
@@ -822,14 +835,13 @@ def m2o_to_x2m(cr, model, table, field, source_field):
             WHERE %s is not null
             """ %
             (rel, id1, id2, source_field, table, source_field))
-    elif isinstance(model._columns[field], (One2many, one2many)):
-        if isinstance(model._columns[field], One2many):
-            target_table = (
-                model.pool[model._columns[field].comodel_name]._table)
-            target_field = model._columns[field].inverse_name
+    elif isinstance(columns[field], tuple(o2m_types)):
+        if isinstance(columns[field], One2many):  # >= 8.0
+            target_table = model.env[columns[field].comodel_name]._table
+            target_field = columns[field].inverse_name
         else:
-            target_table = model.pool[model._columns[field]._obj]._table
-            target_field = model._columns[field]._fields_id
+            target_table = model.pool[columns[field]._obj]._table
+            target_field = columns[field]._fields_id
         logged_query(
             cr,
             """
