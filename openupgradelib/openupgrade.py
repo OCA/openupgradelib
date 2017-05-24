@@ -24,6 +24,7 @@ import os
 import inspect
 import uuid
 import logging
+import warnings
 from contextlib import contextmanager
 try:
     from contextlib import ExitStack
@@ -458,23 +459,15 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
 
 
 def drop_columns(cr, column_spec):
-    """
-    Drop columns but perform an additional check if a column exists.
-    This covers the case of function fields that may or may not be stored.
-    Consider that this may not be obvious: an additional module can govern
-    a function fields' store properties.
-
-    :param column_spec: a list of (table, column) tuples
-    """
-    for (table, column) in column_spec:
-        logger.info("table %s: drop column %s",
-                    table, column)
-        if column_exists(cr, table, column):
-            cr.execute('ALTER TABLE "%s" DROP COLUMN "%s"' %
-                       (table, column))
-        else:
-            logger.warn("table %s: column %s did not exist",
-                        table, column)
+    warnings.warn(
+        'drop_columns has been moved to openupgradelib.cleanup'
+        'opneupgradlib.cleanup is a place to gather cleanup methods.'
+        'Please consider adapting your migration scripts.'
+        'Utilizing cleanup methods is not encouraged, consider using '
+        'the module database_cleanup instead.', DeprecationWarning
+    )
+    from .cleanup import drop_columns as _dc
+    _dc(cr=cr, column_sepc=column_spec)
 
 
 def update_workflow_workitems(cr, pool, ref_spec_actions):
