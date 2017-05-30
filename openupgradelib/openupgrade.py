@@ -98,7 +98,6 @@ else:
     SUPERUSER_ID = 1
     from tools.yaml_import import yaml_import
     from osv.osv import except_osv as except_orm
-    RegistryManager = None
     from osv.fields import many2many, one2many
 
 
@@ -1021,7 +1020,7 @@ def deactivate_workflow_transitions(cr, model, transitions=None):
     """
     transition_ids = []
     if transitions:
-        data_obj = RegistryManager.get(cr.dbname)['ir.model.data']
+        data_obj = core.modules.registry.get(cr.dbname)['ir.model.data']
         for module, name in transitions:
             try:
                 transition_ids.append(
