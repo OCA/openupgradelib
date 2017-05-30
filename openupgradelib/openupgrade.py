@@ -315,10 +315,75 @@ def copy_columns(cr, column_spec):
             })
 
 
-def rename_columns(cr, column_spec):
+def rename_columns_orm(Env, field_spec):
+    """
+    Copy model fields and it's values using the orm. Only works in the 
+    pre script. This method supports m2m fields.
+
+    :param Env: The Environment created y the @migrate() decorator.
+    :param field_spec: a dict with model names as in 'res.partner', with
+        lists of old names. To ensure ORM 'x_' prefix, construction of 
+        new names is exclusively done by get_legacy_name()
+
+    .. versionadded:: 9.0
+    """
+    SUPPORTED_TTYPES = []
+    # gln = get_legacy_name() 
+    # Until PR #40 get's accepted
+    def gln(original_name, version=None):
+        if version:
+            vstr = '_'.join(version.split('.'))
+        elif version_info:
+            vstr = '_'.join(map(str, version_info[0:2]))
+        else:
+            vstr = 'legacy'
+        return 'x_ou_' + vstr + '_' + original_name
+
+    for model_name in field_spec.keys():
+        m = Env[model_name]
+        for old in field_spec[model_name]:
+            qvals = {'model_id' = m.id, 'name' = old}
+            query = """SELECT * FROM ir_model_fields
+                       WHERE model_id = {model_id!d}
+                       AND name = '{name!s}'""".format(**qvals)
+            field = cr.dictfetchall()[0]
+            if not field['ttype'] in SUPORTED_TTYPES:
+                logger.exception(
+                    "map_columns_orm does not support coping fields "
+                    "of type {0} yet."
+                ).format(field['ttype'])
+
+            # Transform the queried field definition
+            old_name = field['name']
+            field['name'] = gln(old)
+            if field['ttype'] in ['many2many']:
+                old_rel_table = field['relation_table']
+                field['relation_table'] = gln(field['relation_table'])
+            qvals = [(k, v) for k, v in d.iteritems()]
+            qvals = zip(qvals)
+            query = """INSERT INTO ir_model_fields ({0})
+                       VALUES ({1})""".format(qvals[0], qvals[1])
+            logged_query(query)
+
+            if field['ttype'] in ['many2many']:
+                cr.execute("""
+                    ALTER TABLE {0}
+                    RENAME TO {1}
+                """).format(old_rel_table, field['relation_table'])
+
+            else:
+                cr.execute("""
+                    ALTER TABLE {0}
+                    RENAME {1} TO {2}
+                """).format(field['relation_table'],
+                            old_name, field['name'])
+
+    # Now, that everything is set up, let the ORM do it's magic.
+
+
+def rename_columns_sql(cr, column_spec):
     """
     Rename table columns. Typically called in the pre script.
-
     :param column_spec: a hash with table keys, with lists of tuples as \
     values. Tuples consist of (old_name, new_name). Use None for new_name \
     to trigger a conversion of old_name using get_legacy_name()
@@ -332,6 +397,19 @@ def rename_columns(cr, column_spec):
             cr.execute(
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"' % (table, old, new,))
             cr.execute('DROP INDEX IF EXISTS "%s_%s_index"' % (table, old))
+
+
+def rename_columns(cr, column_spec):
+    """
+    This is a compatibility wrapper for rename_columns_sql(). It will be
+    deprecated in future releases. Please use rename_columns_sql() or
+    rename_columns_orm() instead.
+    """
+    logger.warning(
+        "'rename_columns' will be deprecated in future releases!"
+        "Use rename_columms_orm or rename_columms_sql instead."
+    )
+    rename_columms_sql(cr=cr, column_spec=column_spec)
 
 
 def rename_tables(cr, table_spec):
