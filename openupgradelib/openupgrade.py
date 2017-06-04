@@ -804,7 +804,7 @@ def m2o_to_x2m(cr, model, table, field, source_field):
 
     .. versionadded:: 8.0
     """
-    columns = getattr(model, '_columns', getattr(model, '_fields'))
+    columns = getattr(model, '_columns', False) or getattr(model, '_fields')
     if not columns.get(field):
         do_raise("m2o_to_x2m: field %s doesn't exist in model %s" % (
             field, model._name))
