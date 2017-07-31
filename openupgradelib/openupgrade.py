@@ -754,6 +754,12 @@ def update_module_names(cr, namespec, merge_modules=False):
         if merge_modules:
             query = "DELETE FROM ir_module_module WHERE name = %s"
             logged_query(cr, query, [old_name])
+            logged_query(
+                cr,
+                "DELETE FROM ir_model_data WHERE module = 'base' "
+                "AND model='ir.module.module' AND name = %s",
+                ('module_%s' % old_name,),
+            )
 
 
 def add_ir_model_fields(cr, columnspec):
