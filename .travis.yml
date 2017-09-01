@@ -12,14 +12,13 @@ python:
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
     - pip install -r requirements.txt
-    - export PYV=$(python -V 2>&1 | grep -Po '(?<=Python )(\d+.\d+)')
-    - if [ "$PYV" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/8.0/requirements.txt; fi
-    - if [ "$PYV" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/9.0/requirements.txt; fi
+    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/8.0/requirements.txt; fi
+    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/9.0/requirements.txt; fi
 
 # command to run tests, e.g. python setup.py test
 script:
     - flake8 ~/OCA/openupgradelib
-    - if [ "$PYV" == "2.7" ]; then export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH; fi
+    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH; fi
     - coverage run setup.py test
     - python setup.py install
 
