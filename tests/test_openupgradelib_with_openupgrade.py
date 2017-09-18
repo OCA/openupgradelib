@@ -55,5 +55,6 @@ class TestOpenupgradelibWithOpenUpgrade(unittest.TestCase):
     def test_openupgrade_90(self):
         self._test_openupgrade_generic('9.0')
 
+
 if __name__ == '__main__':
     unittest.main()
