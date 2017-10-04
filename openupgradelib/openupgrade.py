@@ -1063,6 +1063,8 @@ def reactivate_workflow_transitions(cr, transition_conditions):
     deactivate_workflow_transitions
 
     .. versionadded:: 7.0
+    .. deprecated:: 11.0
+       Workflows were removed from Odoo as of version 11.0
     """
     for transition_id, condition in transition_conditions.iteritems():
         cr.execute(
@@ -1181,7 +1183,9 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     frame = inspect.getargvalues(inspect.stack()[1][0])
                     stage = frame.locals['stage']
                     module = frame.locals['pkg'].name
-                    filename = frame.locals['fp'].name
+                    # Python3: fetch pyfile from locals, not fp
+                    filename = frame.locals.get(
+                        'pyfile') or frame.locals['fp'].name
                 except Exception as e:
                     logger.error(
                         "'migrate' decorator: failed to inspect "
@@ -1199,9 +1203,12 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                             cr, uid or SUPERUSER_ID, context or {})
                         if use_env2 else cr, version)
                 except Exception as e:
+                    message = str(e)
+                    if sys.version_info[0] == 2:
+                        message = message.decode('utf8')
                     logger.error(
-                        "%s: error in migration script %s: %s" %
-                        (module, filename, str(e).decode('utf8')))
+                        "%s: error in migration script %s: %s",
+                        module, filename, message)
                     logger.exception(e)
                     raise
         return wrapped_function
