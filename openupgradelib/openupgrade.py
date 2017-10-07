@@ -254,14 +254,16 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
     :param filename: the path to the filename, relative to the module \
     directory.
     :param idref: optional hash with ?id mapping cache?
-    :param mode: one of 'init', 'update', 'demo', 'init_no_create'. \
-    Always use 'init' for adding new items from files that are marked with \
-    'noupdate'. Defaults to 'init'.
-    'init_no_create' is a hack to load data for records which have \
-    forcecreate=False set. As those records won't be recreated during the \
-    update, standard Odoo would recreate the record if it was deleted, \
-    but this will fail in cases where there are required fields to be \
-    filled which are not contained in the data file.
+    :param mode:
+        one of 'init', 'update', 'demo', 'init_no_create'.
+        Always use 'init' for adding new items from files that are marked with
+        'noupdate'. Defaults to 'init'.
+
+        'init_no_create' is a hack to load data for records which have
+        forcecreate=False set. As those records won't be recreated during the
+        update, standard Odoo would recreate the record if it was deleted,
+        but this will fail in cases where there are required fields to be
+        filled which are not contained in the data file.
     """
 
     if idref is None:
