@@ -30,10 +30,11 @@ def convert_binary_field_to_attachment(env, field_spec):
     :param env: Odoo environment
     :param field_spec: A dictionary with the ORM model name as key, and as
         dictionary values a tuple with:
-            * field name to be converted as attachment as first element.
-            * SQL column name that contains actual data as second element. If
-              the second element is None, then the column name is taken
-              calling `get_legacy_name` method, which is the typical technique.
+        
+        * field name to be converted as attachment as first element.
+        * SQL column name that contains actual data as second element. If
+          the second element is None, then the column name is taken
+          calling `get_legacy_name` method, which is the typical technique.
     """
     logger = logging.getLogger('OpenUpgrade')
     attachment_model = env['ir.attachment']
