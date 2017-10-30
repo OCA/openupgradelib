@@ -638,6 +638,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     Set default value. Useful for fields that are newly required. Uses orm, so
     call from the post script.
 
+    :param pool: In v10 and newer, you have to pass the 'env' instead.
     :param default_spec: a hash with model names as keys. Values are lists \
     of tuples (field, value). None as a value has a special meaning: it \
     assigns the default value. If this value is provided by a function, the \
@@ -659,12 +660,19 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
         if use_orm:
             for res_id in ids:
                 # Iterating over ids here as a workaround for lp:1131653
-                obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
+                if isinstance(pool, api.Environment):
+                    obj.write({field: value})
+                else:
+                    obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
         else:
             query, params = "UPDATE %s SET %s = %%s WHERE id IN %%s" % (
                 obj._table, field), (value, tuple(ids))
             # handle fields inherited from somewhere else
-            if field not in obj._columns:
+            if version_info[0] >= 10:
+                columns = obj._fields
+            else:
+                columns = obj._columns
+            if field not in columns:
                 query, params = None, None
                 for model_name in obj._inherits:
                     if obj._inherit_fields[field][0] != model_name:
@@ -689,13 +697,16 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 cr.execute(query, (params[0], sub_ids))
 
     for model in default_spec.keys():
-        obj = pool.get(model)
-        if not obj:
+        obj = pool.get(model, False)
+        if obj == False:
             do_raise(
                 "Migration: error setting default, no such model: %s" % model)
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
-            ids = obj.search(cr, SUPERUSER_ID, domain)
+            if isinstance(pool, api.Environment):
+                ids = obj.search(domain).ids
+            else:
+                ids = obj.search(cr, SUPERUSER_ID, domain)
             if not ids:
                 continue
             if value is None:
@@ -705,9 +716,9 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 # object. We retrieve create_uid for this purpose and need to
                 # call the defaults function per resource. Otherwise, write
                 # all resources at once.
-                if field in obj._defaults:
-                    if not callable(obj._defaults[field]):
-                        write_value(ids, field, obj._defaults[field])
+                if version_info[0] > 7:
+                    if obj.default_get([field]):
+                        write_value(ids, field, obj.default_get([field]))
                     else:
                         cr.execute(
                             "SELECT id, COALESCE(create_uid, 1) FROM %s " %
@@ -719,15 +730,34 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                         for user_id in user_id_map:
                             write_value(
                                 user_id_map[user_id], field,
-                                obj._defaults[field](obj, cr, user_id, None))
+                                obj.default_get([field])(
+                                    obj, cr, user_id, None))
                 else:
-                    error = (
-                        "OpenUpgrade: error setting default, field %s with "
-                        "None default value not in %s' _defaults" % (
-                            field, model))
-                    logger.error(error)
-                    # this exception seems to get lost in a higher up try block
-                    except_orm("OpenUpgrade", error)
+                    if field in obj._defaults:
+                        if not callable(obj._defaults[field]):
+                            write_value(ids, field, obj._defaults[field])
+                        else:
+                            cr.execute(
+                                "SELECT id, COALESCE(create_uid, 1) FROM %s " %
+                                obj._table + "WHERE id in %s", (tuple(ids),))
+                            # Execute the function once per user_id
+                            user_id_map = {}
+                            for row in cr.fetchall():
+                                user_id_map.setdefault(row[1], []).append(
+                                    row[0])
+                            for user_id in user_id_map:
+                                write_value(
+                                    user_id_map[user_id], field,
+                                    obj._defaults[field](
+                                        obj, cr, user_id, None))
+                    else:
+                        error = (
+                            "OpenUpgrade: error setting default, field %s "
+                            "with None default value not in %s' _defaults" % (
+                                field, model))
+                        logger.error(error)
+                        # this exc. seems to get lost in a higher up try block
+                        except_orm("OpenUpgrade", error)
             else:
                 write_value(ids, field, value)
 
