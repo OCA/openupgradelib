@@ -132,6 +132,7 @@ __all__ = [
     'load_data',
     'copy_columns',
     'rename_columns',
+    'rename_fields',
     'rename_tables',
     'rename_models',
     'rename_xmlids',
@@ -378,6 +379,89 @@ def rename_columns(cr, column_spec):
             cr.execute(
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"' % (table, old, new,))
             cr.execute('DROP INDEX IF EXISTS "%s_%s_index"' % (table, old))
+
+
+def rename_fields(env, field_spec, no_deep=False):
+    """Rename fields. Typically called in the pre script. WARNING: If using
+    this on base module, pass the argument ``no_deep`` with True value for
+    avoiding the using of the environment (which is not yet loaded).
+
+    This, in contrast of ``rename_columns``, performs all the steps for
+    completely rename a field from one name to another. This is needed for
+    making a complete renaming of a field with all their side features:
+    translations, filters, exports...
+
+    Call this method whenever you are not performing a pure SQL column renaming
+    for other purposes (preserve a value for example).
+
+    This method performs also the SQL column renaming, so only one call is
+    needed.
+
+    :param env: Environment/pool variable. The database cursor is the only
+      thing needed, but added in prevision of TODO tasks for not breaking
+      API later.
+    :param fields_spec: a list of tuples with the following elements:
+      * Model name. The name of the Odoo model
+      * Table name. The name of the SQL table for the model.
+      * Old field name. The name of the old field.
+      * New field name. The name of the new field.
+    :param no_deep: If True, avoids to perform any operation that involves
+      the environment. Not used for now.
+    """
+    cr = env.cr
+    for model, table, old_field, new_field in field_spec:
+        if column_exists(cr, table, old_field):
+            rename_columns(cr, {table: [(old_field, new_field)]})
+        # Rename corresponding field entry
+        cr.execute("""
+            UPDATE ir_model_fields
+            SET name = %s
+            WHERE name = %s
+                AND model = %s
+            """, (new_field, old_field, model),
+        )
+        # Rename translations
+        cr.execute("""
+            UPDATE ir_translation
+            SET name = %s
+            WHERE name = %s
+                AND type = 'model'
+            """, (
+                "%s,%s" % (model, old_field),
+                "%s,%s" % (model, new_field),
+            ),
+        )
+        # Rename appearances on export profiles
+        # TODO: Rename when the field is part of a submodel (ex. m2one.field)
+        cr.execute("""
+            UPDATE ir_exports_line
+            SET name = %s
+            WHERE name = %s
+            """, (old_field, new_field),
+        )
+        # Rename appearances on filters
+        # Example of replaced domain: [['field', '=', self], ...]
+        # TODO: Rename when the field is part of a submodel (ex. m2one.field)
+        cr.execute("""
+            UPDATE ir_filters
+            SET domain = replace(domain, $$'%s'$$, $$'%s'$$)
+            WHERE model_id = %%s
+            """ % (old_field, new_field), (model, ),
+        )
+        # Examples of replaced contexts:
+        # {'group_by': ['field', 'other_field'], 'other_key':value}
+        # {'group_by': ['date_field:month']}
+        # {'other_key': value, 'group_by': ['other_field', 'field']}
+        cr.execute("""
+            UPDATE ir_filters
+            SET context = regexp_replace(
+                context,
+                $$'group_by':(.*)'%s(:day|:week|:month|:year){0,1}'(.*?\])$$,
+                $$'group_by':\1'%s\2'\3$$
+            )
+            WHERE model_id = %%s
+            """ % (old_field, new_field), (model, ),
+        )
 
 
 def rename_tables(cr, table_spec):
