@@ -462,6 +462,21 @@ def rename_fields(env, field_spec, no_deep=False):
             WHERE model_id = %%s
             """ % (old_field, new_field), (model, ),
         )
+        if table_exists(env.cr, 'mail_alias'):
+            # Rename appearances on mail alias
+            cr.execute("""
+                UPDATE mail_alias ma
+                SET alias_defaults =
+                    replace(alias_defaults, %(old_pattern)s, %(new_pattern)s)
+                FROM ir_model im
+                WHERE ma.alias_model_id = im.id
+                    AND im.model = %%s
+                    AND ma.alias_defaults ~ %(old_pattern)s
+                """ % {
+                    'old_pattern': "$$'%s'$$" % old_field,
+                    'new_pattern': "$$'%s'$$" % new_field,
+                }, (model, ),
+            )
 
 
 def rename_tables(cr, table_spec):
