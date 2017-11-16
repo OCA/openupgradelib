@@ -456,7 +456,8 @@ def rename_fields(env, field_spec, no_deep=False):
         # {'group_by': ['field', 'other_field'], 'other_key':value}
         # {'group_by': ['date_field:month']}
         # {'other_key': value, 'group_by': ['other_field', 'field']}
-        cr.execute("""
+        # {'group_by': ['other_field'],'col_group_by': ['field']}
+        cr.execute(r"""
             UPDATE ir_filters
             SET context = regexp_replace(
                 context, %(old_pattern)s, %(new_pattern)s
@@ -465,10 +466,10 @@ def rename_fields(env, field_spec, no_deep=False):
                 AND context ~ %(old_pattern)s
             """ % {
                 'old_pattern': (
-                    "$$'group_by':(.*)'%s(:day|:week|:month|:year)"
-                    "{0,1}'(.*?\])$$"
+                    r"$$('group_by'|'col_group_by'):([^\]]*)"
+                    r"'%s(:day|:week|:month|:year){0,1}'(.*?\])$$"
                 ) % old_field,
-                'new_pattern': "$$'group_by':\1'%s\2'\3$$" % new_field,
+                'new_pattern': r"$$\1:\2'%s\3'\4$$" % new_field,
             }, (model, ),
         )
         if table_exists(env.cr, 'mail_alias'):
