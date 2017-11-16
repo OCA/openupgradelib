@@ -444,9 +444,13 @@ def rename_fields(env, field_spec, no_deep=False):
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute("""
             UPDATE ir_filters
-            SET domain = replace(domain, $$'%s'$$, $$'%s'$$)
+            SET domain = replace(domain, %(old_pattern)s, %(new_pattern)s)
             WHERE model_id = %%s
-            """ % (old_field, new_field), (model, ),
+                AND domain ~ %(old_pattern)s
+            """ % {
+                'old_pattern': "$$'%s'$$" % old_field,
+                'new_pattern': "$$'%s'$$" % new_field,
+            }, (model, ),
         )
         # Examples of replaced contexts:
         # {'group_by': ['field', 'other_field'], 'other_key':value}
@@ -455,12 +459,17 @@ def rename_fields(env, field_spec, no_deep=False):
         cr.execute("""
             UPDATE ir_filters
             SET context = regexp_replace(
-                context,
-                $$'group_by':(.*)'%s(:day|:week|:month|:year){0,1}'(.*?\])$$,
-                $$'group_by':\1'%s\2'\3$$
+                context, %(old_pattern)s, %(new_pattern)s
             )
             WHERE model_id = %%s
-            """ % (old_field, new_field), (model, ),
+                AND context ~ %(old_pattern)s
+            """ % {
+                'old_pattern': (
+                    "$$'group_by':(.*)'%s(:day|:week|:month|:year)"
+                    "{0,1}'(.*?\])$$"
+                ) % old_field,
+                'new_pattern': "$$'group_by':\1'%s\2'\3$$" % new_field,
+            }, (model, ),
         )
         if table_exists(env.cr, 'mail_alias'):
             # Rename appearances on mail alias
