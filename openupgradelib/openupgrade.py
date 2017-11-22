@@ -444,24 +444,49 @@ def rename_fields(env, field_spec, no_deep=False):
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute("""
             UPDATE ir_filters
-            SET domain = replace(domain, $$'%s'$$, $$'%s'$$)
+            SET domain = replace(domain, %(old_pattern)s, %(new_pattern)s)
             WHERE model_id = %%s
-            """ % (old_field, new_field), (model, ),
+                AND domain ~ %(old_pattern)s
+            """ % {
+                'old_pattern': "$$'%s'$$" % old_field,
+                'new_pattern': "$$'%s'$$" % new_field,
+            }, (model, ),
         )
         # Examples of replaced contexts:
         # {'group_by': ['field', 'other_field'], 'other_key':value}
         # {'group_by': ['date_field:month']}
         # {'other_key': value, 'group_by': ['other_field', 'field']}
-        cr.execute("""
+        # {'group_by': ['other_field'],'col_group_by': ['field']}
+        cr.execute(r"""
             UPDATE ir_filters
             SET context = regexp_replace(
-                context,
-                $$'group_by':(.*)'%s(:day|:week|:month|:year){0,1}'(.*?\])$$,
-                $$'group_by':\1'%s\2'\3$$
+                context, %(old_pattern)s, %(new_pattern)s
             )
             WHERE model_id = %%s
-            """ % (old_field, new_field), (model, ),
+                AND context ~ %(old_pattern)s
+            """ % {
+                'old_pattern': (
+                    r"$$('group_by'|'col_group_by'):([^\]]*)"
+                    r"'%s(:day|:week|:month|:year){0,1}'(.*?\])$$"
+                ) % old_field,
+                'new_pattern': r"$$\1:\2'%s\3'\4$$" % new_field,
+            }, (model, ),
         )
+        if table_exists(env.cr, 'mail_alias'):
+            # Rename appearances on mail alias
+            cr.execute("""
+                UPDATE mail_alias ma
+                SET alias_defaults =
+                    replace(alias_defaults, %(old_pattern)s, %(new_pattern)s)
+                FROM ir_model im
+                WHERE ma.alias_model_id = im.id
+                    AND im.model = %%s
+                    AND ma.alias_defaults ~ %(old_pattern)s
+                """ % {
+                    'old_pattern': "$$'%s'$$" % old_field,
+                    'new_pattern': "$$'%s'$$" % new_field,
+                }, (model, ),
+            )
 
 
 def rename_tables(cr, table_spec):
