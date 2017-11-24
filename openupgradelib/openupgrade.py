@@ -160,6 +160,7 @@ __all__ = [
     'date_to_datetime_tz',
     'lift_constraints',
     'rename_property',
+    'delete_template_translations',
 ]
 
 
@@ -1668,3 +1669,26 @@ def rename_property(cr, model, old_name, new_name):
     cr.execute(
         "update ir_property set name=%s where fields_id in %s",
         (new_name, field_ids))
+
+def delete_template_translations(cr, module, model, xml_ids):
+    """Cleanup translations of updated templates with noupdate true.
+
+    :param module: module name
+    :param model: model name
+    :param xml_ids: a tuple of xml record IDs
+    """
+    if not isinstance(xml_ids, tuple):
+        do_raise("XML IDs %s must be a tuple!" % (xml_ids))
+
+    cr.execute("""
+        SELECT res_id
+        FROM ir_model_data
+        WHERE module = %s AND model = %s AND name in %s
+    """, (module, model, xml_ids,))
+    record_ids = tuple([r[0] for r in cr.fetchall()])
+
+    query = ("""
+        DELETE FROM ir_translation
+        WHERE module = %s AND name LIKE %s AND res_id IN %s
+    """)
+    logged_query(cr, query, (module, model + ',%', record_ids,))
