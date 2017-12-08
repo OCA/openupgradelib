@@ -160,7 +160,7 @@ __all__ = [
     'date_to_datetime_tz',
     'lift_constraints',
     'rename_property',
-    'delete_template_translations',
+    'delete_record_translations',
 ]
 
 
@@ -1670,25 +1670,23 @@ def rename_property(cr, model, old_name, new_name):
         "update ir_property set name=%s where fields_id in %s",
         (new_name, field_ids))
 
-def delete_template_translations(cr, module, model, xml_ids):
-    """Cleanup translations of updated templates with noupdate true.
+def delete_record_translations(cr, module, xml_ids):
+    """Cleanup translations of specific records in a module.
 
     :param module: module name
-    :param model: model name
-    :param xml_ids: a tuple of xml record IDs
+    :param xml_ids: a tuple or list of xml record IDs
     """
-    if not isinstance(xml_ids, tuple):
-        do_raise("XML IDs %s must be a tuple!" % (xml_ids))
+    if not isinstance(xml_ids, (list, tuple)):
+        do_raise("XML IDs %s must be a tuple or list!" % (xml_ids))
 
     cr.execute("""
-        SELECT res_id
+        SELECT model, res_id
         FROM ir_model_data
-        WHERE module = %s AND model = %s AND name in %s
-    """, (module, model, xml_ids,))
-    record_ids = tuple([r[0] for r in cr.fetchall()])
-
-    query = ("""
-        DELETE FROM ir_translation
-        WHERE module = %s AND name LIKE %s AND res_id IN %s
-    """)
-    logged_query(cr, query, (module, model + ',%', record_ids,))
+        WHERE module = %s AND name in %s
+    """, (module, tuple(xml_ids),))
+    for row in cr.fetchall():
+        query = ("""
+            DELETE FROM ir_translation
+            WHERE module = %s AND name LIKE %s AND res_id = %s;
+        """)
+        logged_query(cr, query, (module, row[0] + ',%', row[1],))
