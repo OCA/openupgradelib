@@ -161,6 +161,7 @@ __all__ = [
     'lift_constraints',
     'rename_property',
     'delete_record_translations',
+    'disable_invalid_filters',
 ]
 
 
@@ -1690,3 +1691,71 @@ def delete_record_translations(cr, module, xml_ids):
             WHERE module = %s AND name LIKE %s AND res_id = %s;
         """)
         logged_query(cr, query, (module, row[0] + ',%', row[1],))
+
+def disable_invalid_filters(env):
+    """It analyzes all the existing active filters to check if they are still
+    correct. If not, they are disabled for avoiding errors when clicking on
+    them, or worse, if they are default filters when opening the model/action.
+
+    To be run at the base end-migration script for having a general scope. Only
+    assured to work on >= v8.
+
+    :param env: Environment parameter.
+    """
+    try:
+        from odoo.tools.safe_eval import safe_eval
+    except ImportError:
+        from openerp.tools.safe_eval import safe_eval
+    import time
+
+    def format_message(f):
+        msg = "FILTER DISABLED: "
+        if f.user_id:
+            msg += "Filter '%s' for user '%s'" % (f.name, f.user_id.name)
+        else:
+            msg += "Global Filter '%s'" % f.name
+        msg += " for model '%s' has been disabled " % f.model_id
+        return msg
+
+    filters = env['ir.filters'].search([('domain', '!=', '[]')])
+    for f in filters:
+        if f.model_id not in env:
+            continue  # Obsolete or invalid model
+        model = env[f.model_id]
+        columns = (
+            getattr(model, '_columns', False) or getattr(model, '_fields')
+        )
+        # DOMAIN
+        try:
+            # Strange artifact found in a filter
+            domain = f.domain.replace('%%', '%')
+            model.search(
+                safe_eval(domain, {'time': time, 'uid': env.uid}),
+                limit=1,
+            )
+        except Exception:
+            logger.warning(
+                format_message(f) + "as it contains an invalid domain."
+            )
+            f.active = False
+            continue
+        # CONTEXT GROUP BY
+        context = safe_eval(f.context, {'time': time, 'uid': env.uid})
+        keys = ['group_by', 'col_group_by']
+        for key in keys:
+            if not context.get(key):
+                continue
+            g = context[key]
+            if not g:
+                continue
+            if isinstance(g, basestring):
+                g = [g]
+            for field_expr in g:
+                field = field_expr.split(':')[0]  # Remove date specifiers
+                if not columns.get(field):
+                    logger.warning(
+                        format_message(f) +
+                        "as it contains an invalid %s." % key
+                    )
+                    f.active = False
+                    break
