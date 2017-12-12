@@ -5,9 +5,12 @@
 """This module provides simple tools for OpenUpgrade migration, specific for
 the 8.0 -> 9.0 migration.
 """
+import logging
+import threading
+
+from psycopg2.extensions import AsIs
 
 from openupgradelib import openupgrade
-import logging
 
 
 def convert_binary_field_to_attachment(env, field_spec):
@@ -30,7 +33,7 @@ def convert_binary_field_to_attachment(env, field_spec):
     :param env: Odoo environment
     :param field_spec: A dictionary with the ORM model name as key, and as
         dictionary values a tuple with:
-        
+
         * field name to be converted as attachment as first element.
         * SQL column name that contains actual data as second element. If
           the second element is None, then the column name is taken
@@ -66,3 +69,36 @@ def convert_binary_field_to_attachment(env, field_spec):
             env.cr.execute("ALTER TABLE {} DROP COLUMN {}".format(
                 model._table, column,
             ))
+
+
+def replace_account_types(env, type_spec, unlink=True):
+    """ Replace old account types with their replacements. The old account
+    type is allowed not to exist anymore, except when running unit tests.
+    :param type_spec: list of tuples (xmlid of old account.account.type, \
+xmlid of new account.account.type)
+    :param unlink: attempt to unlink the old account type
+    """
+    logger = logging.getLogger('OpenUpgrade')
+    for old_type, new_type in type_spec:
+        try:
+            type8 = env.ref(old_type)
+        except ValueError:
+            if getattr(threading.currentThread(), 'testing', False):
+                raise
+            continue
+
+        type9 = env.ref(new_type)
+        for table in ('account_account',
+                      'account_account_template',
+                      'account_move_line'):
+            env.cr.execute(
+                "UPDATE %s SET user_type_id = %s WHERE user_type_id = %s",
+                (AsIs(table), type9.id, type8.id))
+        if unlink:
+            with env.cr.savepoint():
+                try:
+                    type8.unlink()
+                except Exception as e:
+                    logger.info(
+                        'Could not remove account type %s: %s',
+                        old_type, e)
