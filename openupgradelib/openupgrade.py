@@ -1390,9 +1390,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                             cr, uid or SUPERUSER_ID, context or {})
                         if use_env2 else cr, version)
                 except Exception as e:
-                    message = str(e)
-                    if sys.version_info[0] == 2:
-                        message = message.decode('utf8')
+                    message = repr(e) if sys.version_info[0] == 2 else str(e)
                     logger.error(
                         "%s: error in migration script %s: %s",
                         module, filename, message)
