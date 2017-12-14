@@ -1696,7 +1696,7 @@ def disable_invalid_filters(env):
     them, or worse, if they are default filters when opening the model/action.
 
     To be run at the base end-migration script for having a general scope. Only
-    assured to work on >= v8.
+    assured to work on > v8.
 
     :param env: Environment parameter.
     """
@@ -1705,6 +1705,10 @@ def disable_invalid_filters(env):
     except ImportError:
         from openerp.tools.safe_eval import safe_eval
     import time
+    try:
+        basetring
+    except:  # For Python 3 compatibility
+        basestring = str
 
     def format_message(f):
         msg = "FILTER DISABLED: "
