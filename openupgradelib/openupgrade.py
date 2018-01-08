@@ -1879,3 +1879,41 @@ def add_fields(env, field_spec):
                 %s, %s, %s
             )""", (name1, module, 'ir.model.fields', field_id),
         )
+
+
+def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
+    """
+    Use case: update module field in general tables for fields that moved
+    from one module to another
+
+    :param cr:
+    :param model: model name
+    :param moved_fields: list of moved fields
+    :param old_module: previous module of the field
+    :param new_module: new module of the field
+    :return:
+    """
+    """ """
+
+    if not isinstance(moved_fields, (list, tuple)):
+        do_raise("moved_fields %s must be a tuple or list!" % (moved_fields))
+    cr.execute(
+        """
+        SELECT id
+        FROM ir_model_fields
+        WHERE model = %s AND name in %s
+        """, (model, moved_fields))
+    field_ids = tuple([r[0] for r in cr.fetchall()])
+
+    # update ir_model_data, the subselect allows to avoid duplicated records
+    query = ("UPDATE ir_model_data SET module = %s "
+             "WHERE module = %s AND res_id IN %s AND name NOT IN "
+             "(SELECT name FROM ir_model_data WHERE module = %s)")
+    logged_query(
+        cr, query, (new_module, old_module, field_ids, new_module)
+    )
+
+    # update ir_translation
+    query = ("UPDATE ir_translation SET module = %s "
+             "WHERE module = %s AND res_id IN %s")
+    logged_query(cr, query, (new_module, old_module, field_ids))
