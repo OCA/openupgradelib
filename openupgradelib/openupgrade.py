@@ -1742,7 +1742,15 @@ def disable_invalid_filters(env):
             f.active = False
             continue
         # CONTEXT GROUP BY
-        context = safe_eval(f.context, {'time': time, 'uid': env.uid})
+        try:
+            context = safe_eval(f.context, {'time': time, 'uid': env.uid})
+        except Exception:
+            logger.warning(
+                format_message(f) + "as it contains an invalid context %s.",
+                f.context
+            )
+            f.active = False
+            continue
         keys = ['group_by', 'col_group_by']
         for key in keys:
             if not context.get(key):
