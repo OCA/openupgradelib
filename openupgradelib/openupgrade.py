@@ -543,16 +543,16 @@ def rename_models(cr, model_spec):
         cr.execute(
             'UPDATE ir_model_data SET name=%s '
             "WHERE name=%s AND model = 'ir.model'",
-            (
-                'model_' + _new, 'model_' + _old,
-            )
+            ('model_' + _new, 'model_' + _old),
         )
         cr.execute(
-            'UPDATE ir_model_data SET name=regexp_replace(name, %s, %s) '
-            "WHERE name like %s AND model = 'ir.model.fields'",
-            (
-                '^field_' + _old, 'field_' + _new, 'field_' + _old + '_%',
-            )
+            """UPDATE ir_model_data imd
+            SET name = 'field_' || '%s' || '_' || imf.name
+            FROM ir_model_fields imf
+            WHERE imd.model = 'ir.model.fields'
+                AND imd.name = 'field_' || '%s' || '_' || imf.name
+                AND imf.model = %s""",
+            (AsIs(_new), AsIs(_old), old),
         )
         cr.execute('UPDATE ir_attachment SET res_model = %s '
                    'WHERE res_model = %s', (new, old,))
