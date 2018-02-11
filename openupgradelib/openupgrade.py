@@ -771,7 +771,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
         if use_orm:
             for res_id in ids:
                 # Iterating over ids here as a workaround for lp:1131653
-                if isinstance(pool, api.Environment):
+                if version_info[0] >= 8:
                     obj.write({field: value})
                 else:
                     obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
@@ -808,13 +808,17 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 cr.execute(query, (params[0], sub_ids))
 
     for model in default_spec.keys():
-        obj = pool.get(model, False)
-        if obj == False:
-            do_raise(
-                "Migration: error setting default, no such model: %s" % model)
+        if version_info[0] >= 8:
+            obj = pool.get(model, False)
+        else:
+            obj = pool.get(model)
+            if not obj or obj == False: ## is this the same: obj not vs obj false?
+                do_raise(
+                    "Migration: error setting default, no such model: %s" % model)
+                    
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
-            if isinstance(pool, api.Environment):
+            if version_info[0] >= 8:
                 ids = obj.search(domain).ids
             else:
                 ids = obj.search(cr, SUPERUSER_ID, domain)
