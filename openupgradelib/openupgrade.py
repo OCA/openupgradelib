@@ -818,7 +818,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                     
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
-            if version_info[0] >= 8:
+            if version_info[0] > 8:
                 ids = obj.search(domain).ids
             else:
                 ids = obj.search(cr, SUPERUSER_ID, domain)
