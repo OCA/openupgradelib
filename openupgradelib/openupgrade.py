@@ -532,12 +532,28 @@ def rename_models(cr, model_spec):
     for (old, new) in model_spec:
         logger.info("model %s: renaming to %s",
                     old, new)
+        _old = old.replace('.', '_')
+        _new = new.replace('.', '_')
         cr.execute('UPDATE ir_model SET model = %s '
                    'WHERE model = %s', (new, old,))
         cr.execute('UPDATE ir_model_fields SET relation = %s '
                    'WHERE relation = %s', (new, old,))
         cr.execute('UPDATE ir_model_data SET model = %s '
                    'WHERE model = %s', (new, old,))
+        cr.execute(
+            'UPDATE ir_model_data SET name=%s '
+            "WHERE name=%s AND model = 'ir.model'",
+            ('model_' + _new, 'model_' + _old),
+        )
+        cr.execute(
+            """UPDATE ir_model_data imd
+            SET name = 'field_' || '%s' || '_' || imf.name
+            FROM ir_model_fields imf
+            WHERE imd.model = 'ir.model.fields'
+                AND imd.name = 'field_' || '%s' || '_' || imf.name
+                AND imf.model = %s""",
+            (AsIs(_new), AsIs(_old), old),
+        )
         cr.execute('UPDATE ir_attachment SET res_model = %s '
                    'WHERE res_model = %s', (new, old,))
         cr.execute('UPDATE ir_model_fields SET model = %s '
