@@ -130,6 +130,7 @@ __all__ = [
     'migrate',
     'logging',
     'load_data',
+    'add_fields',
     'copy_columns',
     'rename_columns',
     'rename_fields',
@@ -1685,6 +1686,7 @@ def rename_property(cr, model, old_name, new_name):
         "update ir_property set name=%s where fields_id in %s",
         (new_name, field_ids))
 
+
 def delete_record_translations(cr, module, xml_ids):
     """Cleanup translations of specific records in a module.
 
@@ -1705,6 +1707,7 @@ def delete_record_translations(cr, module, xml_ids):
             WHERE module = %s AND name LIKE %s AND res_id = %s;
         """)
         logged_query(cr, query, (module, row[0] + ',%', row[1],))
+
 
 def disable_invalid_filters(env):
     """It analyzes all the existing active filters to check if they are still
@@ -1785,3 +1788,91 @@ def disable_invalid_filters(env):
                     )
                     f.active = False
                     break
+
+
+def add_fields(env, field_spec):
+    """This method adds all the needed stuff for having a new field populated in
+    the DB (SQL column, ir.model.fields entry, ir.model.data entry...).
+
+    It's intended for being run in pre-migration scripts for pre-populating
+    fields that are going to be declared later in the module.
+
+    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo always
+    add the XML-ID entry:
+    https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
+    odoo/addons/base/models/ir_model.py#L794-L802
+
+    :param: field_spec: List of tuples with the following expected elements
+      for each tuple:
+
+      * field name
+      * model name
+      * SQL table name: Put `False` if the model is already loaded in the
+        registry and thus the SQL table name can be obtained that way.
+      * field type: binary, boolean, char, date, datetime, float, html, integer,
+        many2many, many2one, monetary, one2many, reference, selection, text,
+        serialized. The list can vary depending on Odoo version or custom added
+        field types.
+      * SQL field type: If the field type is custom or it's one of the special
+        cases (see below), you need to indicate here the SQL type to use
+        (from the valid PostgreSQL types):
+        https://www.postgresql.org/docs/9.6/static/datatype.html
+      * module name: for adding the XML-ID entry.
+    """
+    sql_type_mapping = {
+        'binary': 'bytea',  # If there's attachment, no SQL. Force it manually
+        'boolean': 'bool',
+        'char': 'varchar',  # Force it manually if there's size limit
+        'date': 'date',
+        'datetime': 'timestamp',
+        'float': 'numeric',  # Force manually to double precision if no digits
+        'html': 'text',
+        'integer': 'int4',
+        'many2many': False,  # No need to create SQL column
+        'many2one': 'int4',
+        'monetary': 'numeric',
+        'one2many': False,  # No need to create SQL column
+        'reference': 'varchar',
+        'selection': 'varchar',  # Can be sometimes integer. Force it manually
+        'text': 'text',
+        'serialized': 'text',
+    }
+    IrModel = env['ir.model']
+    for vals in field_spec:
+        field_name, model_name, table_name, field_type, sql_type, module = vals
+        # Add SQL column
+        if not table_name:
+            table_name = env[model_name]._table
+        sql_type = sql_type_mapping.get(field_type)
+        if sql_type:
+            logged_query(
+                env.cr, """ALTER TABLE %s ADD COLUMN %s %s""",
+                (AsIs(table_name), AsIs(field_name), AsIs(sql_type)),
+            )
+        # Add ir.model.fields entry
+        model = IrModel.search([('model', '=', model_name)])
+        if not model:
+            continue
+        logged_query(
+            env.cr, """
+            INSERT INTO ir_model_fields (
+                model_id, model, name, field_description, ttype, state
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s
+            ) RETURNING id""",
+            (model.id, model_name, field_name, 'OU', field_type, 'base'),
+        )
+        field_id = env.cr.fetchone()[0]
+        # Add ir.model.data entry
+        if not module:
+            continue
+        name1 = 'field_%s_%s' % (model_name.replace('.', '_'), field_name)
+        logged_query(
+            env.cr, """
+            INSERT INTO ir_model_data (
+                name, date_init, date_update, module, model, res_id
+            ) VALUES (
+                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'), 
+                %s, %s, %s
+            )""", (name1, module, 'ir.model.fields', field_id),
+        )
