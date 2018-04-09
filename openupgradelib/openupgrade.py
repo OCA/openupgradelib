@@ -1837,7 +1837,6 @@ def add_fields(env, field_spec):
         'text': 'text',
         'serialized': 'text',
     }
-    IrModel = env['ir.model']
     for vals in field_spec:
         field_name, model_name, table_name, field_type, sql_type, module = vals
         # Add SQL column
@@ -1850,9 +1849,13 @@ def add_fields(env, field_spec):
                 (AsIs(table_name), AsIs(field_name), AsIs(sql_type)),
             )
         # Add ir.model.fields entry
-        model = IrModel.search([('model', '=', model_name)])
-        if not model:
+        env.cr.execute(
+            "SELECT id FROM ir_model WHERE model = %s", (model_name, ),
+        )
+        row = env.cr.fetchone()
+        if not row:
             continue
+        model_id = row[0]
         logged_query(
             env.cr, """
             INSERT INTO ir_model_fields (
@@ -1860,7 +1863,7 @@ def add_fields(env, field_spec):
             ) VALUES (
                 %s, %s, %s, %s, %s, %s
             ) RETURNING id""",
-            (model.id, model_name, field_name, 'OU', field_type, 'base'),
+            (model_id, model_name, field_name, 'OU', field_type, 'base'),
         )
         field_id = env.cr.fetchone()[0]
         # Add ir.model.data entry
