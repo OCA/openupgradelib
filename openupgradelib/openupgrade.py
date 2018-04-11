@@ -146,6 +146,7 @@ __all__ = [
     'logged_query',
     'column_exists',
     'table_exists',
+    'update_module_moved_fields',
     'update_module_names',
     'add_ir_model_fields',
     'get_legacy_name',
@@ -1882,38 +1883,67 @@ def add_fields(env, field_spec):
 
 
 def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
-    """
-    Use case: update module field in general tables for fields that moved
-    from one module to another
+    """Update module for field definition in general tables that have been moved
+    from one module to another.
 
-    :param cr:
+    NOTE: This is not needed in >=v12, as now Odoo always add the XML-ID entry:
+    https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
+    odoo/addons/base/models/ir_model.py#L794-L802
+
+    :param cr: Database cursor
     :param model: model name
     :param moved_fields: list of moved fields
-    :param old_module: previous module of the field
-    :param new_module: new module of the field
-    :return:
+    :param old_module: previous module of the fields
+    :param new_module: new module of the fields
     """
-    """ """
-
+    if version_info[0] <= 7:
+        do_raise("This only works for Odoo version >=v8")
+    if version_info[0] >= 12:
+        do_raise("This should be used only for Odoo version <v12")
     if not isinstance(moved_fields, (list, tuple)):
-        do_raise("moved_fields %s must be a tuple or list!" % (moved_fields))
-    cr.execute(
-        """
-        SELECT id
-        FROM ir_model_fields
-        WHERE model = %s AND name in %s
-        """, (model, moved_fields))
-    field_ids = tuple([r[0] for r in cr.fetchall()])
-
-    # update ir_model_data, the subselect allows to avoid duplicated records
-    query = ("UPDATE ir_model_data SET module = %s "
-             "WHERE module = %s AND res_id IN %s AND name NOT IN "
-             "(SELECT name FROM ir_model_data WHERE module = %s)")
-    logged_query(
-        cr, query, (new_module, old_module, field_ids, new_module)
+        do_raise("moved_fields %s must be a tuple or list!" % moved_fields)
+    logger.info(
+        "Moving fields %s in model %s from module '%s' to module '%s'",
+        ', '.join(moved_fields), model, old_module, new_module,
     )
-
-    # update ir_translation
-    query = ("UPDATE ir_translation SET module = %s "
-             "WHERE module = %s AND res_id IN %s")
-    logged_query(cr, query, (new_module, old_module, field_ids))
+    vals = {
+        'new_module': new_module,
+        'old_module': old_module,
+        'model': model,
+        'fields': tuple(moved_fields),
+    }
+    # update xml-id entries
+    logged_query(
+        cr, """
+        UPDATE ir_model_data imd
+        SET module = %(new_module)s
+        FROM ir_model_fields imf
+        WHERE
+            imf.model = %(model)s AND
+            imf.name IN %(fields)s AND
+            imd.module = %(old_module)s AND
+            imd.res_id = imf.id AND
+            imd.id NOT IN (
+               SELECT id FROM ir_model_data WHERE module = %(new_module)s
+            )
+        """, vals,
+    )
+    # update ir_translation - it covers both <=v8 through type='field' and
+    # >=v9 through type='model' + name
+    logged_query(
+        cr, """
+        UPDATE ir_translation it
+        SET module = %(new_module)s
+        FROM ir_model_fields imf
+        WHERE
+            imf.model = %(model)s AND
+            imf.name IN %(fields)s AND
+            it.res_id = imf.id AND
+            it.module = %(old_module)s AND ((
+                it.name LIKE 'ir.model.fields,field_%%' AND
+                it.type = 'model'
+            ) OR (
+                it.type = 'field'
+            ))
+        """, vals,
+    )
