@@ -564,6 +564,24 @@ def rename_models(cr, model_spec):
                    "name=%s || substr(name, strpos(name, ',')) "
                    'where name like %s',
                    (new, old + ',%'),)
+        # Handle properties that reference to this model
+        cr.execute("SELECT id FROM ir_model_fields "
+                   "WHERE relation = %s AND ttype = 'many2one'", (old, ))
+        field_ids = [x[0] for x in cr.fetchall()]
+        if field_ids:
+            logged_query(
+                cr, """
+                UPDATE ir_property
+                SET value_reference = regexp_replace(
+                    value_reference, %(old_pattern)s, %(new_pattern)s
+                )
+                WHERE fields_id IN %(field_ids)s
+                AND value_reference ~ %(old_pattern)s""", {
+                    'field_ids': tuple(field_ids),
+                    'old_pattern': r"^%s,[ ]*([0-9]*)" % old,
+                    'new_pattern': r"^%s,\1" % new,
+                },
+            )
         if is_module_installed(cr, 'mail'):
             # fortunately, the data model didn't change up to now
             cr.execute(
