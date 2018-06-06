@@ -538,8 +538,6 @@ def rename_models(cr, model_spec):
         _new = new.replace('.', '_')
         cr.execute('UPDATE ir_model SET model = %s '
                    'WHERE model = %s', (new, old,))
-        cr.execute('UPDATE ir_model_fields SET relation = %s '
-                   'WHERE relation = %s', (new, old,))
         cr.execute('UPDATE ir_model_data SET model = %s '
                    'WHERE model = %s', (new, old,))
         cr.execute(
@@ -560,14 +558,16 @@ def rename_models(cr, model_spec):
                    'WHERE res_model = %s', (new, old,))
         cr.execute('UPDATE ir_model_fields SET model = %s '
                    'WHERE model = %s', (new, old,))
-        cr.execute('UPDATE ir_translation set '
+        cr.execute('UPDATE ir_translation SET '
                    "name=%s || substr(name, strpos(name, ',')) "
-                   'where name like %s',
+                   'WHERE name LIKE %s',
                    (new, old + ',%'),)
         # Handle properties that reference to this model
         cr.execute("SELECT id FROM ir_model_fields "
                    "WHERE relation = %s AND ttype = 'many2one'", (old, ))
         field_ids = [x[0] for x in cr.fetchall()]
+        cr.execute('UPDATE ir_model_fields SET relation = %s '
+                   'WHERE relation = %s', (new, old,))
         if field_ids:
             logged_query(
                 cr, """
