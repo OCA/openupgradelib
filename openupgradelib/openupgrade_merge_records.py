@@ -52,8 +52,9 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id):
         except KeyError:
             continue
         field_name = field.name
-        if not model._auto or not model._fields.get(field_name):
-            continue  # Discard SQL views + invalid fields
+        if (not model._auto or not model._fields.get(field_name) or
+                not field.store):
+            continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
             records.write({field_name: target_record_id})
@@ -123,8 +124,9 @@ def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id):
         except KeyError:
             continue
         field_name = field.name
-        if not model._auto or not model._fields.get(field_name):
-            continue  # Discard SQL views + invalid fields
+        if (not model._auto or not model._fields.get(field_name) or
+                not field.store):
+            continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
             records.write({
@@ -181,8 +183,9 @@ def _change_reference_refs_orm(env, model_name, record_ids, target_record_id):
         except KeyError:
             continue
         field_name = field.name
-        if not model._auto or not model._fields.get(field_name):
-            continue  # Discard SQL views + invalid fields
+        if (not model._auto or not model._fields.get(field_name) or
+                not field.store):
+            continue  # Discard SQL views + invalid fields + non-stored fields
         expr = ['%s,%s' % (model_name, x) for x in record_ids]
         domain = [(field_name, '=', x) for x in expr]
         domain[0:0] = ['|' for x in range(len(domain) - 1)]
