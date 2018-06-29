@@ -50,21 +50,31 @@ def convert_binary_field_to_attachment(env, field_spec):
                 "Converting to attachment field {} from model {} stored in "
                 "column {}".format(field, model_name, column)
             )
-            env.cr.execute(
-                """SELECT id, {} FROM {};""".format(column, model._table)
-            )
-            for row in env.cr.fetchall():
-                data = bytes(row[1])
-                if not data or data == 'None':
-                    continue
-                attachment_model.create({
-                    'name': field,
-                    'res_model': model_name,
-                    'res_field': field,
-                    'res_id': row[0],
-                    'type': 'binary',
-                    'datas': data,
-                })
+            last_id = 0
+            while True:
+                env.cr.execute(
+                    """SELECT id, {0} FROM {1} WHERE {0} IS NOT NULL AND id > {2}
+                    ORDER BY id LIMIT 500;
+                    """.format(column, model._table, last_id)
+                )
+                rows = env.cr.fetchall()
+                if not rows:
+                    break
+                logger.info(
+                    "  converting {0} items starting after {1}..."
+                    "".format(len(rows), last_id))
+                for row in rows:
+                    last_id = row[0]
+                    data = bytes(row[1])
+                    if data and data != 'None':
+                        attachment_model.create({
+                            'name': field,
+                            'res_model': model_name,
+                            'res_field': field,
+                            'res_id': last_id,
+                            'type': 'binary',
+                            'datas': data,
+                        })
             # Remove source column for cleaning the room
             env.cr.execute("ALTER TABLE {} DROP COLUMN {}".format(
                 model._table, column,
