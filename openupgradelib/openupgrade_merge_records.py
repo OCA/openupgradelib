@@ -305,6 +305,14 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
 
 def _delete_records_sql(env, model_name, record_ids):
     logged_query(
+        env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
+        (env[model_name]._table, tuple(record_ids)),
+    )
+    logged_query(
+        env.cr, "DELETE FROM ir_attachment WHERE res_model = %s AND id IN %s",
+        (env[model_name]._table, tuple(record_ids)),
+    )
+    logged_query(
         env.cr, "DELETE FROM %s WHERE id IN %s",
         (AsIs(env[model_name]._table), tuple(record_ids)),
     )
