@@ -251,6 +251,8 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     vals = {}
     o2m_changes = 0
     for field in fields:
+        if not field.store or field.compute or field.related:
+            continue  # don't do anything on these cases
         op = field_spec.get(field.name, False)
         l = all_records.mapped(field.name)
         if field.type in ('char', 'text', 'html'):
