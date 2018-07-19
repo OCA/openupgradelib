@@ -967,7 +967,7 @@ def update_module_names(cr, namespec, merge_modules=False):
         # to auto-remove related resources
         query = ("UPDATE ir_model_data "
                  "SET name = name || '_openupgrade_' || id, "
-                 "module = %s"
+                 "module = %s "
                  "WHERE module = %s")
         logged_query(cr, query, (new_name, old_name))
         query = ("UPDATE ir_module_module_dependency SET name = %s "
