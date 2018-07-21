@@ -3,6 +3,32 @@
 History
 -------
 
+2.0.0 (2018-07-21)
+------------------
+* [FIX] set_defaults: New api adaptation
+* [RVR] Python 3 compatibility
+* [IMP] load_data: support update mode where we never try to create records
+* [ADD] rename_fields: New method for renaming completely fields
+* [ADD] replace_account_types: Replace account types for Odoo 9.0
+* [ADD] delete_template_translations: New method for deleting translations of changed templates with noupdate true
+* [ADD] disable_invalid_filters
+* [FIX] Fix logging with non-ascii characters in exception
+* [IMP] rename_models: rename field xmlids
+* [ADD] add_fields: Add a field definition
+* [ADD] update_module_moved_fields: New method for updating module field when moving a field from one module to another
+* [IMP] rename_models: Handle properties that reference to the old model
+* [IMP] logged_query: Allow to not logging output if no records affected
+* [ADD] merge_records: New method for merging several records into a target one
+* [IMP] convert_binary_field_to_attachment: Conversion to attachment on large datasets
+
+1.3.1 (2017-09-01)
+------------------
+* [FIX] when renaming/deleting a module, rename/delete its xmlid
+* Added suggestion for latest version install in docs
+* [FIX] support versions without _fields
+* [FIX] m2o_to_x2m: Compatible with Odoo v10
+
+
 1.3.0 (2017-05-01)
 ------------------
 * [IMP] rename_models: Add warning on docstring
