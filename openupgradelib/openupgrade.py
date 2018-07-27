@@ -978,6 +978,14 @@ def update_module_names(cr, namespec, merge_modules=False):
                      "WHERE module = %s")
             logged_query(cr, query, (new_name, old_name))
         if merge_modules:
+            # Conserve old_name's state if new_name is uninstalled
+            logged_query(
+                cr,
+                "UPDATE ir_module_module m1 SET state=m2.state "
+                "FROM ir_module_module m2 WHERE m1.name=%s AND "
+                "m2.name=%s AND m1.state='uninstalled'",
+                (new_name, old_name),
+            )
             query = "DELETE FROM ir_module_module WHERE name = %s"
             logged_query(cr, query, [old_name])
             logged_query(
