@@ -164,6 +164,7 @@ __all__ = [
     'rename_property',
     'delete_record_translations',
     'disable_invalid_filters',
+    'delete_records_safely_by_xml_id',
 ]
 
 
@@ -1976,3 +1977,18 @@ def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
             ))
         """, vals,
     )
+
+
+def delete_records_safely_by_xml_id(env, xml_ids):
+    """This removes in the safest possible way the records whose XML-IDs are
+    passed as argument.
+
+    :param xml_ids: List of XML-ID string identifiers of the records to remove.
+    """
+    for xml_id in xml_ids:
+        logger.debug('Deleting record for XML-ID %s', xml_id)
+        try:
+            with env.cr.savepoint():
+                env.ref(xml_id).exists().unlink()
+        except Exception as e:
+            logger.error('Error deleting XML-ID %s: %s', xml_id, repr(e))
