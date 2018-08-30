@@ -580,7 +580,7 @@ def rename_models(cr, model_spec):
                 AND value_reference ~ %(old_pattern)s""", {
                     'field_ids': tuple(field_ids),
                     'old_pattern': r"^%s,[ ]*([0-9]*)" % old,
-                    'new_pattern': r"^%s,\1" % new,
+                    'new_pattern': r"%s,\1" % new,
                 },
             )
         if is_module_installed(cr, 'mail'):
