@@ -256,11 +256,13 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         op = field_spec.get(field.name, False)
         l = all_records.mapped(field.name)
         if field.type in ('char', 'text', 'html'):
-            op = op or 'merge'
+            if not op:
+                op = 'other' if field.type == 'char' else 'merge'
             if op == 'merge':
                 vals[field.name] = ' | '.join(l)
         elif field.type in ('integer', 'float', 'monetary'):
-            op = op or 'sum'
+            if not op:
+                op = 'other' if field.type == 'integer' else 'sum'
             if op == 'sum':
                 vals[field.name] = sum(l)
             elif op == 'avg':
