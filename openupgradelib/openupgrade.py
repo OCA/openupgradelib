@@ -51,6 +51,7 @@ except ImportError:
 
 from psycopg2.extensions import AsIs
 from lxml import etree
+import json
 from . import openupgrade_tools
 
 core = None
@@ -1593,6 +1594,43 @@ def convert_field_to_html(cr, table, field_name, html_field_name):
                 'table': table,
             }, (plaintext2html(row[1]), row[0])
         )
+
+
+def convert_text_to_serialized(
+        cr, table, text_field_name, serialized_field_name=None):
+    """
+    Convert Text field value to Serialized value.
+    """
+    if not serialized_field_name:
+        serialized_field_name = text_field_name
+    select_query = """
+SELECT
+    id,
+    %(text_field_name)s
+FROM %(table)s
+WHERE %(text_field_name)s IS NOT NULL
+"""
+    cr.execute(
+        select_query % {
+            'text_field_name': text_field_name,
+            'table': table,
+        }
+    )
+    update_query = """
+UPDATE %(table)s
+    SET %(serialized_field_name)s = %%(field_value)s
+    WHERE id = %(record_id)d
+"""
+    for row in cr.fetchall():
+        # Fill in the field_value later because it needs escaping
+        row_update_query = update_query % {
+            'serialized_field_name': serialized_field_name,
+            'table': table,
+            'record_id': row[0]}
+        logged_query(
+            cr, row_update_query, {
+                'field_value': json.dumps(row[1])
+         })
 
 
 def date_to_datetime_tz(
