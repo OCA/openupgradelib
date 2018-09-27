@@ -53,8 +53,8 @@ script:
     - git reset --hard origin/10.0
     - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
     - ./odoo-bin -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
-    # 10.0 -> 11.0 (switch to Python 3.5)
-    - source ~/virtualenv/python3.5/bin/activate
+    # 10.0 -> 11.0 (switch to Python 3.6)
+    - source ~/virtualenv/python3.6/bin/activate
     - pushd /home/travis/build/OCA/openupgradelib && python setup.py install && popd
     - pip install psycopg2-binary
     - git reset --hard origin/11.0

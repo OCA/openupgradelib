@@ -854,14 +854,9 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 cr.execute(query, (params[0], sub_ids))
 
     for model in default_spec.keys():
-        if api and isinstance(pool, api.Environment):
+        try:
             obj = pool[model]
-        else:
-            try:
-                obj = pool[model]
-            except KeyError:
-                obj = None
-        if obj is None:
+        except KeyError:
             do_raise(
                 "Migration: error setting default, no such model: %s" % model)
 
