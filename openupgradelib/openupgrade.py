@@ -81,7 +81,6 @@ else:
 if version_info[0] > 6 or version_info[0:2] == (6, 1):
     tools = core.tools
     SUPERUSER_ID = core.SUPERUSER_ID
-    yaml_import = tools.yaml_import
 
     if hasattr(core, 'osv') and hasattr(core.osv, 'fields'):
         except_orm = core.osv.orm.except_orm
@@ -97,6 +96,8 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
             from odoo.exceptions import UserError
         except ImportError:  # version 8 and 9
             from openerp.exceptions import Warning as UserError
+    if version_info[0] < 12:
+        yaml_import = tools.yaml_import
 else:
     # version < 6.1
     import tools
