@@ -139,6 +139,7 @@ __all__ = [
     'rename_models',
     'rename_xmlids',
     'add_xmlid',
+    'chunked',
     'drop_columns',
     'delete_model_workflow',
     'update_workflow_workitems',
@@ -1993,3 +1994,20 @@ def delete_records_safely_by_xml_id(env, xml_ids):
                 env.ref(xml_id).exists().unlink()
         except Exception as e:
             logger.error('Error deleting XML-ID %s: %s', xml_id, repr(e))
+
+
+def chunked(records, single=True):
+    """ Memory and performance friendly method to iterate over a potentially
+    large number of records. Yields either a whole chunk or a single record
+    at the time. Don't nest calls to this method. """
+    size = core.models.PREFETCH_MAX
+    model = records._name
+    ids = records.with_context(prefetch_fields=False).ids
+    for i in range(0, len(ids), size):
+        records.env.invalidate_all()
+        chunk = records.env[model].browse(ids[i:i + size])
+        if single:
+            for record in chunk:
+                yield record
+            continue
+        yield chunk
