@@ -50,6 +50,8 @@ except ImportError:
                 self._cms.pop().__exit__(exc_type, exc_value, traceback)
 
 from psycopg2.extensions import AsIs
+from psycopg2 import errorcodes
+
 from lxml import etree
 from . import openupgrade_tools
 
@@ -167,11 +169,12 @@ __all__ = [
     'delete_record_translations',
     'disable_invalid_filters',
     'delete_records_safely_by_xml_id',
+    'search_and_replace_single_id',
 ]
 
 
 @contextmanager
-def allow_pgcodes(cr, *codes):
+def allow_pgcodes(cr, *codes, **kwargs):
     """Context manager that will omit specified error codes.
 
     E.g., suppose you expect a migration to produce unique constraint
@@ -197,21 +200,27 @@ def allow_pgcodes(cr, *codes):
         that are allowed. Codes can have either 2 characters (indicating an
         error class) or 5 (indicating a concrete error). Any other errors
         will be raised.
+    :param query:
+        When passed, the query that causes the exception will be logged as
+        well. Has to be passed as a keyword argument.
     """
     try:
-        from psycopg2 import errorcodes, ProgrammingError
+        from psycopg2 import errorcodes, ProgrammingError, IntegrityError
     except ImportError:
-        from psycopg2cffi import errorcodes, ProgrammingError
+        from psycopg2cffi import errorcodes, ProgrammingError, IntegrityError
 
     try:
         with cr.savepoint():
-            yield
-    except ProgrammingError as error:
+            with core.tools.mute_logger('odoo.sql_db'):
+                yield
+    except (ProgrammingError, IntegrityError) as error:
+        if kwargs.get('query'):
+            logger.info(kwargs['query'])
         msg = "Code: {code}. Class: {class_}. Error: {error}.".format(
             code=error.pgcode,
             class_=errorcodes.lookup(error.pgcode[:2]),
             error=errorcodes.lookup(error.pgcode))
-        if error.pgcode not in codes and error.pgcode[:2] in codes:
+        if error.pgcode in codes or error.pgcode[:2] in codes:
             logger.info(msg)
         else:
             logger.exception(msg)
@@ -2011,3 +2020,100 @@ def chunked(records, single=True):
                 yield record
             continue
         yield chunk
+
+
+def search_and_replace_single_id(
+        env, model, old_id, new_id, exclude_xmlids=None,
+        exclude_columns=None):
+    """ Look up all foreign key references to the old id and replace it with
+    the new id. Also replace Odoo-style generic res_model/res_id references
+    in known tables such as ir_attachment and ir_model_data.
+
+    :param: env
+    :param: model: a model string, e.g. 'res.users'
+    :param: old_id: the integer row id of the old record of model `model`
+    :param: new_id: the integer row id of the new record of model `model`
+    :param exclude_xmlids: don't update ir_model_data with these ids (in
+        module.name format)
+    :param exclude_columns: list of tuples (table, column) to ignore
+    """
+    if exclude_xmlids is None:
+        exclude_xmlids = []
+    if exclude_columns is None:
+        exclude_columns = []
+
+    values = {'old_id': old_id, 'new_id': new_id, 'model': model}
+
+    # Alter XML ids if they are not excluded
+    env.cr.execute(
+        """ SELECT id, module, name FROM ir_model_data
+            WHERE model = %(model)s AND res_id = %(old_id)s """, values)
+    for data in env.cr.fetchall():
+        if '%s.%s' % (data[1], data[2]) not in exclude_xmlids:
+            logged_query(
+                env.cr,
+                """ UPDATE ir_model_data
+                    SET res_id = %s WHERE id = %s """, (new_id, data[0]))
+
+    if ('ir_translation', 'res_id') not in exclude_columns:
+        logged_query(
+            env.cr,
+            """ UPDATE ir_translation SET res_id = %(new_id)s
+                WHERE type = 'model' AND res_id = %(old_id)s
+                AND name like %(model)s || ',%%'""",
+            values)
+
+    if ('ir_property', 'value_reference') not in exclude_columns:
+        # Handle properties that reference to this model
+        logged_query(
+            env.cr,
+            """ UPDATE ir_property
+                SET value_reference = %(model)s || ',' || %(new_id)s
+                WHERE value_reference = %(model)s || ',' || %(old_id)s""",
+            values)
+
+    # Tables with generic model/res_id references
+    for table, res_id_column, model_column in [
+            ('calendar_event', 'res_id', 'res_model'),
+            ('ir_attachment', 'res_id', 'res_model'),
+            ('mail_activity', 'res_id', 'res_model'),
+            ('mail_followers', 'res_id', 'model'),
+            ('mail_message', 'res_id', 'model'),
+            ('rating_rating', 'res_id', 'res_model'),
+            ]:
+        if (table, res_id_column) in exclude_columns:
+            continue
+        if table_exists(env.cr, table):
+            logged_query(
+                env.cr,
+                """ UPDATE {table} SET {res_id_column} = %(new_id)s
+                    WHERE {model_column} = %(model)s
+                        AND {res_id_column} = %(old_id)s
+                """.format(
+                    table=AsIs(table), res_id_column=AsIs(res_id_column),
+                    model_column=AsIs(model_column)),
+                values)
+
+    # https://stackoverflow.com/questions/1152260
+    # /postgres-sql-to-list-table-foreign-keys
+    env.cr.execute(
+        """ SELECT tc.table_name, kcu.column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            WHERE constraint_type = 'FOREIGN KEY'
+            AND ccu.table_name = %s and ccu.column_name = 'id'
+        """, (env[model]._table,))
+    for table, column in env.cr.fetchall():
+        if (table, column) in exclude_columns:
+            continue
+        query = env.cr.mogrify(
+            """ UPDATE {table} SET {column} = %(new_id)s
+                WHERE {column} = %(old_id)s""".format(
+                    table=AsIs(table), column=AsIs(column)), values)
+        with allow_pgcodes(env.cr, errorcodes.UNIQUE_VIOLATION, query=query):
+            logged_query(env.cr, query)
