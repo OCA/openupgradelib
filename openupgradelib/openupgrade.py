@@ -30,6 +30,10 @@ except ImportError:
     from io import StringIO
 from contextlib import contextmanager
 try:
+    from psycopg2 import errorcodes, ProgrammingError, IntegrityError
+except ImportError:
+    from psycopg2cffi import errorcodes, ProgrammingError, IntegrityError
+try:
     from contextlib import ExitStack
 except ImportError:
 
@@ -199,19 +203,15 @@ def allow_pgcodes(cr, *codes):
         will be raised.
     """
     try:
-        from psycopg2 import errorcodes, ProgrammingError
-    except ImportError:
-        from psycopg2cffi import errorcodes, ProgrammingError
-
-    try:
         with cr.savepoint():
-            yield
-    except ProgrammingError as error:
+            with core.tools.mute_logger('odoo.sql_db'):
+                yield
+    except (ProgrammingError, IntegrityError) as error:
         msg = "Code: {code}. Class: {class_}. Error: {error}.".format(
             code=error.pgcode,
             class_=errorcodes.lookup(error.pgcode[:2]),
             error=errorcodes.lookup(error.pgcode))
-        if error.pgcode not in codes and error.pgcode[:2] in codes:
+        if error.pgcode in codes or error.pgcode[:2] in codes:
             logger.info(msg)
         else:
             logger.exception(msg)
@@ -925,7 +925,11 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     if args is None:
         args = ()
     args = tuple(args) if type(args) == list else args
-    cr.execute(query, args)
+    try:
+        cr.execute(query, args)
+    except (ProgrammingError, IntegrityError) as error:
+        logger.error('Error running %s' % cr.mogrify(query, args))
+        raise
     if not skip_no_result or cr.rowcount:
         logger.debug('Running %s', query % args)
         logger.debug('%s rows affected', cr.rowcount)

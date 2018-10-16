@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 # Copyright 2018 Tecnativa - Pedro M. Baeza
+# Copyright 2018 Opener B.V. - Stefan Rijnhart
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 import logging
 import functools
+from psycopg2 import ProgrammingError, IntegrityError
+from psycopg2.errorcodes import UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
 from .openupgrade import logged_query
 from .openupgrade_tools import column_exists, table_exists
@@ -12,36 +15,66 @@ logger = logging.getLogger('OpenUpgrade')
 logger.setLevel(logging.DEBUG)
 
 
-def _change_many2one_refs_sql(env, model_name, record_ids, target_record_id):
-    cr = env.cr
-    cr.execute("""
-        SELECT name, model
-        FROM ir_model_fields
-        WHERE ttype='many2one' AND relation=%s
-        """, (model_name, ))
-    for row in cr.dictfetchall():
+def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
+                             exclude_columns):
+    # As found on https://stackoverflow.com/questions/1152260
+    # /postgres-sql-to-list-table-foreign-keys
+    env.cr.execute(
+        """ SELECT tc.table_name, kcu.column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            WHERE constraint_type = 'FOREIGN KEY'
+            AND ccu.table_name = %s and ccu.column_name = 'id'
+        """, (env[model_name]._table,))
+    for table, column in env.cr.fetchall():
+        if (table, column) in exclude_columns:
+            continue
+        # Try one big swoop first
         try:
-            model = env[row['model']]
-        except KeyError:
-            continue
-        if not model._auto:  # Discard SQL views
-            continue
-        table = model._table
-        if not table_exists(cr, table):
-            continue
-        column1 = row['name']
-        if not column_exists(cr, table, column1):
-            # TODO: It can be a company dependent field
-            continue
-        logged_query(
-            cr, "UPDATE %s SET %s = %s WHERE %s IN %s", (
-                AsIs(table), AsIs(column1), target_record_id, AsIs(column1),
-                tuple(record_ids),
-            ), skip_no_result=True,
-        )
+            with env.cr.savepoint():
+                logged_query(
+                    env.cr,
+                    """ UPDATE %(table)s
+                    SET %(column)s = %(target_record_id)s
+                    WHERE %(column)s in %(record_ids)s
+                    """, {
+                        'table': AsIs(table), 'column': AsIs(column),
+                        'record_ids': record_ids,
+                        'target_record_id': target_record_id,
+                    }, skip_no_result=True)
+        except (ProgrammingError, IntegrityError) as error:
+            if error.pgcode != UNIQUE_VIOLATION:
+                raise
+            # Fallback on setting each row separately
+            env.cr.execute(
+                """ SELECT id FROM %(table)s
+                    WHERE %(column)s in %(record_ids)s """, {
+                        'table': AsIs(table),
+                        'column': AsIs(column),
+                        'record_ids': record_ids})
+            for row in env.cr.fetchall():
+                try:
+                    with env.cr.savepoint():
+                        logged_query(
+                            env.cr,
+                            """ UPDATE %(table)s
+                            SET %(column)s = %(target_record_id)s
+                            WHERE id = %(id)s """, {
+                                'id': row[0],
+                                'table': AsIs(table), 'column': AsIs(column),
+                                'target_record_id': target_record_id})
+                except (ProgrammingError, IntegrityError) as error:
+                    if error.pgcode != UNIQUE_VIOLATION:
+                        raise
 
 
-def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id):
+def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
+                              exclude_columns):
     fields = env['ir.model.fields'].search([
         ('ttype', '=', 'many2one'),
         ('relation', '=', model_name),
@@ -53,7 +86,8 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id):
             continue
         field_name = field.name
         if (not model._auto or not model._fields.get(field_name) or
-                not field.store):
+                not field.store or
+                model._table, field_name in exclude_columns):
             continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
@@ -64,56 +98,8 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id):
             )
 
 
-def _change_many2many_refs_sql(env, model_name, record_ids, target_record_id):
-    cr = env.cr
-    cr.execute("""
-        SELECT name, model
-        FROM ir_model_fields
-        WHERE ttype='many2many' AND relation=%s
-        """, (model_name, ))
-    for row in cr.dictfetchall():
-        try:
-            model = env[row['model']]
-            field = model._fields[row['name']]
-        except KeyError:
-            continue
-        if not model._auto:  # Discard SQL views
-            continue
-        table = field.relation
-        if not table or not table_exists(cr, table):
-            continue
-        column1 = field.column1
-        if not column1 or not column_exists(cr, table, column1):
-            continue
-        column2 = field.column2
-        if not column2 or not column_exists(cr, table, column2):
-            continue
-        # Strategy: Get all possible distinct column2 values, delete entries of
-        # "to merge" records, and try to insert again with the target record
-        # value
-        cr.execute("""SELECT DISTINCT(%s) FROM %s WHERE %s IN %s""", (
-            AsIs(column1), AsIs(table), AsIs(column2), tuple(record_ids),
-        ))
-        column1_ids = [x[0] for x in cr.fetchall()]
-        if not column1_ids:
-            continue
-        logged_query(
-            cr, "DELETE FROM %s WHERE %s IN %s", (
-                AsIs(table), AsIs(column2), tuple(record_ids),
-            ),
-        )
-        logged_query(
-            cr, """
-            INSERT INTO %s (%s, %s)
-            VALUES (%s, unnest(array%s))
-            ON CONFLICT DO NOTHING""", (
-                AsIs(table), AsIs(column2), AsIs(column1), target_record_id,
-                AsIs(str(column1_ids)),
-            ),
-        )
-
-
-def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id):
+def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id,
+                               exclude_columns):
     fields = env['ir.model.fields'].search([
         ('ttype', '=', 'many2many'),
         ('relation', '=', model_name),
@@ -125,7 +111,8 @@ def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id):
             continue
         field_name = field.name
         if (not model._auto or not model._fields.get(field_name) or
-                not field.store):
+                not field.store or
+                (model._table, field_name) in exclude_columns):
             continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
@@ -140,16 +127,20 @@ def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id):
             )
 
 
-def _change_reference_refs_sql(env, model_name, record_ids, target_record_id):
+def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
+                               exclude_columns):
     cr = env.cr
     cr.execute("""
         SELECT name, model
         FROM ir_model_fields
         WHERE ttype='reference'
         """, (model_name, ))
-    for row in cr.dictfetchall():
+    rows = cr.fetchall()
+    if ('ir.property', 'value_reference') not in rows:
+        rows.append(('ir.property', 'value_reference'))
+    for row in rows:
         try:
-            model = env[row['model']]
+            model = env[row[0]]
         except KeyError:
             continue
         if not model._auto:  # Discard SQL views
@@ -157,11 +148,12 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id):
         table = model._table
         if not table_exists(cr, table):
             continue
-        column = row['name']
-        if not column_exists(cr, table, column):
+        column = row[1]
+        if not column_exists(cr, table, column) or (
+                (table, column) in exclude_columns):
             continue
         where = ' OR '.join(
-            ['%s = %s,%s' % (row['name'], model_name, x) for x in record_ids]
+            ["%s = '%s,%s'" % (row[1], model_name, x) for x in record_ids]
         )
         logged_query(
             cr, """
@@ -175,8 +167,10 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id):
         )
 
 
-def _change_reference_refs_orm(env, model_name, record_ids, target_record_id):
+def _change_reference_refs_orm(env, model_name, record_ids, target_record_id,
+                               exclude_columns):
     fields = env['ir.model.fields'].search([('ttype', '=', 'reference')])
+    fields |= env.ref('base.field_ir_property_value_reference')
     for field in fields:
         try:
             model = env[field.model]
@@ -184,7 +178,8 @@ def _change_reference_refs_orm(env, model_name, record_ids, target_record_id):
             continue
         field_name = field.name
         if (not model._auto or not model._fields.get(field_name) or
-                not field.store):
+                not field.store or
+                (model._table, field_name) in exclude_columns):
             continue  # Discard SQL views + invalid fields + non-stored fields
         expr = ['%s,%s' % (model_name, x) for x in record_ids]
         domain = [(field_name, '=', x) for x in expr]
@@ -198,6 +193,37 @@ def _change_reference_refs_orm(env, model_name, record_ids, target_record_id):
                 "Changed %s record(s) in reference field '%s' of model '%s'",
                 len(records), field_name, field.model,
             )
+
+
+def _change_translations_orm(env, model_name, record_ids, target_record_id,
+                             exclude_columns):
+    if ('ir_translation', 'res_id') in exclude_columns:
+        return
+    records = env['ir.translation'].search([
+        ('type', '=', 'model'),
+        ('res_id', 'in', record_ids),
+        ('name', 'like', '%s,%%' % model_name)])
+    if records:
+        records.write({'res_id': target_record_id})
+        logger.debug(
+            "Changed %s translations of model 'ir.translation'",
+            len(records))
+
+
+def _change_translations_sql(env, model_name, record_ids, target_record_id,
+                             exclude_columns):
+    if ('ir_translation', 'res_id') in exclude_columns:
+        return
+    logged_query(
+        env.cr,
+        """ UPDATE ir_translation SET res_id = %(target_record_id)s
+        WHERE type = 'model' AND res_id in %(record_ids)s
+        AND name like %(model_name)s || ',%%'""",
+        {
+            'target_record_id': target_record_id,
+            'record_ids': record_ids,
+            'model_name': model_name,
+        }, skip_no_result=True)
 
 
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
@@ -305,6 +331,50 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         )
 
 
+def _change_generic(env, model_name, record_ids, target_record_id,
+                    exclude_columns, method='orm'):
+    """ Update known generic style res_id/res_model references """
+    for model_to_replace, res_id_column, model_column in [
+            ('calendar.event', 'res_id', 'res_model'),
+            ('ir.attachment', 'res_id', 'res_model'),
+            ('mail.activity', 'res_id', 'res_model'),
+            ('mail.followers', 'res_id', 'model'),
+            ('mail.message', 'res_id', 'model'),
+            ('rating.rating', 'res_id', 'res_model'),
+            ]:
+        try:
+            model = env[model_to_replace]
+        except KeyError:
+            continue
+        if (model._table, res_id_column) in exclude_columns:
+            continue
+        if method == 'orm':
+            records = model.search([
+                (model_column, '=', model_name),
+                (res_id_column, 'in', record_ids)])
+            if records:
+                records.write({res_id_column: target_record_id})
+                logger.debug(
+                    "Changed %s record(s) of model '%s'",
+                    len(records), model_to_replace)
+        else:
+            logged_query(
+                env.cr,
+                """ UPDATE %(table)s
+                    SET %(res_id_column)s = %(target_record_id)s
+                    WHERE %(model_column)s = %(model_name)s
+                    AND %(res_id_column)s in %(record_ids)s
+                """,
+                {
+                    'table': AsIs(model._table),
+                    'res_id_column': AsIs(res_id_column),
+                    'model_column': AsIs(model_column),
+                    'model_name': model_name,
+                    'target_record_id': target_record_id,
+                    'record_ids': record_ids,
+                }, skip_no_result=True)
+
+
 def _delete_records_sql(env, model_name, record_ids):
     logged_query(
         env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
@@ -330,8 +400,9 @@ def _delete_records_orm(env, model_name, record_ids, target_record_id):
         )
 
 
-def merge_records(env, model_name, record_ids, target_record_id, field_spec,
-                  method='orm'):
+def merge_records(env, model_name, record_ids, target_record_id,
+                  field_spec=None, method='orm', delete=True,
+                  exclude_columns=None):
     """Merge several records into the target one.
 
     NOTE: This should be executed in end migration scripts for assuring that
@@ -350,21 +421,34 @@ def merge_records(env, model_name, record_ids, target_record_id, field_spec,
       'orm', operations will be performed with ORM, maybe slower, but safer, as
       related and computed fields will be recomputed on changes, and all
       constraints will be checked.
+    :param delete: If set, the source ids will be unlinked.
+    :exclude_columns: list of tuples (table, column) that will be ignored.
     """
-    args = (env, model_name, record_ids, target_record_id)
+    if exclude_columns is None:
+        exclude_columns = []
+    if field_spec is None:
+        field_spec = {}
+    if isinstance(record_ids, list):
+        record_ids = tuple(record_ids)
+    args = (env, model_name, record_ids, target_record_id, exclude_columns)
     args2 = args + (field_spec, )
+
+    _change_generic(*args, method=method)
     if method == 'orm':
         _change_many2one_refs_orm(*args)
         _change_many2many_refs_orm(*args)
         _change_reference_refs_orm(*args)
+        _change_translations_orm(*args)
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
         env[model_name].recompute()
-        _delete_records_orm(*args)
+        if delete:
+            _delete_records_orm(env, model_name, record_ids, target_record_id)
     else:
-        _change_many2one_refs_sql(*args)
-        _change_many2many_refs_sql(*args)
+        _change_foreign_key_refs(*args)
         _change_reference_refs_sql(*args)
+        _change_translations_sql(*args)
         # TODO: Adjust values of the merged records through SQL
-        _delete_records_sql(*args)
+        if delete:
+            _delete_records_sql(env, model_name, record_ids, target_record_id)
