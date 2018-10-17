@@ -39,7 +39,8 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             with env.cr.savepoint():
                 logged_query(
                     env.cr,
-                    """ UPDATE %(table)s
+                    """
+                    UPDATE %(table)s
                     SET "%(column)s" = %(target_record_id)s
                     WHERE "%(column)s" in %(record_ids)s
                     """, {
@@ -62,7 +63,8 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                     with env.cr.savepoint():
                         logged_query(
                             env.cr,
-                            """ UPDATE %(table)s
+                            """
+                            UPDATE %(table)s
                             SET "%(column)s" = %(target_record_id)s
                             WHERE id = %(id)s """, {
                                 'id': row[0],
@@ -217,7 +219,8 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         return
     logged_query(
         env.cr,
-        """ UPDATE ir_translation SET res_id = %(target_record_id)s
+        """
+        UPDATE ir_translation SET res_id = %(target_record_id)s
         WHERE type = 'model' AND res_id in %(record_ids)s
         AND name like %(model_name)s || ',%%'""",
         {
