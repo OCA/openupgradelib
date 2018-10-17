@@ -338,7 +338,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             ('calendar.event', 'res_id', 'res_model'),
             ('ir.attachment', 'res_id', 'res_model'),
             ('mail.activity', 'res_id', 'res_model'),
-            ('mail.followers', 'res_id', 'model'),
+            ('mail.followers', 'res_id', 'res_model'),
             ('mail.message', 'res_id', 'model'),
             ('rating.rating', 'res_id', 'res_model'),
             ]:
