@@ -39,9 +39,10 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             with env.cr.savepoint():
                 logged_query(
                     env.cr,
-                    """ UPDATE %(table)s
-                    SET %(column)s = %(target_record_id)s
-                    WHERE %(column)s in %(record_ids)s
+                    """
+                    UPDATE %(table)s
+                    SET "%(column)s" = %(target_record_id)s
+                    WHERE "%(column)s" in %(record_ids)s
                     """, {
                         'table': AsIs(table), 'column': AsIs(column),
                         'record_ids': record_ids,
@@ -53,7 +54,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             # Fallback on setting each row separately
             env.cr.execute(
                 """ SELECT id FROM %(table)s
-                    WHERE %(column)s in %(record_ids)s """, {
+                    WHERE "%(column)s" in %(record_ids)s """, {
                         'table': AsIs(table),
                         'column': AsIs(column),
                         'record_ids': record_ids})
@@ -62,8 +63,9 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                     with env.cr.savepoint():
                         logged_query(
                             env.cr,
-                            """ UPDATE %(table)s
-                            SET %(column)s = %(target_record_id)s
+                            """
+                            UPDATE %(table)s
+                            SET "%(column)s" = %(target_record_id)s
                             WHERE id = %(id)s """, {
                                 'id': row[0],
                                 'table': AsIs(table), 'column': AsIs(column),
@@ -85,9 +87,10 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
         except KeyError:
             continue
         field_name = field.name
-        if (not model._auto or not model._fields.get(field_name) or
-                not field.store or
-                model._table, field_name in exclude_columns):
+        if (
+            not model._auto or not model._fields.get(field_name) or
+            not field.store or (model._table, field_name) in exclude_columns
+        ):
             continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
@@ -216,7 +219,8 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         return
     logged_query(
         env.cr,
-        """ UPDATE ir_translation SET res_id = %(target_record_id)s
+        """
+        UPDATE ir_translation SET res_id = %(target_record_id)s
         WHERE type = 'model' AND res_id in %(record_ids)s
         AND name like %(model_name)s || ',%%'""",
         {
@@ -338,7 +342,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             ('calendar.event', 'res_id', 'res_model'),
             ('ir.attachment', 'res_id', 'res_model'),
             ('mail.activity', 'res_id', 'res_model'),
-            ('mail.followers', 'res_id', 'model'),
+            ('mail.followers', 'res_id', 'res_model'),
             ('mail.message', 'res_id', 'model'),
             ('rating.rating', 'res_id', 'res_model'),
             ]:
@@ -375,7 +379,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 }, skip_no_result=True)
 
 
-def _delete_records_sql(env, model_name, record_ids):
+def _delete_records_sql(env, model_name, record_ids, target_record_id):
     logged_query(
         env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
         (env[model_name]._table, tuple(record_ids)),
