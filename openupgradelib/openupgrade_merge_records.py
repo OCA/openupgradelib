@@ -379,7 +379,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 }, skip_no_result=True)
 
 
-def _delete_records_sql(env, model_name, record_ids):
+def _delete_records_sql(env, model_name, record_ids, target_record_id):
     logged_query(
         env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
         (env[model_name]._table, tuple(record_ids)),
