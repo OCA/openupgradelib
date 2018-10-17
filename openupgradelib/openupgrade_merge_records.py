@@ -40,8 +40,8 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                 logged_query(
                     env.cr,
                     """ UPDATE %(table)s
-                    SET %(column)s = %(target_record_id)s
-                    WHERE %(column)s in %(record_ids)s
+                    SET "%(column)s" = %(target_record_id)s
+                    WHERE "%(column)s" in %(record_ids)s
                     """, {
                         'table': AsIs(table), 'column': AsIs(column),
                         'record_ids': record_ids,
@@ -53,7 +53,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             # Fallback on setting each row separately
             env.cr.execute(
                 """ SELECT id FROM %(table)s
-                    WHERE %(column)s in %(record_ids)s """, {
+                    WHERE "%(column)s" in %(record_ids)s """, {
                         'table': AsIs(table),
                         'column': AsIs(column),
                         'record_ids': record_ids})
@@ -63,7 +63,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                         logged_query(
                             env.cr,
                             """ UPDATE %(table)s
-                            SET %(column)s = %(target_record_id)s
+                            SET "%(column)s" = %(target_record_id)s
                             WHERE id = %(id)s """, {
                                 'id': row[0],
                                 'table': AsIs(table), 'column': AsIs(column),
