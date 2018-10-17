@@ -85,9 +85,10 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
         except KeyError:
             continue
         field_name = field.name
-        if (not model._auto or not model._fields.get(field_name) or
-                not field.store or
-                model._table, field_name in exclude_columns):
+        if (
+            not model._auto or not model._fields.get(field_name) or
+            not field.store or (model._table, field_name) in exclude_columns
+        ):
             continue  # Discard SQL views + invalid fields + non-stored fields
         records = model.search([(field_name, 'in', record_ids)])
         if records:
