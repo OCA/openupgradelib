@@ -434,8 +434,9 @@ def merge_records(env, model_name, record_ids, target_record_id,
         field_spec = {}
     if isinstance(record_ids, list):
         record_ids = tuple(record_ids)
-    args = (env, model_name, record_ids, target_record_id, exclude_columns)
-    args2 = args + (field_spec, )
+    args0 = (env, model_name, record_ids, target_record_id)
+    args = args0 + (exclude_columns, )
+    args2 = args0 + (field_spec, )
 
     _change_generic(*args, method=method)
     if method == 'orm':
