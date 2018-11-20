@@ -242,7 +242,10 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
 
       Possible operations by field types:
 
-      * Char, Text and Html fields:
+      * Char fields:
+        - 'merge': content is concatenated with an ' | ' as separator
+        - other value (default): content on target record is preserved
+      * Text and Html fields:
         - 'merge' (default): content is concatenated with an ' | ' as separator
         - other value: content on target record is preserved
       * Integer, Float and Monetary fields:
