@@ -232,7 +232,7 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
 
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
                               field_spec):
-    """"This method deals with the values on the records to be merged +
+    """This method deals with the values on the records to be merged +
     the target record, performing operations that makes sense on the meaning
     of the model.
 
@@ -242,18 +242,18 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
 
       Possible operations by field types:
 
-      * Char fields:
-        - 'merge': content is concatenated with an ' | ' as separator
-        - other value (default): content on target record is preserved
-      * Text and Html fields:
-        - 'merge' (default): content is concatenated with an ' | ' as separator
-        - other value: content on target record is preserved
+      * Char, Text and Html fields:
+        - 'merge' (default for Text and Html): content is concatenated
+          with an ' | ' as separator
+        - other value (default for Char): content on target record is preserved
       * Integer, Float and Monetary fields:
-        - 'sum' (default): Sum all the values of the records.
+        - 'sum' (default for Float and Monetary): Sum all the values of
+          the records.
         - 'avg': Perform the arithmetic average of the values of the records.
         - 'max': Put the maximum of all the values.
         - 'min': Put the minimum of all the values.
-        - other value: content on target record is preserved
+        - other value (default for Integer): content on target record
+          is preserved
       * Binary field:
         - any value: content on target record is preserved
       * Boolean field:
