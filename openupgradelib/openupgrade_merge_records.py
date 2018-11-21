@@ -83,7 +83,7 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
     ])
     for field in fields:
         try:
-            model = env[field.model]
+            model = env[field.model].with_context(active_test=False)
         except KeyError:
             continue
         field_name = field.name
@@ -109,7 +109,7 @@ def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id,
     ])
     for field in fields:
         try:
-            model = env[field.model]
+            model = env[field.model].with_context(active_test=False)
         except KeyError:
             continue
         field_name = field.name
@@ -176,7 +176,7 @@ def _change_reference_refs_orm(env, model_name, record_ids, target_record_id,
     fields |= env.ref('base.field_ir_property_value_reference')
     for field in fields:
         try:
-            model = env[field.model]
+            model = env[field.model].with_context(active_test=False)
         except KeyError:
             continue
         field_name = field.name
@@ -350,7 +350,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             ('rating.rating', 'res_id', 'res_model'),
             ]:
         try:
-            model = env[model_to_replace]
+            model = env[model_to_replace].with_context(active_test=False)
         except KeyError:
             continue
         if (model._table, res_id_column) in exclude_columns:
