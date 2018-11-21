@@ -25,7 +25,7 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
     - flake8 ~/OCA/openupgradelib
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then git clone --single-branch --depth=1 https://github.com/OCA/openupgrade ~/OCA/openupgrade; pip install -r ~/OCA/openupgrade/requirements.txt; sh ~/OCA/openupgrade/scripts/build_openupgrade_docs; fi
+    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then git clone --single-branch --depth=1 -b 10.0 https://github.com/OCA/openupgrade ~/OCA/openupgrade; pip install -r ~/OCA/openupgrade/requirements.txt; sh ~/OCA/openupgrade/scripts/build_openupgrade_docs; fi
     - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH; fi
     - coverage run setup.py test
     - python setup.py install
