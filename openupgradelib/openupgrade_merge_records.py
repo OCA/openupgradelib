@@ -51,28 +51,78 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
         except (ProgrammingError, IntegrityError) as error:
             if error.pgcode != UNIQUE_VIOLATION:
                 raise
-            # Fallback on setting each row separately
+            # Check if the table contains an id
             env.cr.execute(
-                """ SELECT id FROM %(table)s
-                    WHERE "%(column)s" in %(record_ids)s """, {
-                        'table': AsIs(table),
-                        'column': AsIs(column),
-                        'record_ids': record_ids})
-            for row in env.cr.fetchall():
-                try:
-                    with env.cr.savepoint():
-                        logged_query(
-                            env.cr,
-                            """
-                            UPDATE %(table)s
-                            SET "%(column)s" = %(target_record_id)s
-                            WHERE id = %(id)s """, {
-                                'id': row[0],
-                                'table': AsIs(table), 'column': AsIs(column),
-                                'target_record_id': target_record_id})
-                except (ProgrammingError, IntegrityError) as error:
-                    if error.pgcode != UNIQUE_VIOLATION:
-                        raise
+                """ SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = '%(table)s' and column_name='id'
+                """, {
+                        'table': AsIs(table)
+                })
+            if not env.cr.fetchone():
+                # There's no id. So this is a many2many table.
+                # Force to merge records unless it get unique contraint
+                env.cr.execute("""
+                    SELECT %(column)s FROM %(table)s
+                    WHERE "%(column)s" in %(record_ids)s
+                    """, {
+                            'table': AsIs(table),
+                            'column': AsIs(column),
+                            'record_ids': record_ids})
+                for row in env.cr.fetchall():
+                    try:
+                        with env.cr.savepoint():
+                            logged_query(
+                                env.cr,
+                                """
+                                UPDATE %(table)s
+                                SET "%(column)s" = %(target_record_id)s
+                                WHERE "%(column)s" = %(col_value)s """,
+                                {
+                                    'col_value': row[0],
+                                    'table': AsIs(table),
+                                    'column': AsIs(column),
+                                    'target_record_id': target_record_id
+                                })
+                    except (ProgrammingError, IntegrityError) as error:
+                        if error.pgcode != UNIQUE_VIOLATION:
+                            raise
+                # Delete the remaining values that could not be merged
+                with env.cr.savepoint():
+                    logged_query(
+                        env.cr,
+                        """
+                        DELETE FROM %(table)s
+                        WHERE "%(column)s" in %(record_ids)s""",
+                        {
+                            'table': AsIs(table),
+                            'column': AsIs(column),
+                            'record_ids': record_ids,
+                        })
+            else:
+                # Fallback on setting each row separately
+                env.cr.execute(
+                    """ SELECT id FROM %(table)s
+                        WHERE "%(column)s" in %(record_ids)s """, {
+                            'table': AsIs(table),
+                            'column': AsIs(column),
+                            'record_ids': record_ids})
+                for row in env.cr.fetchall():
+                    try:
+                        with env.cr.savepoint():
+                            logged_query(
+                                env.cr,
+                                """
+                                UPDATE %(table)s
+                                SET "%(column)s" = %(target_record_id)s
+                                WHERE id = %(id)s """, {
+                                    'id': row[0],
+                                    'table': AsIs(table), 'column':
+                                    AsIs(column),
+                                    'target_record_id': target_record_id})
+                    except (ProgrammingError, IntegrityError) as error:
+                        if error.pgcode != UNIQUE_VIOLATION:
+                            raise
 
 
 def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
