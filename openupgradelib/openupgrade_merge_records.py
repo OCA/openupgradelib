@@ -332,14 +332,19 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         elif field.type in ('binary', 'many2one'):
             op = op or 'merge'
             if op == 'merge':
+                l = [x for x in l if x]
                 if not getattr(target_record, field.name) and l and not \
                         vals.get(field.name):
                     vals[field.name] = l[:1]
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
-        if vals[f] != getattr(target_record, f):
-            new_vals[f] = vals[f]
+        if fields[f].type != 'many2many':
+            if vals[f] != getattr(target_record, f):
+                new_vals[f] = vals[f]
+        else:
+            if [x[1] for x in vals[f]] not in getattr(target_record, f).ids:
+                new_vals[f] = vals[f]
     if new_vals:
         target_record.write(new_vals)
         logger.debug(
