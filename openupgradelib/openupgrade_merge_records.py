@@ -255,7 +255,9 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         - other value (default for Integer): content on target record
           is preserved
       * Binary field:
-        - any value: content on target record is preserved
+        - 'merge' (default): apply first not null value of the records if
+        value of target record is null, preserve target value otherwise.
+        - other value: content on target record is preserved
       * Boolean field:
         - 'and': Perform a logical AND over all values.
         - 'or': Perform a logical OR over all values.
@@ -265,7 +267,9 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         - 'min': Put the minimum of all the values.
         - other value (default): content on target record is preserved
       * Many2one fields:
-        - any value: content on target record is preserved
+        - 'merge' (default): apply first not null value of the records if
+        value of target record is null, preserve target value otherwise.
+        - other value: content on target record is preserved
       * Many2many fields:
         - 'merge' (default): combine all the values
         - other value: content on target record is preserved
@@ -325,6 +329,12 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             if op == 'merge':
                 o2m_changes += 1
                 l.write({field.inverse_name: target_record_id})
+        elif field.type in ('binary', 'many2one'):
+            op = op or 'merge'
+            if op == 'merge':
+                if not getattr(target_record, field.name) and l and not \
+                        vals.get(field.name):
+                    vals[field.name] = l[:1]
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
@@ -413,7 +423,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
     """Merge several records into the target one.
 
     NOTE: This should be executed in end migration scripts for assuring that
-    all the possible relations are loaded and changed. Tested on v11.
+    all the possible relations are loaded and changed. Tested on v10/v11.
 
     :param env: Environment variable
     :param model_name: Name of the model of the records to merge
