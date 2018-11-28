@@ -339,7 +339,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
-        if fields[f].type != 'many2many':
+        if model._fields[f].type != 'many2many':
             if vals[f] != getattr(target_record, f):
                 new_vals[f] = vals[f]
         else:
