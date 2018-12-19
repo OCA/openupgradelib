@@ -455,7 +455,9 @@ def merge_records(env, model_name, record_ids, target_record_id,
     args0 = (env, model_name, record_ids, target_record_id)
     args = args0 + (exclude_columns, )
     args2 = args0 + (field_spec, )
-
+    if target_record_id in record_ids:
+        raise Exception("You can't put the target record in the list or "
+                        "records to be merged.")
     _change_generic(*args, method=method)
     if method == 'orm':
         _change_many2one_refs_orm(*args)
