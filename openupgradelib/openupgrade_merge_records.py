@@ -202,21 +202,35 @@ def _change_translations_orm(env, model_name, record_ids, target_record_id,
                              exclude_columns):
     if ('ir_translation', 'res_id') in exclude_columns:
         return
-    records = env['ir.translation'].search([
+    translation_obj = env['ir.translation']
+    groups = translation_obj.read_group([
         ('type', '=', 'model'),
         ('res_id', 'in', record_ids),
-        ('name', 'like', '%s,%%' % model_name)])
-    if records:
-        records.write({'res_id': target_record_id})
-        logger.debug(
-            "Changed %s translations of model 'ir.translation'",
-            len(records))
+        ('name', 'like', '%s,%%' % model_name),
+    ], ['name', 'lang'], ['name', 'lang'], lazy=False)
+    for group in groups:
+        target_translation = translation_obj.search([
+            ('type', '=', 'model'),
+            ('res_id', '=', target_record_id),
+            ('name', '=', group['name']),
+            ('lang', '=', group['lang']),
+        ])
+        records = translation_obj.search(group['__domain'])
+        if not target_translation and records:
+            # There is no target translation, we pick one for being the new one
+            records[:1].res_id = target_record_id
+            records = records[1:]
+        if records:
+            records.unlink()
+            logger.debug("Deleted %s extra translations for %s.",
+                         len(records), group['name'])
 
 
 def _change_translations_sql(env, model_name, record_ids, target_record_id,
                              exclude_columns):
     if ('ir_translation', 'res_id') in exclude_columns:
         return
+    # TODO: To be handled with the same approach as in ORM method
     logged_query(
         env.cr,
         """
