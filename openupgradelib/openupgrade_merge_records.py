@@ -19,6 +19,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                              exclude_columns):
     # As found on https://stackoverflow.com/questions/1152260
     # /postgres-sql-to-list-table-foreign-keys
+    # Adapted for specific Odoo structures like many2many tables
     env.cr.execute(
         """ SELECT tc.table_name, kcu.column_name
             FROM information_schema.table_constraints AS tc
@@ -38,41 +39,58 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
         try:
             with env.cr.savepoint():
                 logged_query(
-                    env.cr,
-                    """
-                    UPDATE %(table)s
+                    env.cr, """UPDATE %(table)s
                     SET "%(column)s" = %(target_record_id)s
                     WHERE "%(column)s" in %(record_ids)s
                     """, {
-                        'table': AsIs(table), 'column': AsIs(column),
+                        'table': AsIs(table),
+                        'column': AsIs(column),
                         'record_ids': record_ids,
                         'target_record_id': target_record_id,
-                    }, skip_no_result=True)
+                    }, skip_no_result=True,
+                )
         except (ProgrammingError, IntegrityError) as error:
             if error.pgcode != UNIQUE_VIOLATION:
                 raise
             # Fallback on setting each row separately
-            env.cr.execute(
-                """ SELECT id FROM %(table)s
-                    WHERE "%(column)s" in %(record_ids)s """, {
-                        'table': AsIs(table),
-                        'column': AsIs(column),
-                        'record_ids': record_ids})
+            m2m_table = not column_exists(env.cr, table, 'id')
+            target_column = column if m2m_table else 'id'
+            env.cr.execute("""SELECT %(target_column)s FROM %(table)s
+                WHERE "%(column)s" in %(record_ids)s""", {
+                    'target_column': target_column,
+                    'table': AsIs(table),
+                    'column': AsIs(column),
+                    'record_ids': record_ids,
+                },
+            )
             for row in env.cr.fetchall():
                 try:
                     with env.cr.savepoint():
                         logged_query(
-                            env.cr,
-                            """
-                            UPDATE %(table)s
+                            env.cr, """UPDATE %(table)s
                             SET "%(column)s" = %(target_record_id)s
-                            WHERE id = %(id)s """, {
-                                'id': row[0],
-                                'table': AsIs(table), 'column': AsIs(column),
-                                'target_record_id': target_record_id})
+                            WHERE %(target_column)s = %(record_id)s""", {
+                                'target_column': target_column,
+                                'table': AsIs(table),
+                                'column': AsIs(column),
+                                'record_id': row[0],
+                                'target_record_id': target_record_id,
+                            },
+                        )
                 except (ProgrammingError, IntegrityError) as error:
                     if error.pgcode != UNIQUE_VIOLATION:
                         raise
+            if m2m_table:
+                # delete remaining values that could not be merged
+                logged_query(
+                    env.cr, """DELETE FROM %(table)s
+                    WHERE "%(column)s" in %(record_ids)s""",
+                    {
+                        'table': AsIs(table),
+                        'column': AsIs(column),
+                        'record_ids': record_ids,
+                    }, skip_no_result=True,
+                )
 
 
 def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
