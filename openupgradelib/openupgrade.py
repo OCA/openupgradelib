@@ -1958,6 +1958,7 @@ def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
             imf.model = %(model)s AND
             imf.name IN %(fields)s AND
             imd.module = %(old_module)s AND
+            imd.model = 'ir.model.fields' AND
             imd.res_id = imf.id AND
             imd.id NOT IN (
                SELECT id FROM ir_model_data WHERE module = %(new_module)s
