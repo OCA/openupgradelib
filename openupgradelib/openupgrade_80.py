@@ -25,15 +25,10 @@
 # docs in the latest release.
 
 
-from datetime import datetime
 try:
     from openerp import SUPERUSER_ID
 except ImportError:
     from odoo import SUPERUSER_ID
-try:
-    from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT as DATETIME_FMT
-except ImportError:
-    from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DATETIME_FMT
 
 
 def get_last_post_for_model(cr, uid, ids, model_pool):
@@ -84,9 +79,9 @@ def set_message_last_post(cr, uid, pool, models):
             "FROM mail_message mm "
             "WHERE mm.model=%s "
             "AND mm.date IS NOT NULL "
-            "AND mm.res_id={table}.id)".format(table=model_pool._table), (model,)
+            "AND mm.res_id={table}.id)".format(
+                table=model_pool._table), (model,)
         )
-
 
 
 def update_aliases(

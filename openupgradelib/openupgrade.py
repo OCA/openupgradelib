@@ -925,7 +925,7 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     args = tuple(args) if type(args) == list else args
     try:
         cr.execute(query, args)
-    except (ProgrammingError, IntegrityError) as error:
+    except (ProgrammingError, IntegrityError):
         logger.error('Error running %s' % cr.mogrify(query, args))
         raise
     if not skip_no_result or cr.rowcount:
@@ -1832,8 +1832,8 @@ def add_fields(env, field_spec):
     It's intended for being run in pre-migration scripts for pre-populating
     fields that are going to be declared later in the module.
 
-    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo always
-    add the XML-ID entry:
+    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo
+    always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
     odoo/addons/base/models/ir_model.py#L794-L802
 
@@ -1844,10 +1844,10 @@ def add_fields(env, field_spec):
       * model name
       * SQL table name: Put `False` if the model is already loaded in the
         registry and thus the SQL table name can be obtained that way.
-      * field type: binary, boolean, char, date, datetime, float, html, integer,
-        many2many, many2one, monetary, one2many, reference, selection, text,
-        serialized. The list can vary depending on Odoo version or custom added
-        field types.
+      * field type: binary, boolean, char, date, datetime, float, html,
+        integer, many2many, many2one, monetary, one2many, reference,
+        selection, text, serialized. The list can vary depending on Odoo
+        version or custom added field types.
       * SQL field type: If the field type is custom or it's one of the special
         cases (see below), you need to indicate here the SQL type to use
         (from the valid PostgreSQL types):
@@ -1910,13 +1910,14 @@ def add_fields(env, field_spec):
             INSERT INTO ir_model_data (
                 name, date_init, date_update, module, model, res_id
             ) VALUES (
-                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'), 
+                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'),
                 %s, %s, %s
             )""", (name1, module, 'ir.model.fields', field_id),
         )
 
 
-def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
+def update_module_moved_fields(
+        cr, model, moved_fields, old_module, new_module):
     """Update module for field definition in general tables that have been moved
     from one module to another.
 
