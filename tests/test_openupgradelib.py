@@ -25,8 +25,9 @@ def import_mock(name, *args):
         return openerp_mock
     return orig_import(name, *args)
 
+
 if sys.version_info[0] == 3:
-    import builtins
+    import builtins  # flake8: noqa
     import_str = 'builtins.__import__'
 else:
     import_str = '__builtin__.__import__'

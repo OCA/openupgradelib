@@ -108,7 +108,6 @@ else:
     SUPERUSER_ID = 1
     from tools.yaml_import import yaml_import
     from osv.osv import except_osv as except_orm
-    RegistryManager = None
     from osv.fields import many2many, one2many
 
 
@@ -117,11 +116,14 @@ def do_raise(error):
         raise UserError(error)
     raise except_orm('Error', error)
 
+
 if sys.version_info[0] == 3:
     unicode = str
 
 if version_info[0] > 7:
     api = core.api
+else:
+    api = False
 
 
 # The server log level has not been set at this point
@@ -297,6 +299,7 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
     finally:
         fp.close()
 
+
 def _get_existing_records(cr, fp, module_name):
     """yield file like objects per 'leaf' node in the xml file that exists.
     This is for not trying to create a record with partial data in case the
@@ -325,6 +328,7 @@ def _get_existing_records(cr, fp, module_name):
                 ):
                     yield value
     return yield_element(etree.parse(fp).getroot())
+
 
 # for backwards compatibility
 load_xml = load_data
@@ -788,7 +792,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     Set default value. Useful for fields that are newly required. Uses orm, so
     call from the post script.
 
-    :param pool: In v10 and newer, you have to pass the 'env' instead.
+    :param pool: you can pass 'env' as well.
     :param default_spec: a hash with model names as keys. Values are lists \
     of tuples (field, value). None as a value has a special meaning: it \
     assigns the default value. If this value is provided by a function, the \
@@ -808,12 +812,15 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
             "model %s, field %s: setting default value of resources %s to %s",
             model, field, ids, unicode(value))
         if use_orm:
-            for res_id in ids:
-                # Iterating over ids here as a workaround for lp:1131653
-                if version_info[0] >= 8:
-                    obj.write({field: value})
-                else:
+            if version_info[0] <= 7:
+                for res_id in ids:
+                    # Iterating over ids here as a workaround for lp:1131653
                     obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
+            else:
+                if api and isinstance(pool, api.Environment):
+                    obj.browse(ids).write({field: value})
+                else:
+                    obj.write(cr, SUPERUSER_ID, ids, {field: value})
         else:
             query, params = "UPDATE %s SET %s = %%s WHERE id IN %%s" % (
                 obj._table, field), (value, tuple(ids))
@@ -847,46 +854,38 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 cr.execute(query, (params[0], sub_ids))
 
     for model in default_spec.keys():
-        if version_info[0] >= 8:
-            obj = pool.get(model, False)
+        if api and isinstance(pool, api.Environment):
+            obj = pool[model]
         else:
-            obj = pool.get(model)
-            if not obj or obj == False: ## is this the same: obj not vs obj false?
-                do_raise(
-                    "Migration: error setting default, no such model: %s" % model)
-                    
+            try:
+                obj = pool[model]
+            except KeyError:
+                obj = None
+        if obj is None:
+            do_raise(
+                "Migration: error setting default, no such model: %s" % model)
+
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
-            if version_info[0] > 8:
+            if api and isinstance(pool, api.Environment):
                 ids = obj.search(domain).ids
             else:
                 ids = obj.search(cr, SUPERUSER_ID, domain)
             if not ids:
                 continue
             if value is None:
-                # Set the value by calling the _defaults of the object.
-                # Typically used for company_id on various models, and in that
-                # case the result depends on the user associated with the
-                # object. We retrieve create_uid for this purpose and need to
-                # call the defaults function per resource. Otherwise, write
-                # all resources at once.
                 if version_info[0] > 7:
-                    if obj.default_get([field]):
-                        write_value(ids, field, obj.default_get([field]))
+                    if api and isinstance(pool, api.Environment):
+                        value = obj.default_get([field]).get(field)
                     else:
-                        cr.execute(
-                            "SELECT id, COALESCE(create_uid, 1) FROM %s " %
-                            obj._table + "WHERE id in %s", (tuple(ids),))
-                        # Execute the function once per user_id
-                        user_id_map = {}
-                        for row in cr.fetchall():
-                            user_id_map.setdefault(row[1], []).append(row[0])
-                        for user_id in user_id_map:
-                            write_value(
-                                user_id_map[user_id], field,
-                                obj.default_get([field])(
-                                    obj, cr, user_id, None))
+                        value = obj.default_get(
+                            cr, SUPERUSER_ID, [field]).get(field)
+                    if value:
+                        write_value(ids, field, value)
                 else:
+                    # For older versions, compute defaults per user anymore
+                    # if the default is a method. If we need this in newer
+                    # versions, make it a parameter.
                     if field in obj._defaults:
                         if not callable(obj._defaults[field]):
                             write_value(ids, field, obj._defaults[field])
@@ -1766,7 +1765,7 @@ def disable_invalid_filters(env):
         from openerp.tools.safe_eval import safe_eval
     import time
     try:
-        basetring
+        basestring
     except:  # For Python 3 compatibility
         basestring = str
 
