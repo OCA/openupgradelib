@@ -1,35 +1,67 @@
 # Config file for automatic testing at travis-ci.org
-
-
 language: python
+sudo: false
 
 python:
-  - "3.6"
-  - "3.5"
-  - "3.4"
-  - "2.7"
-  # - "pypy"  # Disable because travis changes are affecting us
-  - "pypy3"
+  - "3.6"  # But switching to 2.7 in the script
 
 addons:
-  apt:
-    packages:
-      - realpath
-
-# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-install:
-    - pip install -r requirements.txt
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/8.0/requirements.txt; fi
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install -r https://raw.githubusercontent.com/OCA/OCB/9.0/requirements.txt; fi
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then pip install sphinx; fi
+    apt:
+        packages:
+            - python-lxml  # because pip installation is slow
+            - python-simplejson
+            - python-serial
+            - python-yaml
+            - python-passlib
+            - python-psycopg2
+            - python-werkzeug
+            - realpath
 
 # command to run tests, e.g. python setup.py test
 script:
-    - flake8 ~/OCA/openupgradelib
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then git clone --single-branch --depth=1 -b 10.0 https://github.com/OCA/openupgrade ~/OCA/openupgrade; pip install -r ~/OCA/openupgrade/requirements.txt; sh ~/OCA/openupgrade/scripts/build_openupgrade_docs; fi
-    - if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then export PYTHONPATH=~/OCA/openupgradelib:$PYTHONPATH; fi
+    - source ~/virtualenv/python2.7/bin/activate
+    - pip install -q -r requirements.txt
+    - flake8 ~/build/OCA/openupgradelib
+    - export PYTHONPATH=~/build/OCA/openupgradelib:$PYTHONPATH
     - coverage run setup.py test
     - python setup.py install
+    # Run functional tests from 6.1 to 11.0
+    - set -e
+    - git clone https://github.com/oca/openupgrade --depth 1 --no-single-branch -b 6.1 ~/openupgrade
+    - cd ~/openupgrade
+    - pip install psycopg2-binary
+    - git reset --hard origin/8.0  # earliest version to include requirements
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
+    - createdb testdb
+    - git reset --hard origin/6.1
+    - ./openerp-server -d testdb -i openupgradelib_tests --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # Run the migration of the test addon in 6.1
+    - echo "UPDATE ir_module_module SET latest_version = '6.0.1.0.0' WHERE name = 'openupgradelib_tests'" | psql testdb
+    - ./openerp-server -d testdb -u openupgradelib_tests --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - echo "UPDATE ir_module_module SET demo = FALSE" | psql testdb
+    # 7.0 -> 8.0
+    - git reset --hard origin/7.0
+    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # 7.0 -> 8.0
+    - git reset --hard origin/8.0
+    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # 8.0 -> 9.0
+    - git reset --hard origin/9.0
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
+    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # 9.0 -> 10.0
+    - git reset --hard origin/10.0
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
+    - ./odoo-bin -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # 10.0 -> 11.0 (switch to Python 3.6)
+    - source ~/virtualenv/python3.6/bin/activate
+    - pushd /home/travis/build/OCA/openupgradelib && python setup.py install && popd
+    - pip install psycopg2-binary
+    - git reset --hard origin/11.0
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
+    - ./odoo-bin -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    # Build docs
+    - pip install -q sphinx; sh ~/openupgrade/scripts/build_openupgrade_docs
 
 after_success:
     - coveralls

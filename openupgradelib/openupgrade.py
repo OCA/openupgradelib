@@ -108,7 +108,6 @@ else:
     SUPERUSER_ID = 1
     from tools.yaml_import import yaml_import
     from osv.osv import except_osv as except_orm
-    RegistryManager = None
     from osv.fields import many2many, one2many
 
 
@@ -117,11 +116,14 @@ def do_raise(error):
         raise UserError(error)
     raise except_orm('Error', error)
 
+
 if sys.version_info[0] == 3:
     unicode = str
 
 if version_info[0] > 7:
     api = core.api
+else:
+    api = False
 
 
 # The server log level has not been set at this point
@@ -297,6 +299,7 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
     finally:
         fp.close()
 
+
 def _get_existing_records(cr, fp, module_name):
     """yield file like objects per 'leaf' node in the xml file that exists.
     This is for not trying to create a record with partial data in case the
@@ -325,6 +328,7 @@ def _get_existing_records(cr, fp, module_name):
                 ):
                     yield value
     return yield_element(etree.parse(fp).getroot())
+
 
 # for backwards compatibility
 load_xml = load_data
@@ -788,7 +792,7 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     Set default value. Useful for fields that are newly required. Uses orm, so
     call from the post script.
 
-    :param pool: In v10 and newer, you have to pass the 'env' instead.
+    :param pool: you can pass 'env' as well.
     :param default_spec: a hash with model names as keys. Values are lists \
     of tuples (field, value). None as a value has a special meaning: it \
     assigns the default value. If this value is provided by a function, the \
@@ -808,12 +812,15 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
             "model %s, field %s: setting default value of resources %s to %s",
             model, field, ids, unicode(value))
         if use_orm:
-            for res_id in ids:
-                # Iterating over ids here as a workaround for lp:1131653
-                if isinstance(pool, api.Environment):
-                    obj.write({field: value})
-                else:
+            if version_info[0] <= 7:
+                for res_id in ids:
+                    # Iterating over ids here as a workaround for lp:1131653
                     obj.write(cr, SUPERUSER_ID, [res_id], {field: value})
+            else:
+                if api and isinstance(pool, api.Environment):
+                    obj.browse(ids).write({field: value})
+                else:
+                    obj.write(cr, SUPERUSER_ID, ids, {field: value})
         else:
             query, params = "UPDATE %s SET %s = %%s WHERE id IN %%s" % (
                 obj._table, field), (value, tuple(ids))
@@ -847,42 +854,33 @@ def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
                 cr.execute(query, (params[0], sub_ids))
 
     for model in default_spec.keys():
-        obj = pool.get(model, False)
-        if obj == False:
+        try:
+            obj = pool[model]
+        except KeyError:
             do_raise(
                 "Migration: error setting default, no such model: %s" % model)
+
         for field, value in default_spec[model]:
             domain = not force and [(field, '=', False)] or []
-            if isinstance(pool, api.Environment):
+            if api and isinstance(pool, api.Environment):
                 ids = obj.search(domain).ids
             else:
                 ids = obj.search(cr, SUPERUSER_ID, domain)
             if not ids:
                 continue
             if value is None:
-                # Set the value by calling the _defaults of the object.
-                # Typically used for company_id on various models, and in that
-                # case the result depends on the user associated with the
-                # object. We retrieve create_uid for this purpose and need to
-                # call the defaults function per resource. Otherwise, write
-                # all resources at once.
                 if version_info[0] > 7:
-                    if obj.default_get([field]):
-                        write_value(ids, field, obj.default_get([field]))
+                    if api and isinstance(pool, api.Environment):
+                        value = obj.default_get([field]).get(field)
                     else:
-                        cr.execute(
-                            "SELECT id, COALESCE(create_uid, 1) FROM %s " %
-                            obj._table + "WHERE id in %s", (tuple(ids),))
-                        # Execute the function once per user_id
-                        user_id_map = {}
-                        for row in cr.fetchall():
-                            user_id_map.setdefault(row[1], []).append(row[0])
-                        for user_id in user_id_map:
-                            write_value(
-                                user_id_map[user_id], field,
-                                obj.default_get([field])(
-                                    obj, cr, user_id, None))
+                        value = obj.default_get(
+                            cr, SUPERUSER_ID, [field]).get(field)
+                    if value:
+                        write_value(ids, field, value)
                 else:
+                    # For older versions, compute defaults per user anymore
+                    # if the default is a method. If we need this in newer
+                    # versions, make it a parameter.
                     if field in obj._defaults:
                         if not callable(obj._defaults[field]):
                             write_value(ids, field, obj._defaults[field])
@@ -927,7 +925,7 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     args = tuple(args) if type(args) == list else args
     try:
         cr.execute(query, args)
-    except (ProgrammingError, IntegrityError) as error:
+    except (ProgrammingError, IntegrityError):
         logger.error('Error running %s' % cr.mogrify(query, args))
         raise
     if not skip_no_result or cr.rowcount:
@@ -1762,7 +1760,7 @@ def disable_invalid_filters(env):
         from openerp.tools.safe_eval import safe_eval
     import time
     try:
-        basetring
+        basestring
     except:  # For Python 3 compatibility
         basestring = str
 
@@ -1834,8 +1832,8 @@ def add_fields(env, field_spec):
     It's intended for being run in pre-migration scripts for pre-populating
     fields that are going to be declared later in the module.
 
-    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo always
-    add the XML-ID entry:
+    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo
+    always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
     odoo/addons/base/models/ir_model.py#L794-L802
 
@@ -1846,10 +1844,10 @@ def add_fields(env, field_spec):
       * model name
       * SQL table name: Put `False` if the model is already loaded in the
         registry and thus the SQL table name can be obtained that way.
-      * field type: binary, boolean, char, date, datetime, float, html, integer,
-        many2many, many2one, monetary, one2many, reference, selection, text,
-        serialized. The list can vary depending on Odoo version or custom added
-        field types.
+      * field type: binary, boolean, char, date, datetime, float, html,
+        integer, many2many, many2one, monetary, one2many, reference,
+        selection, text, serialized. The list can vary depending on Odoo
+        version or custom added field types.
       * SQL field type: If the field type is custom or it's one of the special
         cases (see below), you need to indicate here the SQL type to use
         (from the valid PostgreSQL types):
@@ -1912,13 +1910,14 @@ def add_fields(env, field_spec):
             INSERT INTO ir_model_data (
                 name, date_init, date_update, module, model, res_id
             ) VALUES (
-                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'), 
+                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'),
                 %s, %s, %s
             )""", (name1, module, 'ir.model.fields', field_id),
         )
 
 
-def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
+def update_module_moved_fields(
+        cr, model, moved_fields, old_module, new_module):
     """Update module for field definition in general tables that have been moved
     from one module to another.
 

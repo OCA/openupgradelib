@@ -28,6 +28,7 @@ def table_exists(cr, table):
     cr.execute('SELECT 1 FROM pg_class WHERE relname = %s', (table,))
     return cr.fetchone()
 
+
 def column_exists(cr, table, column):
     """ Check whether a certain column exists """
     cr.execute(
