@@ -325,6 +325,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         op = field_spec.get(field.name, False)
         l = all_records.mapped(field.name)
         if field.type in ('char', 'text', 'html'):
+            l = [x for x in l if x is not False]
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
             if op == 'merge':
@@ -347,16 +348,19 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             elif op == 'or':
                 vals[field.name] = functools.reduce(lambda x, y: x | y, l)
         elif field.type in ('date', 'datetime'):
+            l = [x for x in l if x is not False]
             op = op or 'other'
             if op == 'max':
                 vals[field.name] = max(l)
             elif op == 'min':
                 vals[field.name] = min(l)
         elif field.type == 'many2many':
+            l = [x for x in l if x is not False]
             op = op or 'merge'
             if op == 'merge':
                 vals[field.name] = [(4, x.id) for x in l]
         elif field.type == 'one2many':
+            l = [x for x in l if x]
             op = op or 'merge'
             if op == 'merge':
                 o2m_changes += 1
