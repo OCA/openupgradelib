@@ -328,6 +328,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
             if op == 'merge':
+                l = filter(lambda x: x is not False, l)
                 vals[field.name] = ' | '.join(l)
         elif field.type in ('integer', 'float', 'monetary'):
             if not op:
@@ -347,6 +348,8 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             elif op == 'or':
                 vals[field.name] = functools.reduce(lambda x, y: x | y, l)
         elif field.type in ('date', 'datetime'):
+            if op:
+                l = filter(lambda x: x is not False, l)
             op = op or 'other'
             if op == 'max':
                 vals[field.name] = max(l)
@@ -355,16 +358,18 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         elif field.type == 'many2many':
             op = op or 'merge'
             if op == 'merge':
+                l = filter(lambda x: x is not False, l)
                 vals[field.name] = [(4, x.id) for x in l]
         elif field.type == 'one2many':
             op = op or 'merge'
             if op == 'merge':
+                l = filter(lambda x: x is not False, l)
                 o2m_changes += 1
                 l.write({field.inverse_name: target_record_id})
         elif field.type in ('binary', 'many2one'):
             op = op or 'merge'
             if op == 'merge':
-                l = [x for x in l if x]
+                l = filter(lambda x: x, l)
                 if not getattr(target_record, field.name) and l and not \
                         vals.get(field.name):
                     vals[field.name] = l[:1]
