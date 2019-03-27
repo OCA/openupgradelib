@@ -363,16 +363,19 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         elif field.type == 'one2many':
             op = op or 'merge'
             if op == 'merge':
-                l = filter(lambda x: x is not False, l)
                 o2m_changes += 1
                 l.write({field.inverse_name: target_record_id})
-        elif field.type in ('binary', 'many2one'):
+        elif field.type == 'binary':
             op = op or 'merge'
             if op == 'merge':
                 l = filter(lambda x: x, l)
-                if not getattr(target_record, field.name) and l and not \
-                        vals.get(field.name):
-                    vals[field.name] = l[:1]
+                if not getattr(target_record, field.name) and l:
+                    vals[field.name] = l[0]
+        elif field.type == 'many2one':
+            op = op or 'merge'
+            if op == 'merge':
+                if not getattr(target_record, field.name) and l:
+                    vals[field.name] = l[0]
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
