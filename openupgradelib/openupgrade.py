@@ -24,10 +24,6 @@ import os
 import inspect
 import uuid
 import logging
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
 from contextlib import contextmanager
 try:
     from psycopg2 import errorcodes, ProgrammingError, IntegrityError
@@ -81,6 +77,14 @@ if not hasattr(release, 'version_info'):
     version_info = tuple(map(int, release.version.split('.')))
 else:
     version_info = release.version_info
+
+if version_info[0] < 11:
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+else:
+    from io import StringIO
 
 if version_info[0] > 6 or version_info[0:2] == (6, 1):
     tools = core.tools
