@@ -368,7 +368,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         elif field.type == 'binary':
             op = op or 'merge'
             if op == 'merge':
-                l = filter(lambda x: x, l)
+                l = [x for x in l if x]
                 if not getattr(target_record, field.name) and l:
                     vals[field.name] = l[0]
         elif field.type == 'many2one':
