@@ -318,7 +318,9 @@ def _get_existing_records(cr, fp, module_name):
                 )
                 if not cr.rowcount:
                     return
-            yield StringIO(etree.tostring(path))
+            result = StringIO(etree.tostring(path, encoding='unicode'))
+            result.name = None
+            yield result
         else:
             for child in node:
                 for value in yield_element(
