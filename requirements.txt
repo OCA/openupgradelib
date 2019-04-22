@@ -4,3 +4,4 @@ coveralls
 flake8==3.2.0
 pep8-naming
 lxml
+psycopg2==2.7.3.1
