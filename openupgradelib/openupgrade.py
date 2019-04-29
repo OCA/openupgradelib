@@ -545,17 +545,24 @@ def rename_models(cr, model_spec):
                     old, new)
         _old = old.replace('.', '_')
         _new = new.replace('.', '_')
-        cr.execute('UPDATE ir_model SET model = %s '
-                   'WHERE model = %s', (new, old,))
-        cr.execute('UPDATE ir_model_data SET model = %s '
-                   'WHERE model = %s', (new, old,))
-        cr.execute(
-            'UPDATE ir_model_data SET name=%s '
-            "WHERE name=%s AND model = 'ir.model'",
-            ('model_' + _new, 'model_' + _old),
+        logged_query(
+            cr,
+            'UPDATE ir_model SET model = %s '
+            'WHERE model = %s', (new, old,),
         )
-        cr.execute(
-            """UPDATE ir_model_data imd
+        logged_query(
+            cr,
+            'UPDATE ir_model_data SET model = %s '
+            'WHERE model = %s', (new, old,),
+        )
+        logged_query(
+            cr,
+            "UPDATE ir_model_data SET name=%s "
+            "WHERE name=%s AND model = 'ir.model'",
+            ('model_' + _new, 'model_' + _old,),
+        )
+        logged_query(
+            cr, """UPDATE ir_model_data imd
             SET name = 'field_' || '%s' || '_' || imf.name
             FROM ir_model_fields imf
             WHERE imd.model = 'ir.model.fields'
@@ -563,20 +570,35 @@ def rename_models(cr, model_spec):
                 AND imf.model = %s""",
             (AsIs(_new), AsIs(_old), old),
         )
-        cr.execute('UPDATE ir_attachment SET res_model = %s '
-                   'WHERE res_model = %s', (new, old,))
-        cr.execute('UPDATE ir_model_fields SET model = %s '
-                   'WHERE model = %s', (new, old,))
-        cr.execute('UPDATE ir_translation SET '
-                   "name=%s || substr(name, strpos(name, ',')) "
-                   'WHERE name LIKE %s',
-                   (new, old + ',%'),)
+        logged_query(
+            cr,
+            'UPDATE ir_attachment SET res_model = %s '
+            'WHERE res_model = %s', (new, old,),
+        )
+        logged_query(
+            cr,
+            'UPDATE ir_model_fields SET model = %s '
+            'WHERE model = %s', (new, old,),
+        )
+        logged_query(
+            cr,
+            "UPDATE ir_translation SET "
+            "name=%s || substr(name, strpos(name, ',')) "
+            "WHERE name LIKE %s",
+            (new, old + ',%'),
+        )
         # Handle properties that reference to this model
-        cr.execute("SELECT id FROM ir_model_fields "
-                   "WHERE relation = %s AND ttype = 'many2one'", (old, ))
+        logged_query(
+            cr,
+            "SELECT id FROM ir_model_fields "
+            "WHERE relation = %s AND ttype = 'many2one'", (old, ),
+        )
         field_ids = [x[0] for x in cr.fetchall()]
-        cr.execute('UPDATE ir_model_fields SET relation = %s '
-                   'WHERE relation = %s', (new, old,))
+        logged_query(
+            cr,
+            'UPDATE ir_model_fields SET relation = %s '
+            'WHERE relation = %s', (new, old,),
+        )
         if field_ids:
             logged_query(
                 cr, """
@@ -591,16 +613,38 @@ def rename_models(cr, model_spec):
                     'new_pattern': r"%s,\1" % new,
                 },
             )
+        if column_exists(cr, 'ir_act_server', 'model_name'):
+            # model_name is a related field that in v11 becomes stored
+            logged_query(
+                cr,
+                'UPDATE ir_act_server SET model_name = %s '
+                'WHERE model_name = %s', (new, old,),
+            )
+        if is_module_installed(cr, 'email_template'):
+            if table_exists(cr, 'email_template') and column_exists(
+                    cr, 'email_template', 'model'):
+                logged_query(
+                    cr,
+                    'UPDATE email_template SET model=%s'
+                    'where model=%s', (new, old),
+                )
         if is_module_installed(cr, 'mail'):
             # fortunately, the data model didn't change up to now
-            cr.execute(
+            logged_query(
+                cr,
                 'UPDATE mail_message SET model=%s where model=%s', (new, old),
             )
+            if table_exists(cr, 'mail_template'):
+                logged_query(
+                    cr,
+                    'UPDATE mail_template SET model=%s'
+                    'where model=%s', (new, old),
+                )
             if table_exists(cr, 'mail_followers'):
-                cr.execute(
+                logged_query(
+                    cr,
                     'UPDATE mail_followers SET res_model=%s '
-                    'where res_model=%s',
-                    (new, old),
+                    'where res_model=%s', (new, old),
                 )
 
     # TODO: signal where the model occurs in references to ir_model
