@@ -36,7 +36,7 @@ setup(
     packages=['openupgradelib'],
     package_dir={'openupgradelib': 'openupgradelib'},
     include_package_data=True,
-    install_requires=[],
+    install_requires=["lxml", "cssselect"],
     license=openupgradelib.__license__,
     zip_safe=False,
     keywords='openupgradelib',
