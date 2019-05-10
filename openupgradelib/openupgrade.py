@@ -646,6 +646,12 @@ def rename_models(cr, model_spec):
                     'UPDATE mail_followers SET res_model=%s '
                     'where res_model=%s', (new, old),
                 )
+            if table_exists(cr, 'mail_activity'):
+                logged_query(
+                    cr,
+                    'UPDATE mail_activity SET res_model=%s '
+                    'where res_model=%s', (new, old),
+                )
 
     # TODO: signal where the model occurs in references to ir_model
 
