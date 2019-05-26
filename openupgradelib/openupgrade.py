@@ -1887,7 +1887,9 @@ def add_fields(env, field_spec):
     NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo
     always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
-    odoo/addons/base/models/ir_model.py#L794-L802
+    odoo/addons/base/models/ir_model.py#L794-L802, but you can still call
+    this method for consistency and for avoiding to know the internal PG
+    column type.
 
     :param: field_spec: List of tuples with the following expected elements
       for each tuple:
@@ -1954,18 +1956,23 @@ def add_fields(env, field_spec):
         )
         field_id = env.cr.fetchone()[0]
         # Add ir.model.data entry
-        if not module:
+        if not module or version_info[0] >= 12:
             continue
         name1 = 'field_%s_%s' % (model_name.replace('.', '_'), field_name)
-        logged_query(
-            env.cr, """
-            INSERT INTO ir_model_data (
-                name, date_init, date_update, module, model, res_id
-            ) VALUES (
-                %s, (now() at time zone 'UTC'), (now() at time zone 'UTC'),
-                %s, %s, %s
-            )""", (name1, module, 'ir.model.fields', field_id),
-        )
+        try:
+            with env.cr.savepoint():
+                logged_query(
+                    env.cr, """
+                    INSERT INTO ir_model_data (
+                        name, date_init, date_update, module, model, res_id
+                    ) VALUES (
+                        %s, (now() at time zone 'UTC'),
+                        (now() at time zone 'UTC'), %s, %s, %s
+                    )""", (name1, module, 'ir.model.fields', field_id),
+                )
+        except IntegrityError:
+            # Do not fail if already present
+            pass
 
 
 def update_module_moved_fields(
