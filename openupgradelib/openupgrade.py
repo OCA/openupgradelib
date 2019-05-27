@@ -61,10 +61,10 @@ core = None
 # The order matters here. We can import odoo in 9.0, but then we get odoo.py
 try:  # < 10.0
     import openerp as core
-    from openerp.modules import registry as RegistryManager
+    from openerp.modules import registry
 except ImportError:  # >= 10.0
     import odoo as core
-    from odoo.modules import registry as RegistryManager
+    from odoo.modules import registry
 if hasattr(core, 'release'):
     release = core.release
 else:
@@ -1318,7 +1318,7 @@ def deactivate_workflow_transitions(cr, model, transitions=None):
     """
     transition_ids = []
     if transitions:
-        data_obj = RegistryManager.get(cr.dbname)['ir.model.data']
+        data_obj = registry.get(cr.dbname)['ir.model.data']
         for module, name in transitions:
             try:
                 transition_ids.append(
@@ -1751,7 +1751,7 @@ def savepoint(cr):
         try:
             yield
             cr.execute('RELEASE SAVEPOINT "%s"' % name)
-        except:
+        except Exception:
             cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
 
 
@@ -1812,8 +1812,8 @@ def disable_invalid_filters(env):
         from openerp.tools.safe_eval import safe_eval
     import time
     try:
-        basestring
-    except:  # For Python 3 compatibility
+        basestring  # noqa: F821
+    except NameError:  # For Python 3 compatibility
         basestring = str
 
     def format_message(f):

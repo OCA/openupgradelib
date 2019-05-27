@@ -27,7 +27,7 @@ def import_mock(name, *args):
 
 
 if sys.version_info[0] == 3:
-    import builtins  # flake8: noqa
+    import builtins  # noqa: F401
     import_str = 'builtins.__import__'
 else:
     import_str = '__builtin__.__import__'
@@ -66,6 +66,7 @@ class TestOpenupgradelib(unittest.TestCase):
 
     def tearDown(self):
         pass
+
 
 if __name__ == '__main__':
     unittest.main()

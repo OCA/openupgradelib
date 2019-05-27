@@ -1,7 +1,6 @@
 wheel
 coveralls
-# Version locked due to https://gitlab.com/pycqa/flake8/issues/268
-flake8==3.2.0
+flake8
 pep8-naming
 lxml
 psycopg2==2.7.3.1
