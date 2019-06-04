@@ -323,59 +323,59 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         if not field.store or field.compute or field.related:
             continue  # don't do anything on these cases
         op = field_spec.get(field.name, False)
-        l = all_records.mapped(field.name)
+        _list = all_records.mapped(field.name)
         if field.type in ('char', 'text', 'html'):
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
             if op == 'merge':
-                l = filter(lambda x: x is not False, l)
-                vals[field.name] = ' | '.join(l)
+                _list = filter(lambda x: x is not False, _list)
+                vals[field.name] = ' | '.join(_list)
         elif field.type in ('integer', 'float', 'monetary'):
             if not op:
                 op = 'other' if field.type == 'integer' else 'sum'
             if op == 'sum':
-                vals[field.name] = sum(l)
+                vals[field.name] = sum(_list)
             elif op == 'avg':
-                vals[field.name] = sum(l) / len(l)
+                vals[field.name] = sum(_list) / len(_list)
             elif op == 'max':
-                vals[field.name] = max(l)
+                vals[field.name] = max(_list)
             elif op == 'min':
-                vals[field.name] = min(l)
+                vals[field.name] = min(_list)
         elif field.type == 'boolean':
             op = op or 'other'
             if op == 'and':
-                vals[field.name] = functools.reduce(lambda x, y: x & y, l)
+                vals[field.name] = functools.reduce(lambda x, y: x & y, _list)
             elif op == 'or':
-                vals[field.name] = functools.reduce(lambda x, y: x | y, l)
+                vals[field.name] = functools.reduce(lambda x, y: x | y, _list)
         elif field.type in ('date', 'datetime'):
             if op:
-                l = filter(lambda x: x is not False, l)
+                _list = filter(lambda x: x is not False, _list)
             op = op or 'other'
             if op == 'max':
-                vals[field.name] = max(l)
+                vals[field.name] = max(_list)
             elif op == 'min':
-                vals[field.name] = min(l)
+                vals[field.name] = min(_list)
         elif field.type == 'many2many':
             op = op or 'merge'
             if op == 'merge':
-                l = filter(lambda x: x is not False, l)
-                vals[field.name] = [(4, x.id) for x in l]
+                _list = filter(lambda x: x is not False, _list)
+                vals[field.name] = [(4, x.id) for x in _list]
         elif field.type == 'one2many':
             op = op or 'merge'
             if op == 'merge':
                 o2m_changes += 1
-                l.write({field.inverse_name: target_record_id})
+                _list.write({field.inverse_name: target_record_id})
         elif field.type == 'binary':
             op = op or 'merge'
             if op == 'merge':
-                l = [x for x in l if x]
-                if not getattr(target_record, field.name) and l:
-                    vals[field.name] = l[0]
+                _list = [x for x in _list if x]
+                if not getattr(target_record, field.name) and _list:
+                    vals[field.name] = _list[0]
         elif field.type == 'many2one':
             op = op or 'merge'
             if op == 'merge':
-                if not getattr(target_record, field.name) and l:
-                    vals[field.name] = l[0]
+                if not getattr(target_record, field.name) and _list:
+                    vals[field.name] = _list[0]
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
