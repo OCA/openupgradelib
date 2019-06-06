@@ -1980,9 +1980,11 @@ def update_module_moved_fields(
     """Update module for field definition in general tables that have been moved
     from one module to another.
 
-    NOTE: This is not needed in >=v12, as now Odoo always add the XML-ID entry:
+    NOTE: This is not strictly needed in >=v12, as now Odoo always adds the
+    XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
-    odoo/addons/base/models/ir_model.py#L794-L802
+    odoo/addons/base/models/ir_model.py#L794-L802 (https://git.io/fjzqz),
+    but we can call it for completion and for the translation part.
 
     :param cr: Database cursor
     :param model: model name
@@ -1992,8 +1994,6 @@ def update_module_moved_fields(
     """
     if version_info[0] <= 7:
         do_raise("This only works for Odoo version >=v8")
-    if version_info[0] >= 12:
-        do_raise("This should be used only for Odoo version <v12")
     if not isinstance(moved_fields, (list, tuple)):
         do_raise("moved_fields %s must be a tuple or list!" % moved_fields)
     logger.info(
