@@ -18,6 +18,7 @@ Don't expect perfection. But patches are welcome.
 from itertools import product
 from psycopg2.extensions import AsIs
 
+from .openupgrade import update_field_multilang
 from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
@@ -358,17 +359,17 @@ def _convert_field_bootstrap_3to4_orm(env, model_name, field_name,
     """
     domain = domain or [(field_name, "!=", False)]
     records = env[model_name].search(domain)
-    for rec in records:
-        old = rec[field_name]
-        if not old:
-            continue
-        new = convert_string_bootstrap_3to4(old)
-        if old != new:
-            rec[field_name] = new
+    update_field_multilang(
+        records,
+        field_name,
+        lambda old, *a, **k: convert_field_bootstrap_3to4(old),
+    )
 
 
 def _convert_field_bootstrap_3to4_sql(cr, table, field, ids=None):
     """Convert a field from Bootstrap 3 to 4, using raw SQL queries.
+
+    TODO Support multilang fields.
 
     :param odoo.sql_db.Cursor cr:
         Database cursor.

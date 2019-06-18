@@ -5,6 +5,9 @@ sudo: false
 python:
   - "3.6"  # But switching to 2.7 in the script
 
+services:
+  - postgresql
+
 addons:
     apt:
         packages:
