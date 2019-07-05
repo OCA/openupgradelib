@@ -148,6 +148,7 @@ __all__ = [
     'chunked',
     'drop_columns',
     'delete_model_workflow',
+    'update_field_multilang',
     'update_workflow_workitems',
     'warn_possible_dataloss',
     'set_defaults',
@@ -1973,6 +1974,30 @@ def add_fields(env, field_spec):
         except IntegrityError:
             # Do not fail if already present
             pass
+
+
+def update_field_multilang(records, field, method):
+    """Update a field in all available languages in the database.
+
+    :param records:
+        Recordset to be updated.
+
+    :param str field:
+        Field to be updated.
+
+    :param callable method:
+        Method to execute to update the field.
+
+        It will be called with: ``(old_value, lang_code, record)``
+    """
+    installed_langs = [(records.env.lang or "en_US", "English")]
+    if records._fields[field].translate:
+        installed_langs = records.env["res.lang"].get_installed()
+    for lang_code, lang_name in installed_langs:
+        for record in records.with_context(lang=lang_code):
+            new_value = method(record[field], lang_code, record)
+            if record[field] != new_value:
+                record[field] = new_value
 
 
 def update_module_moved_fields(
