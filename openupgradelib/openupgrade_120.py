@@ -362,7 +362,7 @@ def _convert_field_bootstrap_3to4_orm(env, model_name, field_name,
     update_field_multilang(
         records,
         field_name,
-        lambda old, *a, **k: convert_field_bootstrap_3to4(old),
+        lambda old, *a, **k: convert_string_bootstrap_3to4(old),
     )
 
 
