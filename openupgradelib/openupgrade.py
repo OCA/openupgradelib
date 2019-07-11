@@ -635,6 +635,12 @@ def rename_models(cr, model_spec):
                 cr,
                 'UPDATE mail_message SET model=%s where model=%s', (new, old),
             )
+            if table_exists(cr, 'mail_message_subtype'):
+                logged_query(
+                    cr,
+                    'UPDATE mail_message_subtype SET res_model=%s '
+                    'where res_model=%s', (new, old),
+                )
             if table_exists(cr, 'mail_template'):
                 logged_query(
                     cr,
