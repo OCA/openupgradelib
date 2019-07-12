@@ -23,7 +23,10 @@ from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
 )
+import logging
 
+logger = logging.getLogger('OpenUpgrade')
+logger.setLevel(logging.DEBUG)
 
 _COLS = range(1, 13)
 _CONTEXTS = (
@@ -321,7 +324,17 @@ def convert_string_bootstrap_3to4(html_string, pretty_print=True):
     :return str:
         Raw HTML fragment converted.
     """
-    return convert_html_fragment(html_string, ALL_REPLACEMENTS, pretty_print)
+    if not html_string:
+        return html_string
+    try:
+        return convert_html_fragment(
+            html_string, ALL_REPLACEMENTS, pretty_print,
+        )
+    except Exception:
+        logger.error(
+            'Error converting string BS3 to BS4:\n%s' % html_string
+        )
+        raise
 
 
 def convert_field_bootstrap_3to4(env, model_name, field_name, domain=None,
