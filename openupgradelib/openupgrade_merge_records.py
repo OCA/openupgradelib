@@ -57,7 +57,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             target_column = column if m2m_table else 'id'
             env.cr.execute("""SELECT %(target_column)s FROM %(table)s
                 WHERE "%(column)s" in %(record_ids)s""", {
-                    'target_column': target_column,
+                    'target_column': AsIs(target_column),
                     'table': AsIs(table),
                     'column': AsIs(column),
                     'record_ids': record_ids,
