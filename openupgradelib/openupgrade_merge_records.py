@@ -63,7 +63,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                     'record_ids': record_ids,
                 },
             )
-            for row in env.cr.fetchall():
+            for row in list(set([x[0] for x in env.cr.fetchall()])):
                 try:
                     with env.cr.savepoint():
                         logged_query(
@@ -73,7 +73,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                                 'target_column': AsIs(target_column),
                                 'table': AsIs(table),
                                 'column': AsIs(column),
-                                'record_id': row[0],
+                                'record_id': row,
                                 'target_record_id': target_record_id,
                             },
                         )
