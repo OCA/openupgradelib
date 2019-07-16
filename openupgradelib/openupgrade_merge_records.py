@@ -70,7 +70,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                             env.cr, """UPDATE %(table)s
                             SET "%(column)s" = %(target_record_id)s
                             WHERE %(target_column)s = %(record_id)s""", {
-                                'target_column': target_column,
+                                'target_column': AsIs(target_column),
                                 'table': AsIs(table),
                                 'column': AsIs(column),
                                 'record_id': row[0],
