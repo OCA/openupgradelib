@@ -104,6 +104,18 @@ def convert_xml_node(node,
                      wrap=""):
     """Apply conversions to an XML node.
 
+    All parameters except :param:`node` can be a callable that return the
+    expected type as specified in each of them below.
+
+    The callable would be called with these **keyword-only** arguments:
+
+    * ``attrs``: A ``dict`` of the original attributes in the node.
+    * ``classes``: A ``set`` of the original classes in the node.
+    * ``styles``: A ``dict`` of the original styles in the node.
+    * ``tag``: A ``str`` indicating the original node tag.
+
+    Each one of them has the same type as the expected type
+
     :param lxml.etree.Element node:
         Node to be modified.
 
@@ -148,6 +160,27 @@ def convert_xml_node(node,
     class_add = set(class_add.split())
     class_rm = set(class_rm.split())
     style_add = style_add or {}
+    # Obtain attributes, classes and styles
+    classes = set(node.attrib.get("class", "").split())
+    styles = node.attrib.get("style", "").split(";")
+    styles = {key.strip(): val.strip() for key, val in
+              (style.split(":", 1) for style in styles if ":" in style)}
+    # Convert incoming callable arguments into values
+    originals = {
+        "attrs": node.attrib.copy(),
+        "classes": classes.copy(),
+        "styles": styles.copy(),
+        "tag": node.tag,
+    }
+    _call = lambda v: v(**originals) if callable(v) else v  # noqa: E731
+    attr_add = _call(attr_add)
+    attr_rm = _call(attr_rm)
+    class_add = _call(class_add)
+    class_rm = _call(class_rm)
+    style_add = _call(style_add)
+    style_rm = _call(style_rm)
+    tag = _call(tag)
+    wrap = _call(wrap)
     # Patch node attributes
     if attr_add or attr_rm:
         for key in attr_rm:
@@ -156,7 +189,6 @@ def convert_xml_node(node,
             node.attrib.setdefault(key, value)
     # Patch node classes
     if class_add or class_rm:
-        classes = set(node.attrib.get("class", "").split())
         classes = (classes | class_add) ^ class_rm
         classes = " ".join(classes)
         if classes:
@@ -165,9 +197,6 @@ def convert_xml_node(node,
             node.attrib.pop("class", None)
     # Patch node styles
     if style_add or style_rm:
-        styles = node.attrib.get("style", "").split(";")
-        styles = {key.strip(): val.strip() for key, val in
-                  (style.split(":", 1) for style in styles if ":" in style)}
         for key in style_rm:
             styles.pop(key, None)
         for key, value in style_add.items():

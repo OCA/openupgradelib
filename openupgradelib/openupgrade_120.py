@@ -255,7 +255,9 @@ _ODOO12_REPLACEMENTS = (
 
     # Slider snippet
     _r(selector=".s_banner",
-       style_rm={"height"}, style_add={"min-height": "400px"}),
+       style_rm={"height"},
+       style_add=lambda styles, **kw: {
+           "min-height": styles.get("height", "400px")}),
 
     # Text snippet loses its built-in headers
     _r(selector=".s_text_block h2", class_add="mt24"),
