@@ -110,6 +110,9 @@ def convert_xml_node(node,
     :param dict attr_add:
         Attributes to add.
 
+        If the attribute is present, it won't be overwritten unless you add
+        it also to :param:`attr_rm`.
+
     :param set attr_rm:
         Attributes to remove.
 
@@ -124,6 +127,9 @@ def convert_xml_node(node,
         if you pass ``{"display": "none"}``,
         a ``<div style="background-color:gray/>`` node would become
         ``<div style="background-color:gray;display:none/>``.
+
+        If the style is present, it won't be overwritten unless you add
+        it also to :param:`style_rm`.
 
     :param set style_rm:
         CSS styles to remove from the node (for HTML nodes). I.e.,
@@ -146,7 +152,8 @@ def convert_xml_node(node,
     if attr_add or attr_rm:
         for key in attr_rm:
             node.attrib.pop(key, None)
-        node.attrib.update(attr_add)
+        for key, value in attr_add.items():
+            node.attrib.setdefault(key, value)
     # Patch node classes
     if class_add or class_rm:
         classes = set(node.attrib.get("class", "").split())
@@ -163,7 +170,8 @@ def convert_xml_node(node,
                   (style.split(":", 1) for style in styles if ":" in style)}
         for key in style_rm:
             styles.pop(key, None)
-        styles.update(style_add)
+        for key, value in style_add.items():
+            styles.setdefault(key, value)
         styles = ";".join(map(":".join, styles.items()))
         if styles:
             node.attrib["style"] = styles
