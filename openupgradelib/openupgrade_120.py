@@ -253,9 +253,21 @@ _ODOO12_REPLACEMENTS = (
     # Big picture snippet
     _r(selector=".s_big_picture h2", class_add="mt24"),
 
-    # Slider snippet
-    _r(selector=".s_banner",
-       style_rm={"height"}, style_add={"min-height": "400px"}),
+    # Slider (v11) or Carousel (v12) snippet
+    _r(selector=".carousel",
+       class_rm="s_banner oe_custom_bg",
+       class_add="s_carousel s_carousel_default",
+       style_rm={"height"},
+       style_add=lambda styles, **kw: {
+           "min-height": styles.get("height", "400px")}),
+    _r(selector=".carousel-control-prev .fa-chevron-left",
+       class_rm="fa fa-chevron-left",
+       class_add="carousel-control-prev-icon",
+       tag="span"),
+    _r(selector=".carousel-control-next .fa-chevron-right",
+       class_rm="fa fa-chevron-right",
+       class_add="carousel-control-next-icon",
+       tag="span"),
 
     # Text snippet loses its built-in headers
     _r(selector=".s_text_block h2", class_add="mt24"),
