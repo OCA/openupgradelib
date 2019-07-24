@@ -167,7 +167,7 @@ def convert_xml_node(node,
               (style.split(":", 1) for style in styles if ":" in style)}
     # Convert incoming callable arguments into values
     originals = {
-        "attrs": node.attrib.copy(),
+        "attrs": dict(node.attrib.items()),
         "classes": classes.copy(),
         "styles": styles.copy(),
         "tag": node.tag,
