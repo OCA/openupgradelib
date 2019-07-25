@@ -1002,7 +1002,10 @@ def update_module_names(cr, namespec, merge_modules=False):
         of just a renaming.
     """
     for (old_name, new_name) in namespec:
-        if merge_modules:
+        query = "SELECT id FROM ir_module_module WHERE name = %s"
+        cr.execute(query, [new_name])
+        row = cr.fetchone()
+        if row and merge_modules:
             # Delete meta entries, that will avoid the entry removal
             # They will be recreated by the new module anyhow.
             query = "SELECT id FROM ir_module_module WHERE name = %s"
