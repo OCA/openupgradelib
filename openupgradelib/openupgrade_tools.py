@@ -186,7 +186,8 @@ def convert_xml_node(node,
         for key in attr_rm:
             node.attrib.pop(key, None)
         for key, value in attr_add.items():
-            node.attrib.setdefault(key, value)
+            if key not in node.attrib:
+                node.attrib[key] = value
     # Patch node classes
     if class_add or class_rm:
         classes = (classes | class_add) ^ class_rm
