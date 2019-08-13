@@ -53,6 +53,7 @@ except ImportError:
             while self._cms:
                 self._cms.pop().__exit__(exc_type, exc_value, traceback)
 
+from psycopg2 import sql
 from psycopg2.extensions import AsIs
 from lxml import etree
 from . import openupgrade_tools
@@ -139,6 +140,7 @@ __all__ = [
     'load_data',
     'add_fields',
     'copy_columns',
+    'copy_fields_multilang',
     'rename_columns',
     'rename_fields',
     'rename_tables',
@@ -374,6 +376,122 @@ def copy_columns(cr, column_spec):
                 'field_type': field_type,
                 'new': new,
             })
+
+
+def copy_fields_multilang(cr, destination_model, destination_table,
+                          destination_columns, relation_column,
+                          source_model=None, source_table=None,
+                          source_columns=None):
+    """Copy field contents including translations.
+
+    :param str destination_model:
+        Name of the destination model where the data will be copied to.
+
+    :param str destination_table:
+        Name of the destination table where the data will be copied to.
+        It must be ``env[destination_model]._table``.
+
+    :param list destination_columns:
+        List of column names in the ``destination_table`` that will
+        receive the copied data.
+
+    :param str relation_column:
+        Name of a column in ``destination_table`` which points to IDs in
+        ``source_table``. An ``INNER JOIN`` will be done to update the
+        destination records with their corresponding source records only.
+        Records where this column ``NULL`` will be skipped.
+
+    :param str source_model:
+        Name of the source model where the data will be copied from.
+        If empty, it will default to ``destination_table``.
+
+    :param str source_table:
+        Name of the source table where the data will be copied from.
+        If empty, it will default to ``destination_table``.
+        It must be ``env[source_model]._table``.
+
+    :param list source_columns:
+        List of column names in the ``source_table`` that will
+        provide the copied data.
+        If empty, it will default to ``destination_columns``.
+
+    :param bool translations_only:
+        If ``True``, it will only handle transferring translations. Won't
+        copy the raw field from ``source_table``.
+
+    .. versionadded:: 12.0
+    """
+    if source_model is None:
+        source_model = destination_model
+    if source_table is None:
+        source_table = destination_table
+    if source_columns is None:
+        source_columns = destination_columns
+    cols_len = len(destination_columns)
+    assert len(source_columns) == cols_len > 0
+    # Basic copy
+        query = sql.SQL("""
+            UPDATE {dst_t} AS dt
+            SET {set_part}
+            FROM {src_t} AS st
+            WHERE dt.{rel_col} = st.id
+        """).format(
+            dst_t=sql.Identifier(destination_table),
+            set_part=sql.SQL(", ").join(
+                sql.SQL("{} = st.{}").format(
+                    sql.Identifier(dest_col),
+                    sql.Identifier(src_col))
+                for (dest_col, src_col)
+                in zip(destination_columns, source_columns)),
+            src_t=sql.Identifier(source_table),
+            rel_col=sql.Identifier(relation_column),
+        )
+        logged_query(cr, query)
+    # Translations copy
+    query = sql.SQL("""
+        INSERT INTO ir_translation (
+            lang,
+            module,
+            name,
+            res_id,
+            src,
+            state,
+            type,
+            value
+        )
+        SELECT
+            it.lang,
+            it.module,
+            REPLACE(
+                it.name,
+                %(src_m)s || ',' || %(src_c)s,
+                %(dst_m)s || ',' || %(dst_c)s
+            ),
+            dt.id,
+            it.src,
+            it.state,
+            it.type,
+            it.value
+        FROM ir_translation AS it
+        INNER JOIN {dst_t} AS dt ON dt.{rel_col} = it.res_id
+        WHERE
+            it.name = %(src_m)s || ',' || %(src_c)s OR
+            it.name LIKE %(src_m)s || ',' || %(src_c)s || ',%%'
+    """)
+    for dest_col, src_col in zip(destination_columns, source_columns):
+        logged_query(
+            cr,
+            query.format(
+                dst_t=sql.Identifier(destination_table),
+                rel_col=sql.Identifier(relation_column),
+            ),
+            {
+                "dst_c": dest_col,
+                "dst_m": destination_model,
+                "src_c": src_col,
+                "src_m": source_model,
+            },
+        )
 
 
 def rename_columns(cr, column_spec):
