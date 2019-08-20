@@ -23,7 +23,7 @@ import sys
 import os
 import inspect
 import uuid
-import logging
+import logging as _logging_module
 try:
     from StringIO import StringIO
 except ImportError:
@@ -131,8 +131,8 @@ else:
 # so to log at loglevel debug we need to set it
 # manually here. As a consequence, DEBUG messages from
 # this file are always logged
-logger = logging.getLogger('OpenUpgrade')
-logger.setLevel(logging.DEBUG)
+logger = _logging_module.getLogger('OpenUpgrade')
+logger.setLevel(_logging_module.DEBUG)
 
 __all__ = [
     'migrate',
@@ -1100,14 +1100,27 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     if args is None:
         args = ()
     args = tuple(args) if type(args) == list else args
+    log_level = _logging_module.DEBUG
+    log_msg = False
     try:
         cr.execute(query, args)
     except (ProgrammingError, IntegrityError):
-        logger.error('Error running %s' % cr.mogrify(query, args))
+        log_level = _logging_module.ERROR
+        log_msg = "Error running %(full_query)s"
         raise
-    if not skip_no_result or cr.rowcount:
-        logger.debug('Running %s', query % args)
-        logger.debug('%s rows affected', cr.rowcount)
+    else:
+        if not skip_no_result or cr.rowcount:
+            log_msg = '%(rowcount)d rows affected after running %(full_query)s'
+    finally:
+        if log_msg:
+            try:
+                full_query = cr._obj.query.decode()
+            except AttributeError:
+                full_query = cr.mogrify(query, args).decode()
+            logger.log(
+                log_level, log_msg,
+                {"rowcount": cr.rowcount, "full_query": full_query},
+            )
     return cr.rowcount
 
 
