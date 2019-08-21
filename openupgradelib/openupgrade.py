@@ -381,7 +381,7 @@ def copy_columns(cr, column_spec):
 def copy_fields_multilang(cr, destination_model, destination_table,
                           destination_columns, relation_column,
                           source_model=None, source_table=None,
-                          source_columns=None):
+                          source_columns=None, translations_only=False):
     """Copy field contents including translations.
 
     :param str destination_model:
@@ -430,6 +430,7 @@ def copy_fields_multilang(cr, destination_model, destination_table,
     cols_len = len(destination_columns)
     assert len(source_columns) == cols_len > 0
     # Basic copy
+    if not translations_only:
         query = sql.SQL("""
             UPDATE {dst_t} AS dt
             SET {set_part}
@@ -476,7 +477,9 @@ def copy_fields_multilang(cr, destination_model, destination_table,
         INNER JOIN {dst_t} AS dt ON dt.{rel_col} = it.res_id
         WHERE
             it.name = %(src_m)s || ',' || %(src_c)s OR
-            it.name LIKE %(src_m)s || ',' || %(src_c)s || ',%%'
+            it.name LIKE %(src_m)s || ',' || %(src_c)s || ',%%' OR
+            (%(src_m)s = 'ir.ui.view' AND it.type = 'view')
+        ON CONFLICT DO NOTHING
     """)
     for dest_col, src_col in zip(destination_columns, source_columns):
         logged_query(
