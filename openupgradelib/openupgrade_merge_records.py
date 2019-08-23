@@ -8,7 +8,7 @@ import functools
 from psycopg2 import ProgrammingError, IntegrityError
 from psycopg2.errorcodes import UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
-from .openupgrade import logged_query
+from .openupgrade import logged_query, version_info
 from .openupgrade_tools import column_exists, table_exists
 
 logger = logging.getLogger('OpenUpgrade')
@@ -191,7 +191,10 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
 def _change_reference_refs_orm(env, model_name, record_ids, target_record_id,
                                exclude_columns):
     fields = env['ir.model.fields'].search([('ttype', '=', 'reference')])
-    fields |= env.ref('base.field_ir_property_value_reference')
+    if version_info[0] >= 12:
+        fields |= env.ref('base.field_ir_property__value_reference')
+    else:
+        fields |= env.ref('base.field_ir_property_value_reference')
     for field in fields:
         try:
             model = env[field.model].with_context(active_test=False)
