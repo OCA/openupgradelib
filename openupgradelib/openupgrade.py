@@ -1136,7 +1136,8 @@ def update_module_names(cr, namespec, merge_modules=False):
         of just a renaming.
     """
     for (old_name, new_name) in namespec:
-        query = "SELECT id FROM ir_module_module WHERE name = %s"
+        query = ("SELECT id FROM ir_module_module WHERE name = %s "
+        "AND state in ('to upgrade', 'to remove', 'to install', 'installed')")
         cr.execute(query, [new_name])
         row = cr.fetchone()
         if row and merge_modules:
@@ -1152,8 +1153,14 @@ def update_module_names(cr, namespec, merge_modules=False):
                 query = "DELETE FROM ir_model_relation WHERE module = %s"
                 logged_query(cr, query, [old_id])
         else:
+            query = "DELETE FROM ir_module_module WHERE name = %s"
+            logged_query(cr, query, [new_name])
             query = "UPDATE ir_module_module SET name = %s WHERE name = %s"
             logged_query(cr, query, (new_name, old_name))
+            query = ("DELETE FROM ir_model_data "
+                     "WHERE name = %s AND module = 'base' AND "
+                     "model='ir.module.module' ")
+            logged_query(cr, query, ["module_%s" % new_name])
             query = ("UPDATE ir_model_data SET name = %s "
                      "WHERE name = %s AND module = 'base' AND "
                      "model='ir.module.module' ")
