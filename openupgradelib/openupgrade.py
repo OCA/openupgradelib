@@ -2225,7 +2225,9 @@ def delete_records_safely_by_xml_id(env, xml_ids):
         logger.debug('Deleting record for XML-ID %s', xml_id)
         try:
             with env.cr.savepoint():
-                env.ref(xml_id).exists().unlink()
+                record = env.ref(xml_id, raise_if_not_found=False)
+                if record and record.exists():
+                    record.unlink()
         except Exception as e:
             logger.error('Error deleting XML-ID %s: %s', xml_id, repr(e))
 
