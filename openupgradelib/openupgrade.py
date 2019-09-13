@@ -2078,11 +2078,15 @@ def add_fields(env, field_spec):
         # Add SQL column
         if not table_name:
             table_name = env[model_name]._table
-        sql_type = sql_type_mapping.get(field_type)
+        sql_type = sql_type or sql_type_mapping.get(field_type)
         if sql_type:
             logged_query(
-                env.cr, """ALTER TABLE %s ADD COLUMN %s %s""",
-                (AsIs(table_name), AsIs(field_name), AsIs(sql_type)),
+                env.cr,
+                sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
+                    sql.Identifier(table_name),
+                    sql.Identifier(field_name),
+                    sql.SQL(sql_type),
+                ),
             )
         # Add ir.model.fields entry
         env.cr.execute(
