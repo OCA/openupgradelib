@@ -2,6 +2,69 @@
 
 History
 -------
+3.0.0 (2019-09-16)
+------------------
+
+* [IMP] SQL version of last_message_post
+* [IMP] keep old module's state when merging modules and the target is …
+* [ADD] delete_records_safely_by_xml_id
+* [FIX] rename_models: Rename correctly ir.property values (without ^)
+* [IMP] merge_records: Be more conservative on merge values
+* [RFR] No yaml import in Odoo 12
+* [ADD] Chunked method
+* [ADD] search and replace a single ID across the whole database
+* [RFR] Merge with existing method
+* [FIX] merge_records: bad column in _change_generic exclusion
+* [FIX] merge_records: escape column names in _change_foreign_key_refs
+* [FIX] merge_records: unreachable code due to bad condition in _change…
+* [IMP] merge_records: align sql queries to better visualization
+* [FIX] merge_records: missing argument in _delete_records_sql
+* [FIX] merge_records: missing argument in _adjust_merged_values_orm
+* [FIX] merge_records: tuples and lists don't sum
+* [FIX] _adjust_merged_values_orm: char default case
+* [FIX] merge_records (orm): take into account inactive records
+* [FIX] _adjust_merged_values_orm: integer default case
+* [IMP] merge_records: add adjust values for binary & many2one
+* [FIX] merge_records: ensure value in merging many2one and binary types
+* [FIX] merge_records: if merging many2many, avoid warning of bad compa…
+* [FIX] Solve TypeError in _adjust_merged_values_orm
+* [IMP] merge_records: Put exception condition on records to be merged
+* [IMP] merge_records: Check which records to be merged exist
+* [FIX] merge_records: Handle better translatable fields
+* [FIX] Merge records on sql take into account rel tables
+* [IMP] openupgrade_merge_records: Improve code for handling m2m tables…
+* [FIX] SQL request into moved_fields function
+* [FIX] set_defaults: New api adaptation
+* [ADD] Clunky travis script to run functional tests across a range of Odoo versions
+* [FIX] openupgradelib: Manage null values to avoid TypeError when merging
+* [FIX] openupgrade_merge_records: `filter` should be properly applied
+* [FIX] openupgrade_merge_records: l[0] is not valid for `filter` object
+* [FIX] openupgradelib: _get_existing_records for v11 and above
+* [FIX] chunked: Adapt to all supported versions
+* [FIX] rename_models
+* [IMP] add_fields: Consider corner edges and >= v12
+* [IMP] Add XML conversion framework and Bootstrap 3 to 4 converter
+* [FIX] update_module_moved_fields: Allow v12
+* [IMP] Support multilang updates in Bootstrap 3 to 4 migration
+* [FIX] typo in 12.0 tools
+* [IMP] rename_models: add mail_message_subtype in rename_models
+* [FIX+IMP] convert_string_bootstrap_3to4: Don't try to convert empty columns
+* [FIX] merge_recordS: bad query in _change_foreign_key_refs
+* [FIX] merge_records: bad query in _change_foreign_key_refs (part 2)
+* [FIX] merge_records: reduce queries in _change_foreign_key_refs
+* [FIX] Respect preexisting styles and attributes
+* [IMP] Allow callable XML replacements
+* [IMP] Translate from v11 Slider to v12 Carousel
+* [FIX] convert_xml_node: node.attrib doesn't have copy() method
+* [FIX] Remove call to `setdefault()`
+* [IMP] update_module_names: rename instead of merge case
+* [ADD] copy_fields_multilang method
+* [FIX] Adapt `logged_query` to work with `psycopg2.sql.SQL` and similar helpers
+* [IMP] View translations are special
+* [FIX] openupgrade_merge_records: field XML ID v12
+* [IMP] For small tables it's perfectly acceptable to drop index and then let Odoo recreate it, but with large tables this scenario is rather costly.
+* [IMP] delete_records_safely_by_xml_id: Avoid noisy log if the XML-ID is not found
+* [FIX] add_fields: Respect sql_type and build safe query
 
 2.0.0 (2018-07-21)
 ------------------
