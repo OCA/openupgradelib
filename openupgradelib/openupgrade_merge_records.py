@@ -152,10 +152,10 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
                                exclude_columns):
     cr = env.cr
     cr.execute("""
-        SELECT name, model
+        SELECT model, name
         FROM ir_model_fields
         WHERE ttype='reference'
-        """, (model_name, ))
+        """)
     rows = cr.fetchall()
     if ('ir.property', 'value_reference') not in rows:
         rows.append(('ir.property', 'value_reference'))
@@ -174,7 +174,7 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
                 (table, column) in exclude_columns):
             continue
         where = ' OR '.join(
-            ["%s = '%s,%s'" % (row[1], model_name, x) for x in record_ids]
+            ["%s = '%s,%s'" % (column, model_name, x) for x in record_ids]
         )
         logged_query(
             cr, """
