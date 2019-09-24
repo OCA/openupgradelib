@@ -686,14 +686,15 @@ def rename_models(cr, model_spec):
             "WHERE name=%s AND model = 'ir.model'",
             ('model_' + _new, 'model_' + _old,),
         )
+        underscore = "_" if version_info[0] < 12 else "__"
         logged_query(
             cr, """UPDATE ir_model_data imd
-            SET name = 'field_' || '%s' || '_' || imf.name
+            SET name = 'field_' || '%s' || '%s' || imf.name
             FROM ir_model_fields imf
             WHERE imd.model = 'ir.model.fields'
-                AND imd.name = 'field_' || '%s' || '_' || imf.name
+                AND imd.name = 'field_' || '%s' || '%s' || imf.name
                 AND imf.model = %s""",
-            (AsIs(_new), AsIs(_old), old),
+            (AsIs(_new), AsIs(underscore), AsIs(_old), AsIs(underscore), old),
         )
         logged_query(
             cr,
