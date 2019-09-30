@@ -60,12 +60,12 @@ from . import openupgrade_tools
 
 core = None
 # The order matters here. We can import odoo in 9.0, but then we get odoo.py
-try:  # < 10.0
-    import openerp as core
-    from openerp.modules import registry
-except ImportError:  # >= 10.0
+try:  # >= 10.0
     import odoo as core
     from odoo.modules import registry
+except ImportError:  # < 10.0
+    import openerp as core
+    from openerp.modules import registry
 if hasattr(core, 'release'):
     release = core.release
 else:
