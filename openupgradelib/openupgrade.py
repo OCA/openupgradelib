@@ -1121,9 +1121,9 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     finally:
         if log_msg:
             try:
-                full_query = cr._obj.query.decode()
+                full_query = tools.ustr(cr._obj.query)
             except AttributeError:
-                full_query = cr.mogrify(query, args).decode()
+                full_query = tools.ustr(cr.mogrify(query, args))
             logger.log(
                 log_level, log_msg,
                 {"rowcount": cr.rowcount, "full_query": full_query},
