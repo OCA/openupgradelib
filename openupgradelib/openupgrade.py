@@ -2032,7 +2032,7 @@ def add_fields(env, field_spec):
     It's intended for being run in pre-migration scripts for pre-populating
     fields that are going to be declared later in the module.
 
-    NOTE: This only works in >=v8 and is not needed in >=v12, as now Odoo
+    NOTE: This only works in >=v9 and is not needed in >=v12, as now Odoo
     always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
     odoo/addons/base/models/ir_model.py#L794-L802, but you can still call
