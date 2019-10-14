@@ -176,6 +176,7 @@ __all__ = [
     'delete_record_translations',
     'disable_invalid_filters',
     'delete_records_safely_by_xml_id',
+    'set_xml_ids_noupdate_value',
 ]
 
 
@@ -2258,3 +2259,20 @@ def chunked(records, single=True):
                 yield record
             continue
         yield chunk
+
+
+def set_xml_ids_noupdate_value(env, module, xml_ids, value):
+    """Set the xml_ids noupdate values in a module.
+
+    :param module: module name
+    :param xml_ids: a tuple or list of xml record IDs
+    :param bool value: True or False.
+    """
+    if not isinstance(xml_ids, (list, tuple)):
+        do_raise("XML IDs %s must be a tuple or list!" % xml_ids)
+
+    logged_query(env.cr, """
+        UPDATE ir_model_data
+        SET noupdate = %s
+        WHERE module = %s AND name in %s
+    """, (value, module, tuple(xml_ids),))
