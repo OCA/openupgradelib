@@ -1902,6 +1902,7 @@ def savepoint(cr):
             cr.execute('RELEASE SAVEPOINT "%s"' % name)
         except Exception:
             cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
+            raise
 
 
 def rename_property(cr, model, old_name, new_name):
