@@ -911,6 +911,17 @@ def delete_model_workflow(cr, model):
     Forcefully remove active workflows for obsolete models,
     to prevent foreign key issues when the orm deletes the model.
     """
+    # Save hours by adding needed indexes for affected FK constraints
+    index_name = sql.Identifier(get_legacy_name(
+        "wkf_triggers_workitem_id_index",
+    ))
+    logged_query(
+        cr,
+        sql.SQL("""
+            CREATE INDEX IF NOT EXISTS {} ON wkf_triggers
+            USING BTREE(workitem_id)
+        """).format(index_name)
+    )
     logged_query(
         cr,
         "DELETE FROM wkf_workitem WHERE act_id in "
@@ -922,6 +933,8 @@ def delete_model_workflow(cr, model):
     logged_query(
         cr,
         "DELETE FROM wkf WHERE osv = %s", (model,))
+    # Remove temporary index
+    logged_query(cr, sql.SQL("DROP INDEX {}").format(index_name))
 
 
 def warn_possible_dataloss(cr, pool, old_module, fields):
