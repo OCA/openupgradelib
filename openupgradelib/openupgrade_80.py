@@ -24,6 +24,7 @@
 # the 7.0 -> 8.0 migration. It is kept in later editions to keep all the API
 # docs in the latest release.
 
+from psycopg2 import sql
 
 try:
     from openerp import SUPERUSER_ID
@@ -73,15 +74,16 @@ def set_message_last_post(cr, uid, pool, models):
         models = [models]
     for model in models:
         model_pool = pool[model]
-        cr.execute(
-            "UPDATE {table} "
-            "SET message_last_post=(SELECT max(mm.date) "
-            "FROM mail_message mm "
-            "WHERE mm.model=%s "
-            "AND mm.date IS NOT NULL "
-            "AND mm.res_id={table}.id)".format(
-                table=model_pool._table), (model,)
-        )
+        query = sql.SQL("""
+            UPDATE {table} main
+            SET message_last_post = mm.last_date
+            FROM (SELECT res_id, MAX(date) AS last_date
+                  FROM mail_message
+                  WHERE model = %s AND date IS NOT NULL
+                  GROUP BY res_id) AS mm
+            WHERE main.id = mm.res_id
+        """).format(table=sql.Identifier(model_pool._table))
+        cr.execute(query, (model,))
 
 
 def update_aliases(
