@@ -31,6 +31,8 @@ try:
 except ImportError:
     from odoo import SUPERUSER_ID
 
+from .openupgrade import logged_query
+
 
 def get_last_post_for_model(cr, uid, ids, model_pool):
     """
@@ -83,7 +85,7 @@ def set_message_last_post(cr, uid, pool, models):
                   GROUP BY res_id) AS mm
             WHERE main.id = mm.res_id
         """).format(table=sql.Identifier(model_pool._table))
-        cr.execute(query, (model,))
+        logged_query(cr, query, (model,))
 
 
 def update_aliases(
