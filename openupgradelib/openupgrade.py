@@ -907,22 +907,49 @@ def update_workflow_workitems(cr, pool, ref_spec_actions):
             )
 
 
-def delete_model_workflow(cr, model):
+def delete_model_workflow(cr, model, drop_indexes=False):
     """
     Forcefully remove active workflows for obsolete models,
     to prevent foreign key issues when the orm deletes the model.
+
+    :param cr:
+        DB cursor.
+
+    :param str model:
+        Model name.
+
+    :param bool drop_indexes:
+        Do I drop indexes after finishing? If ``False``, those will be dropped
+        by a subsequent update of the ``workflow`` module in normal Odoo
+        probably.
     """
     # Save hours by adding needed indexes for affected FK constraints
-    index_name = sql.Identifier(get_legacy_name(
-        "wkf_triggers_workitem_id_index",
-    ))
-    logged_query(
-        cr,
-        sql.SQL("""
-            CREATE INDEX IF NOT EXISTS {} ON wkf_triggers
-            USING BTREE(workitem_id)
-        """).format(index_name)
-    )
+    to_index = {
+        "wkf_activity": ["subflow_id"],
+        "wkf_instance": ["wkf_id"],
+        "wkf_triggers": ["instance_id", "workitem_id"],
+        "wkf_workitem": ["act_id"],
+    }
+
+    def _index_loop():
+        for table, fields in to_index.items():
+            for col in fields:
+                index = sql.Identifier(
+                    "{tbl}_{col}_index".format(tbl=table, col=col),
+                )
+                table = sql.Identifier(table)
+                col = sql.Identifier(col)
+                yield index, table, col
+
+    for index, table, col in _index_loop():
+        logged_query(
+            cr,
+            sql.SQL("""
+                CREATE INDEX IF NOT EXISTS {} ON {}
+                USING BTREE({})
+            """).format(index, table, col)
+        )
+    # Delete workflows
     logged_query(
         cr,
         "DELETE FROM wkf_workitem WHERE act_id in "
@@ -934,8 +961,10 @@ def delete_model_workflow(cr, model):
     logged_query(
         cr,
         "DELETE FROM wkf WHERE osv = %s", (model,))
-    # Remove temporary index
-    logged_query(cr, sql.SQL("DROP INDEX {}").format(index_name))
+    # Remove temporary indexes if asked to do so
+    if drop_indexes:
+        for index, table, col in _index_loop():
+            logged_query(cr, sql.SQL("DROP INDEX {}").format(index))
 
 
 def warn_possible_dataloss(cr, pool, old_module, fields):
