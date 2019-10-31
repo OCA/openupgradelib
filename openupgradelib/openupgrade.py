@@ -24,6 +24,7 @@ import os
 import inspect
 import uuid
 import logging as _logging_module
+from datetime import datetime
 try:
     from StringIO import StringIO
 except ImportError:
@@ -1123,25 +1124,29 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     args = tuple(args) if type(args) == list else args
     log_level = _logging_module.DEBUG
     log_msg = False
+    start = datetime.now()
     try:
         cr.execute(query, args)
     except (ProgrammingError, IntegrityError):
         log_level = _logging_module.ERROR
-        log_msg = "Error running %(full_query)s"
+        log_msg = "Error after %(duration)s running %(full_query)s"
         raise
     else:
         if not skip_no_result or cr.rowcount:
-            log_msg = '%(rowcount)d rows affected after running %(full_query)s'
+            log_msg = ('%(rowcount)d rows affected after '
+                       '%(duration)s running %(full_query)s')
     finally:
+        duration = datetime.now() - start
         if log_msg:
             try:
                 full_query = tools.ustr(cr._obj.query)
             except AttributeError:
                 full_query = tools.ustr(cr.mogrify(query, args))
-            logger.log(
-                log_level, log_msg,
-                {"rowcount": cr.rowcount, "full_query": full_query},
-            )
+            logger.log(log_level, log_msg, {
+                "full_query": full_query,
+                "rowcount": cr.rowcount,
+                "duration": duration,
+            })
     return cr.rowcount
 
 
