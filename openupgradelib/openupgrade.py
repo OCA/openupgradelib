@@ -932,13 +932,13 @@ def delete_model_workflow(cr, model, drop_indexes=False):
     }
 
     def _index_loop():
-        for table, fields in to_index.items():
-            for col in fields:
+        for table_name, fields in to_index.items():
+            for col_name in fields:
                 index = sql.Identifier(
-                    "{tbl}_{col}_index".format(tbl=table, col=col),
+                    "{}_{}_index".format(table_name, col_name),
                 )
-                table = sql.Identifier(table)
-                col = sql.Identifier(col)
+                table = sql.Identifier(table_name)
+                col = sql.Identifier(col_name)
                 yield index, table, col
 
     for index, table, col in _index_loop():
