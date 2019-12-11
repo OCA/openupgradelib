@@ -515,10 +515,13 @@ def rename_columns(cr, column_spec):
                         table, old, new)
             cr.execute(
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"' % (table, old, new,))
-            cr.execute(
-                'ALTER INDEX IF EXISTS "%s_%s_index" RENAME TO "%s_%s_index"' %
-                (table, old, table, new)
-            )
+            old_index_name = "%s_%s_index" % (table, old)
+            new_index_name = "%s_%s_index" % (table, new)
+            if len(new_index_name) <= 63:
+                cr.execute(
+                    'ALTER INDEX IF EXISTS "%s" RENAME TO "%s"' %
+                    (old_index_name, new_index_name)
+                )
 
 
 def rename_fields(env, field_spec, no_deep=False):
