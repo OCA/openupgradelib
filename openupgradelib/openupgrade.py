@@ -142,6 +142,7 @@ __all__ = [
     'add_fields',
     'copy_columns',
     'copy_fields_multilang',
+    'remove_tables_fks',
     'rename_columns',
     'rename_fields',
     'rename_tables',
@@ -497,6 +498,45 @@ def copy_fields_multilang(cr, destination_model, destination_table,
                 "src_m": source_model,
             },
         )
+
+
+def remove_tables_fks(cr, tables):
+    """Remove foreign keys declared in ``tables``.
+
+    This is useful when a table is not going to be used anymore, but you still
+    don't want to delete it.
+
+    If you keep FKs in that table, it will still get modifications when other
+    tables are modified too; but if you're keeping that table as a log, that
+    is a problem. Also, if some of the FK has no index, it could slow down
+    deletion in other tables, even when this one has no more use.
+
+    .. HINT::
+        This method removes FKs that are *declared* in ``tables``,
+        **not** FKs that *point* to those tables.
+
+    :param [str, ...] tables:
+        List of tables where the FKs were declared, and where they will be
+        removed too. If a table doesn't exist, it is skipped.
+    """
+    drop_sql = sql.SQL("ALTER TABLE {} DROP CONSTRAINT {}")
+    for table in tables:
+        cr.execute(
+            """
+                SELECT constraint_name
+                FROM information_schema.table_constraints
+                WHERE constraint_type = 'FOREIGN KEY' AND table_name = %s
+            """,
+            (table,),
+        )
+        for constraint in (row[0] for row in cr.fetchall()):
+            logged_query(
+                cr,
+                drop_sql.format(
+                    sql.Identifier(table),
+                    sql.Identifier(constraint),
+                ),
+            )
 
 
 def rename_columns(cr, column_spec):
