@@ -179,6 +179,7 @@ __all__ = [
     'disable_invalid_filters',
     'delete_records_safely_by_xml_id',
     'set_xml_ids_noupdate_value',
+    'convert_to_company_dependent',
 ]
 
 
@@ -2367,3 +2368,92 @@ def set_xml_ids_noupdate_value(env, module, xml_ids, value):
         SET noupdate = %s
         WHERE module = %s AND name in %s
     """, (value, module, tuple(xml_ids),))
+
+
+def convert_to_company_dependent(
+    env,
+    model_name,
+    origin_field_name,
+    destination_field_name,
+    model_table_name=None,
+):
+    """ For each row in a given table, the value of a given field is
+    set in another 'company dependant' field of the same table.
+    Useful in cases when from one version to another one, some field in a
+    model becomes a 'company dependent' field.
+
+    This method must be executed in post-migration scripts after
+    the field is created, or in pre-migration if you have previously
+    executed add_fields openupgradelib method.
+
+    :param model_name: Name of the model.
+    :param origin_field_name: Name of the field from which the values
+      will be obtained.
+    :param destination_field_name: Name of the 'company dependent'
+      field where the values obtained from origin_field_name will be set.
+    :param model_table_name: Name of the table. Optional. If not provided
+      the table name is taken from the model (so the model must be
+      registered previously).
+    """
+    logger.debug("Converting {} in {} to company_dependent field {}.".format(
+        origin_field_name, model_name, destination_field_name))
+    if origin_field_name == destination_field_name:
+        do_raise("A field can't be converted to property without changing "
+                 "its name.")
+    cr = env.cr
+    mapping_type2field = {
+        'char': 'value_text',
+        'float': 'value_float',
+        'boolean': 'value_integer',
+        'integer': 'value_integer',
+        'text': 'value_text',
+        'binary': 'value_binary',
+        'many2one': 'value_reference',
+        'date': 'value_datetime',
+        'datetime': 'value_datetime',
+        'selection': 'value_text',
+    }
+    # Determine field id, field type and the model name of the relation
+    # in case of many2one.
+    cr.execute("SELECT id, relation, ttype FROM ir_model_fields "
+               "WHERE name=%s AND model=%s",
+               (destination_field_name, model_name))
+    destination_field_id, relation, d_field_type = cr.fetchone()
+    value_field_name = mapping_type2field.get(d_field_type)
+    field_select = sql.Identifier(origin_field_name)
+    args = {
+        'model_name': model_name,
+        'fields_id': destination_field_id,
+        'name': destination_field_name,
+        'type': d_field_type,
+    }
+    if d_field_type == 'many2one':
+        field_select = sql.SQL("%(relation)s || ',' || {}::TEXT").format(
+            sql.Identifier(origin_field_name))
+        args['relation'] = relation
+    elif d_field_type == 'boolean':
+        field_select = sql.SQL("CASE WHEN {} = true THEN 1 ELSE 0 END").format(
+            sql.Identifier(origin_field_name))
+    cr.execute("SELECT id FROM res_company")
+    company_ids = [x[0] for x in cr.fetchall()]
+    for company_id in company_ids:
+        args['company_id'] = company_id
+        logged_query(
+            cr, sql.SQL("""
+            INSERT INTO ir_property (
+                fields_id, company_id, res_id, name, type, {value_field_name}
+            )
+            SELECT
+                %(fields_id)s, %(company_id)s,
+                %(model_name)s || ',' || id::TEXT, %(name)s,
+                %(type)s, {field_select}
+            FROM {table_name} WHERE {origin_field_name} IS NOT NULL;
+            """).format(
+                value_field_name=sql.Identifier(value_field_name),
+                field_select=field_select,
+                origin_field_name=sql.Identifier(origin_field_name),
+                table_name=sql.Identifier(
+                    model_table_name or env[model_name]._table
+                )
+            ), args,
+        )
