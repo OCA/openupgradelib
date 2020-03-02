@@ -5,6 +5,7 @@
 
 import logging
 import functools
+from psycopg2 import sql
 from psycopg2 import ProgrammingError, IntegrityError
 from psycopg2.errorcodes import UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
@@ -418,26 +419,52 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 (model_column, '=', model_name),
                 (res_id_column, 'in', record_ids)])
             if records:
-                records.write({res_id_column: target_record_id})
+                if model_to_replace != 'mail.followers':
+                    records.write({res_id_column: target_record_id})
+                else:
+                    # We need to avoid duplicated results in this model
+                    target_duplicated = model.search([
+                        (model_column, '=', model_name),
+                        (res_id_column, '=', target_record_id),
+                        ('partner_id', 'in', records.mapped('partner_id').ids),
+                    ])
+                    dup_partners = target_duplicated.mapped('partner_id')
+                    duplicated = records.filtered(lambda x: (
+                        x.partner_id in dup_partners))
+                    (records - duplicated).write({
+                        res_id_column: target_record_id})
+                    duplicated.unlink()
                 logger.debug(
                     "Changed %s record(s) of model '%s'",
                     len(records), model_to_replace)
         else:
-            logged_query(
-                env.cr,
-                """ UPDATE %(table)s
-                    SET %(res_id_column)s = %(target_record_id)s
-                    WHERE %(model_column)s = %(model_name)s
-                    AND %(res_id_column)s in %(record_ids)s
-                """,
-                {
-                    'table': AsIs(model._table),
-                    'res_id_column': AsIs(res_id_column),
-                    'model_column': AsIs(model_column),
-                    'model_name': model_name,
-                    'target_record_id': target_record_id,
-                    'record_ids': record_ids,
-                }, skip_no_result=True)
+            format_args = {
+                'table': sql.Identifier(model._table),
+                'res_id_column': sql.Identifier(res_id_column),
+                'model_column': sql.Identifier(model_column),
+            }
+            query_args = {
+                'model_name': model_name,
+                'target_record_id': target_record_id,
+                'record_ids': record_ids,
+            }
+            query = sql.SQL(
+                """UPDATE {table} SET {res_id_column} = %(target_record_id)s
+                WHERE {model_column} = %(model_name)s
+                AND {res_id_column} in %(record_ids)s
+                """).format(**format_args)
+            if model_to_replace == 'mail.followers':
+                query += sql.SQL("""AND partner_id NOT IN (
+                    SELECT partner_id FROM {table}
+                    WHERE {res_id_column} = %(target_record_id)s
+                )""").format(**format_args)
+            logged_query(env.cr, query, query_args, skip_no_result=True)
+            if model_to_replace == 'mail.followers':
+                # Remove remaining records non updated (that are duplicates)
+                logged_query(env.cr, sql.SQL(
+                    "DELETE FROM {table} "
+                    "WHERE {res_id_column} IN %(record_ids)s"
+                ).format(**format_args), query_args, skip_no_result=True)
 
 
 def _delete_records_sql(env, model_name, record_ids, target_record_id):
