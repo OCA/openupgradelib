@@ -2125,7 +2125,7 @@ def add_fields(env, field_spec):
     It's intended for being run in pre-migration scripts for pre-populating
     fields that are going to be declared later in the module.
 
-    NOTE: This only works in >=v9 and is not needed in >=v12, as now Odoo
+    NOTE: This is not needed in >=v12, as now Odoo
     always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
     odoo/addons/base/models/ir_model.py#L794-L802, but you can still call
@@ -2190,14 +2190,36 @@ def add_fields(env, field_spec):
         if not row:
             continue
         model_id = row[0]
+        # `select_level` is required in ir.model.fields for Odoo <= v8
+        extra_cols = extra_placeholders = sql.SQL("")
+        if version_info < (9, 0):
+            extra_cols = sql.SQL(", select_level")
+            extra_placeholders = sql.SQL(", %(select_level)s")
         logged_query(
-            env.cr, """
-            INSERT INTO ir_model_fields (
-                model_id, model, name, field_description, ttype, state
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s
-            ) RETURNING id""",
-            (model_id, model_name, field_name, 'OU', field_type, 'base'),
+            env.cr,
+            sql.SQL(
+                """
+                INSERT INTO ir_model_fields (
+                    model_id, model, name, field_description,
+                    ttype, state{extra_cols}
+                ) VALUES (
+                    %(model_id)s, %(model)s, %(name)s, %(field_description)s,
+                    %(ttype)s, %(state)s{extra_placeholders}
+                ) RETURNING id
+                """
+            ).format(
+                extra_cols=extra_cols,
+                extra_placeholders=extra_placeholders,
+            ),
+            {
+                "model_id": model_id,
+                "model": model_name,
+                "name": field_name,
+                "field_description": "OU",
+                "ttype": field_type,
+                "state": "base",
+                "select_level": "0",
+            },
         )
         field_id = env.cr.fetchone()[0]
         # Add ir.model.data entry
