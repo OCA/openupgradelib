@@ -2091,6 +2091,7 @@ def disable_invalid_filters(env):
         # CONTEXT GROUP BY
         try:
             context = safe_eval(f.context, {'time': time, 'uid': env.uid})
+            assert(isinstance(context, dict))
         except Exception:
             logger.warning(
                 format_message(f) + "as it contains an invalid context %s.",
