@@ -697,6 +697,44 @@ def rename_tables(cr, table_spec):
         logger.info("table %s: renaming to %s",
                     old, new)
         cr.execute('ALTER TABLE "%s" RENAME TO "%s"' % (old, new,))
+        # Rename indexes
+        old_table_prefix_pattern = r"%s\_%%" % old.replace("_", r"\_")
+        cr.execute(
+            """
+            SELECT index_rel.relname
+            FROM pg_index AS i
+            JOIN pg_class AS table_rel ON table_rel.oid = i.indrelid
+            JOIN pg_class AS index_rel ON index_rel.oid = i.indexrelid
+            WHERE table_rel.relname = %s AND index_rel.relname LIKE %s
+            """,
+            (new, old_table_prefix_pattern),
+        )
+        for old_index, in cr.fetchall():
+            new_index = old_index.replace(old, new, 1)
+            cr.execute(
+                sql.SQL("ALTER INDEX {} RENAME TO {}").format(
+                    sql.Identifier(old_index), sql.Identifier(new_index),
+                )
+            )
+        # Rename constraints
+        cr.execute(
+            """
+            SELECT pg_constraint.conname
+            FROM pg_constraint
+            INNER JOIN pg_class ON pg_constraint.conrelid = pg_class.oid
+            WHERE pg_class.relname = %s AND pg_constraint.conname LIKE %s
+            """,
+            (new, old_table_prefix_pattern),
+        )
+        for old_constraint, in cr.fetchall():
+            new_constraint = old_constraint.replace(old, new, 1)
+            cr.execute(
+                sql.SQL("ALTER TABLE {} RENAME CONSTRAINT {} TO {}").format(
+                    sql.Identifier(new),
+                    sql.Identifier(old_constraint),
+                    sql.Identifier(new_constraint),
+                )
+            )
 
 
 def rename_models(cr, model_spec):
