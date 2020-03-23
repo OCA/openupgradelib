@@ -797,6 +797,11 @@ def rename_models(cr, model_spec):
             "WHERE name LIKE %s",
             (new, old + ',%'),
         )
+        logged_query(
+            cr,
+            "UPDATE ir_filters SET model_id = %s "
+            "WHERE model_id = %s", (new, old,),
+        )
         # Handle properties that reference to this model
         logged_query(
             cr,
