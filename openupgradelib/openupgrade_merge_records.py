@@ -207,9 +207,7 @@ def _change_reference_refs_orm(env, model_name, record_ids, target_record_id,
                 (model._table, field_name) in exclude_columns):
             continue  # Discard SQL views + invalid fields + non-stored fields
         expr = ['%s,%s' % (model_name, x) for x in record_ids]
-        domain = [(field_name, '=', x) for x in expr]
-        domain[0:0] = ['|' for x in range(len(domain) - 1)]
-        records = model.search(domain)
+        records = model.search([(field_name, 'in', expr)])
         if records:
             records.write({
                 field_name: '%s,%s' % (model_name, target_record_id),
