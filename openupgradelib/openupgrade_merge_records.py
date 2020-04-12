@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
-                             exclude_columns):
+                             exclude_columns, model_table):
     # As found on https://stackoverflow.com/questions/1152260
     # /postgres-sql-to-list-table-foreign-keys
     # Adapted for specific Odoo structures like many2many tables
@@ -32,7 +32,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                 AND ccu.table_schema = tc.table_schema
             WHERE constraint_type = 'FOREIGN KEY'
             AND ccu.table_name = %s and ccu.column_name = 'id'
-        """, (env[model_name]._table,))
+        """, (model_table,))
     for table, column in env.cr.fetchall():
         if (table, column) in exclude_columns:
             continue
@@ -492,7 +492,7 @@ def _delete_records_orm(env, model_name, record_ids, target_record_id):
 
 def merge_records(env, model_name, record_ids, target_record_id,
                   field_spec=None, method='orm', delete=True,
-                  exclude_columns=None):
+                  exclude_columns=None, model_table=None):
     """Merge several records into the target one.
 
     NOTE: This should be executed in end migration scripts for assuring that
@@ -513,6 +513,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
       constraints will be checked.
     :param delete: If set, the source ids will be unlinked.
     :exclude_columns: list of tuples (table, column) that will be ignored.
+    :model_table: name of the model table. If not provided, got through ORM.
     """
     if exclude_columns is None:
         exclude_columns = []
@@ -522,20 +523,20 @@ def merge_records(env, model_name, record_ids, target_record_id,
         record_ids = tuple(record_ids)
     args0 = (env, model_name, record_ids, target_record_id)
     args = args0 + (exclude_columns, )
-    args2 = args0 + (field_spec, )
     if target_record_id in record_ids:
         raise Exception("You can't put the target record in the list or "
                         "records to be merged.")
-    # Check which records to be merged exist
-    record_ids = env[model_name].browse(record_ids).exists().ids
-    if not record_ids:
-        return
     _change_generic(*args, method=method)
     if method == 'orm':
+        # Check which records to be merged exist
+        record_ids = env[model_name].browse(record_ids).exists().ids
+        if not record_ids:
+            return
         _change_many2one_refs_orm(*args)
         _change_many2many_refs_orm(*args)
         _change_reference_refs_orm(*args)
         _change_translations_orm(*args)
+        args2 = args0 + (field_spec, )
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
@@ -543,7 +544,16 @@ def merge_records(env, model_name, record_ids, target_record_id,
         if delete:
             _delete_records_orm(env, model_name, record_ids, target_record_id)
     else:
-        _change_foreign_key_refs(*args)
+        # Check which records to be merged exist
+        if not model_table:
+            model_table = env[model_name]._table
+        env.cr.execute(sql.SQL("SELECT id FROM {} WHERE id IN %s").format(
+            sql.Identifier(model_table)), (tuple(record_ids), ))
+        record_ids = [x[0] for x in env.cr.fetchall()]
+        if not record_ids:
+            return
+        args3 = args0 + (model_table, )
+        _change_foreign_key_refs(*args3)
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
         # TODO: Adjust values of the merged records through SQL
