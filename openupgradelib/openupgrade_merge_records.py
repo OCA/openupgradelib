@@ -552,7 +552,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
         record_ids = [x[0] for x in env.cr.fetchall()]
         if not record_ids:
             return
-        args3 = args0 + (model_table, )
+        args3 = args + (model_table, )
         _change_foreign_key_refs(*args3)
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
