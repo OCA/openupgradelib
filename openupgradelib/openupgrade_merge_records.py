@@ -37,20 +37,21 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
         if (table, column) in exclude_columns:
             continue
         # Try one big swoop first
+        env.cr.execute('SAVEPOINT sp1')  # can't use env.cr.savepoint() in base
         try:
-            with env.cr.savepoint():
-                logged_query(
-                    env.cr, """UPDATE %(table)s
-                    SET "%(column)s" = %(target_record_id)s
-                    WHERE "%(column)s" in %(record_ids)s
-                    """, {
-                        'table': AsIs(table),
-                        'column': AsIs(column),
-                        'record_ids': record_ids,
-                        'target_record_id': target_record_id,
-                    }, skip_no_result=True,
-                )
+            logged_query(
+                env.cr, """UPDATE %(table)s
+                SET "%(column)s" = %(target_record_id)s
+                WHERE "%(column)s" in %(record_ids)s
+                """, {
+                    'table': AsIs(table),
+                    'column': AsIs(column),
+                    'record_ids': record_ids,
+                    'target_record_id': target_record_id,
+                }, skip_no_result=True,
+            )
         except (ProgrammingError, IntegrityError) as error:
+            env.cr.execute('ROLLBACK TO SAVEPOINT sp1')
             if error.pgcode != UNIQUE_VIOLATION:
                 raise
             # Fallback on setting each row separately
@@ -65,22 +66,25 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                 },
             )
             for row in list(set([x[0] for x in env.cr.fetchall()])):
+                env.cr.execute('SAVEPOINT sp2')
                 try:
-                    with env.cr.savepoint():
-                        logged_query(
-                            env.cr, """UPDATE %(table)s
-                            SET "%(column)s" = %(target_record_id)s
-                            WHERE %(target_column)s = %(record_id)s""", {
-                                'target_column': AsIs(target_column),
-                                'table': AsIs(table),
-                                'column': AsIs(column),
-                                'record_id': row,
-                                'target_record_id': target_record_id,
-                            },
-                        )
+                    logged_query(
+                        env.cr, """UPDATE %(table)s
+                        SET "%(column)s" = %(target_record_id)s
+                        WHERE %(target_column)s = %(record_id)s""", {
+                            'target_column': AsIs(target_column),
+                            'table': AsIs(table),
+                            'column': AsIs(column),
+                            'record_id': row,
+                            'target_record_id': target_record_id,
+                        },
+                    )
                 except (ProgrammingError, IntegrityError) as error:
+                    env.cr.execute('ROLLBACK TO SAVEPOINT sp2')
                     if error.pgcode != UNIQUE_VIOLATION:
                         raise
+                else:
+                    env.cr.execute('RELEASE SAVEPOINT sp2')
             if m2m_table:
                 # delete remaining values that could not be merged
                 logged_query(
@@ -92,6 +96,8 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                         'record_ids': record_ids,
                     }, skip_no_result=True,
                 )
+        else:
+            env.cr.execute('RELEASE SAVEPOINT sp1')
 
 
 def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
