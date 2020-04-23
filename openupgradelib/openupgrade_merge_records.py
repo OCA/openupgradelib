@@ -471,19 +471,20 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 ).format(**format_args), query_args, skip_no_result=True)
 
 
-def _delete_records_sql(env, model_name, record_ids, target_record_id):
+def _delete_records_sql(env, model_name, record_ids, target_record_id,
+                        model_table=None):
+    if not model_table:
+        model_table = env[model_name]._table
     logged_query(
         env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
-        (env[model_name]._table, tuple(record_ids)),
+        (model_name, tuple(record_ids)),
     )
     logged_query(
         env.cr, "DELETE FROM ir_attachment WHERE res_model = %s AND id IN %s",
-        (env[model_name]._table, tuple(record_ids)),
+        (model_name, tuple(record_ids)),
     )
-    logged_query(
-        env.cr, "DELETE FROM %s WHERE id IN %s",
-        (AsIs(env[model_name]._table), tuple(record_ids)),
-    )
+    logged_query(env.cr, sql.SQL("DELETE FROM {} WHERE id IN %s").format(
+        sql.Identifier(model_table)), (tuple(record_ids), ))
 
 
 def _delete_records_orm(env, model_name, record_ids, target_record_id):
@@ -564,4 +565,6 @@ def merge_records(env, model_name, record_ids, target_record_id,
         _change_translations_sql(*args)
         # TODO: Adjust values of the merged records through SQL
         if delete:
-            _delete_records_sql(env, model_name, record_ids, target_record_id)
+            _delete_records_sql(
+                env, model_name, record_ids, target_record_id,
+                model_table=model_table)
