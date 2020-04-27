@@ -2192,6 +2192,8 @@ def add_fields(env, field_spec):
         (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
       * module name: for adding the XML-ID entry.
+      * (optional) initialization value: if included in the tuple, it is set
+        in the column for existing records.
     """
     sql_type_mapping = {
         'binary': 'bytea',  # If there's attachment, no SQL. Force it manually
@@ -2212,20 +2214,35 @@ def add_fields(env, field_spec):
         'serialized': 'text',
     }
     for vals in field_spec:
-        field_name, model_name, table_name, field_type, sql_type, module = vals
+        field_name = vals[0]
+        model_name = vals[1]
+        table_name = vals[2]
+        field_type = vals[3]
+        sql_type = vals[4]
+        module = vals[5]
+        init_value = vals[6] if len(vals) > 6 else False
         # Add SQL column
         if not table_name:
             table_name = env[model_name]._table
         sql_type = sql_type or sql_type_mapping.get(field_type)
         if sql_type:
-            logged_query(
-                env.cr,
-                sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
-                    sql.Identifier(table_name),
-                    sql.Identifier(field_name),
-                    sql.SQL(sql_type),
-                ),
+            query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
+                sql.Identifier(table_name),
+                sql.Identifier(field_name),
+                sql.SQL(sql_type),
             )
+            args = []
+            if init_value:
+                query += sql.SQL(" DEFAULT %s")
+                args.append(init_value)
+            logged_query(env.cr, query, args)
+            if init_value:
+                logged_query(env.cr, sql.SQL(
+                    "ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
+                        sql.Identifier(table_name),
+                        sql.Identifier(field_name),
+                    )
+                )
         # Add ir.model.fields entry
         env.cr.execute(
             "SELECT id FROM ir_model WHERE model = %s", (model_name, ),
