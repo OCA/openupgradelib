@@ -358,7 +358,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         elif field.type in ('date', 'datetime'):
             if op:
                 _list = filter(lambda x: x is not False, _list)
-            op = op or 'other'
+            op = _list and op or 'other'
             if op == 'max':
                 vals[field.name] = max(_list)
             elif op == 'min':
