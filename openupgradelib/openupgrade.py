@@ -24,6 +24,7 @@ import os
 import inspect
 import uuid
 import logging as _logging_module
+import progressbar
 from datetime import datetime
 try:
     from StringIO import StringIO
@@ -138,6 +139,7 @@ logger.setLevel(_logging_module.DEBUG)
 __all__ = [
     'migrate',
     'logging',
+    'progress',
     'load_data',
     'add_fields',
     'copy_columns',
@@ -1647,6 +1649,52 @@ def reactivate_workflow_transitions(cr, transition_conditions):
         cr.execute(
             'update wkf_transition set condition = %s where id = %s',
             (condition, transition_id))
+
+
+class CursorProgressWrapper(object):
+    '''
+        This class is used to embed existing sql connection cursor.
+        Some methods are hooked to enumerate result and updating the
+        progress bar.
+    '''
+
+    def __init__(self, cr, progress_func=None):
+        self.cr = cr
+        self.progress_func = progress_func
+
+    def __getattr__(self, attr):
+        return self.cr.__getattribute__(attr)
+
+    def fetchall(self):
+        with progressbar.ProgressBar(max_value=self.cr.rowcount) as bar:
+            for row in self.cr.fetchall():
+                yield row
+                bar.update(bar.value + 1)
+            bar.finish()
+
+
+def progress():
+    def decorator(func):
+        def wrapped_function(*args, **kwargs):
+            args_copy = list(args)
+            # Iterate over wrapped function arguments to find database
+            # cursor and replace it with our wrapper
+            for i, arg in enumerate(args_copy):
+                if isinstance(arg, core.sql_db.Cursor):
+                    args_copy[i] = CursorProgressWrapper(arg)
+                    break
+
+            start_time = datetime.now()
+            res = func(*args_copy, **kwargs)
+            logger.info("Progressable method {0} run for {1}".format(
+                func.__name__,
+                datetime.now() - start_time,
+            ))
+            return res
+
+        return wrapped_function
+
+    return decorator
 
 
 # Global var to count call quantity to an openupgrade function
