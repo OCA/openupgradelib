@@ -66,9 +66,6 @@ script:
     # Build docs
     - pip install -q sphinx; sh ~/openupgrade/scripts/build_openupgrade_docs
 
-after_success:
-    - coveralls
-
 deploy:
   provider: pypi
   user: OCA
