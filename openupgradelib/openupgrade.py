@@ -611,8 +611,8 @@ def rename_fields(env, field_spec, no_deep=False):
             WHERE name = %s
                 AND type = 'model'
             """, (
-                "%s,%s" % (model, old_field),
                 "%s,%s" % (model, new_field),
+                "%s,%s" % (model, old_field),
             ),
         )
         # Rename appearances on export profiles
