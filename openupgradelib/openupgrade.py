@@ -611,17 +611,20 @@ def rename_fields(env, field_spec, no_deep=False):
             WHERE name = %s
                 AND type = 'model'
             """, (
-                "%s,%s" % (model, old_field),
                 "%s,%s" % (model, new_field),
+                "%s,%s" % (model, old_field),
             ),
         )
         # Rename appearances on export profiles
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute("""
-            UPDATE ir_exports_line
+            UPDATE ir_exports_line iel
             SET name = %s
-            WHERE name = %s
-            """, (old_field, new_field),
+            FROM ir_exports ie
+            WHERE iel.name = %s
+                AND ie.id = iel.export_id
+                AND ie.resource = %s
+            """, (new_field, old_field, model),
         )
         # Rename appearances on filters
         # Example of replaced domain: [['field', '=', self], ...]
