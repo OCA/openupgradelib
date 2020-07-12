@@ -584,7 +584,7 @@ def rename_fields(env, field_spec, no_deep=False):
     :param env: Environment/pool variable. The database cursor is the only
       thing needed, but added in prevision of TODO tasks for not breaking
       API later.
-    :param fields_spec: a list of tuples with the following elements:
+    :param field_spec: a list of tuples with the following elements:
       * Model name. The name of the Odoo model
       * Table name. The name of the SQL table for the model.
       * Old field name. The name of the old field.
