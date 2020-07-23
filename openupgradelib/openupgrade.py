@@ -1697,7 +1697,7 @@ def progress():
     Decorate functions that can take time, if a function is decorated, a
     progress bar will be displayed for each row fetch from database.
 
-    28% (152 of 529) |#####              | Elapsed Time: 0:00:03 ETA: 0:01:32
+    28% (152 of 529) I#####              I Elapsed Time: 0:00:03 ETA: 0:01:32
 
     Typical use::
 
