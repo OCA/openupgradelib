@@ -1657,13 +1657,14 @@ class CursorProgressWrapper(object):
         Some methods are hooked to enumerate result and updating the
         progress bar.
     '''
-
-    def __init__(self, cr, progress_func=None):
+    def __init__(self, cr):
         self.cr = cr
-        self.progress_func = progress_func
 
     def __getattr__(self, attr):
-        return self.cr.__getattribute__(attr)
+        if hasattr(self.cr, attr):
+            return getattr(self.cr, attr, None)
+        else:
+            return self.cr.__getattr__(attr)
 
     def fetchall(self):
         with progressbar.ProgressBar(max_value=self.cr.rowcount) as bar:
@@ -1672,8 +1673,44 @@ class CursorProgressWrapper(object):
                 bar.update(bar.value + 1)
             bar.finish()
 
+    def dictfetchmany(self, size):
+        rowcount = min(size, self.cr.rowcount)
+        with progressbar.ProgressBar(max_value=rowcount) as bar:
+            for row in self.cr.dictfetchmany(size):
+                yield row
+                bar.update(bar.value + 1)
+            bar.finish()
+
+    def dictfetchall(self):
+        with progressbar.ProgressBar(max_value=self.cr.rowcount) as bar:
+            for row in self.cr.dictfetchall():
+                yield row
+                bar.update(bar.value + 1)
+            bar.finish()
+
 
 def progress():
+    """
+    This is a decorator for any sub functions called in an OpenUpgrade script.
+    (pre or post migration script)
+
+    Decorate functions that can take time, if a function is decorated, a
+    progress bar will be displayed for each row fetch from database.
+
+    28% (152 of 529) |#####              | Elapsed Time: 0:00:03 ETA: 0:01:32
+
+    Typical use::
+
+        @openupgrade.progress()
+        def migrate_helpdesk_tickets(cr, env)
+            # some custom code
+
+        @openupgrade.migrate()
+        def migrate(env, version):
+            cr = env.cr
+            migrate_helpdesk_tickets(cr, env)
+
+    """
     def decorator(func):
         def wrapped_function(*args, **kwargs):
             args_copy = list(args)
@@ -1686,10 +1723,12 @@ def progress():
 
             start_time = datetime.now()
             res = func(*args_copy, **kwargs)
-            logger.info("Progressable method {0} run for {1}".format(
-                func.__name__,
-                datetime.now() - start_time,
-            ))
+            logger.info(
+                "Progressable method {0} run for {1}".format(
+                    func.__name__,
+                    datetime.now() - start_time,
+                )
+            )
             return res
 
         return wrapped_function
