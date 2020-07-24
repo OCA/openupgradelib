@@ -831,6 +831,11 @@ def rename_models(cr, model_spec):
                     'new_pattern': r"%s,\1" % new,
                 },
             )
+        # Update export profiles references
+        logged_query(
+            cr, "UPDATE ir_exports SET resource = %s WHERE resource = %s",
+            (new, old),
+        )
         if column_exists(cr, 'ir_act_server', 'model_name'):
             # model_name is a related field that in v11 becomes stored
             logged_query(
