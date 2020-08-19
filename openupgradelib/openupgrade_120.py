@@ -382,7 +382,9 @@ def _convert_field_bootstrap_3to4_orm(env, model_name, field_name,
     :param str field_name: Field to convert in that model.
     :param domain list: Domain to restrict conversion.
     """
-    domain = domain or [(field_name, "!=", False)]
+    domain = domain or [
+        (field_name, "!=", False), (field_name, "!=", "<p><br></p>")
+    ]
     records = env[model_name].search(domain)
     update_field_multilang(
         records,
