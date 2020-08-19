@@ -1329,7 +1329,8 @@ def update_module_names(cr, namespec, merge_modules=False):
             # Conserve old_name's state if new_name is uninstalled
             logged_query(
                 cr,
-                "UPDATE ir_module_module m1 SET state=m2.state "
+                "UPDATE ir_module_module m1 "
+                "SET state=m2.state, latest_version=m2.latest_version "
                 "FROM ir_module_module m2 WHERE m1.name=%s AND "
                 "m2.name=%s AND m1.state='uninstalled'",
                 (new_name, old_name),
