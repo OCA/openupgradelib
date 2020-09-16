@@ -476,11 +476,12 @@ def _delete_records_sql(env, model_name, record_ids, target_record_id,
     if not model_table:
         model_table = env[model_name]._table
     logged_query(
-        env.cr, "DELETE FROM ir_model_data WHERE model = %s AND id IN %s",
+        env.cr, "DELETE FROM ir_model_data WHERE model = %s AND res_id IN %s",
         (model_name, tuple(record_ids)),
     )
     logged_query(
-        env.cr, "DELETE FROM ir_attachment WHERE res_model = %s AND id IN %s",
+        env.cr, "DELETE FROM ir_attachment "
+                "WHERE res_model = %s AND res_id IN %s",
         (model_name, tuple(record_ids)),
     )
     logged_query(env.cr, sql.SQL("DELETE FROM {} WHERE id IN %s").format(
