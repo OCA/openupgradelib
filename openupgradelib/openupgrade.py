@@ -616,13 +616,14 @@ def rename_fields(env, field_spec, no_deep=False):
             ),
         )
         # Rename possible attachments (if field is Binary with attachment=True)
-        cr.execute("""
-            UPDATE ir_attachment
-            SET res_field = %s
-            WHERE res_model = %s
-                AND res_field = %s
-            """, (new_field, model, old_field)
-        )
+        if column_exists(cr, "ir_attachment", "res_field"):
+            cr.execute("""
+                UPDATE ir_attachment
+                SET res_field = %s
+                WHERE res_model = %s
+                    AND res_field = %s
+                """, (new_field, model, old_field)
+            )
         # Rename appearances on export profiles
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute("""
