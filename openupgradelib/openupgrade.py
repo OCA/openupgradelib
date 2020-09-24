@@ -1,6 +1,8 @@
-# Copyright (C) 2011-2013 Therp BV (<http://therp.nl>)
+# -*- coding: utf-8 -*-
+# Copyright 2011-2020 Therp BV <https://therp.nl>.
+# Copyright 2016-2020 Tecnativa - Pedro M. Baeza.
 # Copyright Odoo Community Association (OCA)
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import sys
 import os
@@ -8,6 +10,7 @@ import inspect
 import uuid
 import logging as _logging_module
 from datetime import datetime
+from functools import wraps
 try:
     from StringIO import StringIO
 except ImportError:
@@ -1772,10 +1775,11 @@ def logging(args_details=False, step=False):
 
     """
     def wrap(func):
+
+        @wraps(func)
         def wrapped_function(*args, **kwargs):
             to_log = True
             msg = "Executing method %s" % func.__name__
-
             # Count calls
             if step:
                 # Compute unique name
@@ -1790,18 +1794,16 @@ def logging(args_details=False, step=False):
                         msg += " ; Logging Step : %d" % step
                 else:
                     to_log = False
-
             # Log Args
             if args_details and to_log:
                 if args:
                     msg += " ; args : %s" % str(args)
                 if kwargs:
                     msg += " ; kwargs : %s" % str(kwargs)
-
             if to_log:
                 logger.info(msg)
-
             return func(*args, **kwargs)
+
         return wrapped_function
     return wrap
 
@@ -1832,6 +1834,8 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
     logging purposes.
     """
     def wrap(func):
+
+        @wraps(func)
         def wrapped_function(cr, version):
             stage = 'unknown'
             module = 'unknown'
@@ -1849,29 +1853,35 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     # Python3: fetch pyfile from locals, not fp
                     filename = frame.locals.get(
                         'pyfile') or frame.locals['fp'].name
-                except Exception as e:
+                except Exception as exc:
                     logger.error(
                         "'migrate' decorator: failed to inspect "
-                        "the frame above: %s" % e)
-                    pass
+                        "the frame above: %s",
+                        exc
+                    )
                 if not version and not no_version:
                     return
                 logger.info(
-                    "%s: %s-migration script called with version %s" %
-                    (module, stage, version))
+                    "%s: %s-migration script called with version %s",
+                    module,
+                    stage,
+                    version
+                )
                 try:
                     # The actual function is called here
                     func(
                         api.Environment(
                             cr, uid or SUPERUSER_ID, context or {})
                         if use_env2 else cr, version)
-                except Exception as e:
-                    message = repr(e) if sys.version_info[0] == 2 else str(e)
+                except Exception as exc:
+                    error_message = \
+                        repr(exc) if sys.version_info[0] == 2 else str(exc)
                     logger.error(
                         "%s: error in migration script %s: %s",
-                        module, filename, message)
-                    logger.exception(e)
+                        module, filename, error_message)
+                    logger.exception(exc)
                     raise
+
         return wrapped_function
     return wrap
 
@@ -2190,7 +2200,7 @@ def disable_invalid_filters(env):
         from openerp.tools.safe_eval import safe_eval
     import time
     try:
-        basestring  # noqa: F821
+        basestring  # noqa: F823
     except NameError:  # For Python 3 compatibility
         basestring = str
 
@@ -2258,8 +2268,8 @@ def disable_invalid_filters(env):
 
 
 def add_fields(env, field_spec):
-    """This method adds all the needed stuff for having a new field populated in
-    the DB (SQL column, ir.model.fields entry, ir.model.data entry...).
+    """This method adds all the needed stuff for having a new field populated
+    in the DB (SQL column, ir.model.fields entry, ir.model.data entry...).
 
     It's intended for being run in pre-migration scripts for pre-populating
     fields that are going to be declared later in the module.
@@ -2442,8 +2452,8 @@ def update_field_multilang(records, field, method):
 
 def update_module_moved_fields(
         cr, model, moved_fields, old_module, new_module):
-    """Update module for field definition in general tables that have been moved
-    from one module to another.
+    """Update module for field definition in general tables that have been
+    moved from one module to another.
 
     :param cr: Database cursor
     :param model: model name
