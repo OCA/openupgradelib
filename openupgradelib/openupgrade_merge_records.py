@@ -401,17 +401,26 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         )
 
 
+def _change_generic_get_models_to_replace():
+    models = [
+        ('ir.attachment', 'res_id', 'res_model'),
+        ('mail.followers', 'res_id', 'res_model'),
+        ('mail.message', 'res_id', 'model'),
+        ('rating.rating', 'res_id', 'res_model'),
+    ]
+
+    if version_info[0] >= 11:
+        models += [('calendar.event', 'res_id', 'res_model'),
+                   ('mail.activity', 'res_id', 'res_model')]
+
+    return models
+
+
 def _change_generic(env, model_name, record_ids, target_record_id,
                     exclude_columns, method='orm'):
     """ Update known generic style res_id/res_model references """
-    for model_to_replace, res_id_column, model_column in [
-            ('calendar.event', 'res_id', 'res_model'),
-            ('ir.attachment', 'res_id', 'res_model'),
-            ('mail.activity', 'res_id', 'res_model'),
-            ('mail.followers', 'res_id', 'res_model'),
-            ('mail.message', 'res_id', 'model'),
-            ('rating.rating', 'res_id', 'res_model'),
-            ]:
+    for model_to_replace, res_id_column, model_column in \
+            _change_generic_get_models_to_replace():
         try:
             model = env[model_to_replace].with_context(active_test=False)
         except KeyError:
