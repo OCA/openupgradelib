@@ -419,6 +419,9 @@ def _change_generic(env, model_name, record_ids, target_record_id,
         if (model._table, res_id_column) in exclude_columns:
             continue
         if method == 'orm':
+            if not model._fields.get(model_column) or \
+                    not model._fields.get(res_id_column):
+                continue
             records = model.search([
                 (model_column, '=', model_name),
                 (res_id_column, 'in', record_ids)])
@@ -442,6 +445,9 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                     "Changed %s record(s) of model '%s'",
                     len(records), model_to_replace)
         else:
+            if not column_exists(env.cr, model._table, res_id_column) or \
+                    not column_exists(env.cr, model._table, model_column):
+                continue
             format_args = {
                 'table': sql.Identifier(model._table),
                 'res_id_column': sql.Identifier(res_id_column),
