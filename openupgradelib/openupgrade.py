@@ -595,6 +595,10 @@ def rename_fields(env, field_spec, no_deep=False):
     cr = env.cr
     for model, table, old_field, new_field in field_spec:
         if column_exists(cr, table, old_field):
+            if column_exists(cr, table, new_field):
+                # Remnant of old versions? We rename existing one
+                # Example: https://github.com/OCA/OpenUpgrade/issues/2339
+                rename_columns(cr, {table: [(new_field, None)]})
             rename_columns(cr, {table: [(old_field, new_field)]})
         # Rename corresponding field entry
         cr.execute("""
