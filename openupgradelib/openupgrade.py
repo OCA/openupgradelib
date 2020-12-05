@@ -602,7 +602,7 @@ def rename_fields(env, field_spec, no_deep=False):
         # Delete possible existing field entry
         # Example: https://github.com/OCA/OpenUpgrade/issues/2339
         cr.execute(
-            """DELETE ir_model_fields WHERE name = %s AND model = %s""",
+            """DELETE FROM ir_model_fields WHERE name = %s AND model = %s""",
             (new_field, model),
         )
         # Rename corresponding field entry
@@ -615,7 +615,7 @@ def rename_fields(env, field_spec, no_deep=False):
         )
         # Delete possible translations entries for new field
         cr.execute(
-            """DELETE ir_translation WHERE name=%s AND type='model'""",
+            """DELETE FROM ir_translation WHERE name=%s AND type='model'""",
             ("%s,%s" % (model, new_field), ),
         )
         # Rename translations
