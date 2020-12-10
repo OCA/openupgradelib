@@ -1,23 +1,6 @@
-# -*- coding: utf-8 -*-
-##############################################################################
-#
-#    OpenERP, Open Source Management Solution
-#    This module copyright (C) 2011-2013 Therp BV (<http://therp.nl>)
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# Copyright (C) 2011-2013 Therp BV (<http://therp.nl>)
+# Copyright Odoo Community Association (OCA)
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 import sys
 import os
@@ -269,7 +252,7 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
 
     :param module_name: the name of the module
     :param filename: the path to the filename, relative to the module \
-    directory.
+    directory. This may also be the module directory relative to --upgrade-path
     :param idref: optional hash with ?id mapping cache?
     :param mode:
         one of 'init', 'update', 'demo', 'init_no_create'.
@@ -288,7 +271,17 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
     logger.info('%s: loading %s' % (module_name, filename))
     _, ext = os.path.splitext(filename)
     pathname = os.path.join(module_name, filename)
-    fp = tools.file_open(pathname)
+
+    try:
+        fp = tools.file_open(pathname)
+    except OSError:
+        if tools.config.get('upgrade_path'):
+            pathname = os.path.join(
+                tools.config['upgrade_path'], module_name, filename)
+            fp = open(pathname)
+        else:
+            raise
+
     try:
         if ext == '.csv':
             noupdate = True
