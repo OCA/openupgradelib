@@ -10,21 +10,48 @@ Development Lead
 Contributors
 ------------
 
-* Stefan Rijnhart
-* David Béal
-* Sylvain LE GAL
-* Holger Brunn
-* Sandy Carter
+* Alexandre Fayolle
 * Alexis de Lattre
 * Arthur Vuillard
-* Florent Xicluna
 * Benoit Guillot
-* Paulius Sladkevičius
+* Bogdan Stanciu
+* Christoph Giesel
+* Daniel Reis
+* David Arnold
+* David Béal
+* David Vidal
+* Dimitrios T. Tanis
+* Dmytro Katyukha
+* Ernesto Tejeda
+* Florent Xicluna
 * Florian Dacosta
-* Alexandre Fayolle
-* Pedro M. Baeza
+* Graeme Gellatly
+* Hector Villarreal Ortega
+* Hervé Martinet
+* Holger Brunn
+* Ivàn Todorovich
+* Jairo Llopis
+* Jordi Riera
+* Juan Pablo Arias
+* Julien Coux
+* Katherine Zaoral
+* Kay Häusler
 * Manuel Vázquez Acosta
 * Miku Laitinen
-* Christoph Giesel
-* Jordi Riera
-
+* Miquel Raich
+* Moisés López
+* Paulius Sladkevičius
+* Pedro M. Baeza
+* Petar Najman
+* Robert Rübner
+* Ronald Portier
+* Sandy Carter
+* Sebastien Alix
+* Silvija Butko
+* Stefan Rijnhart
+* Stephane Le Cornec
+* Stéphane Bidoul
+* Sylvain LE GAL
+* Tom Blauwendraat
+* Yann Bongiovanni
+* Yuri Quintana
