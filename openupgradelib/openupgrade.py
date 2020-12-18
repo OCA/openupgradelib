@@ -901,7 +901,7 @@ def rename_models(cr, model_spec):
     # TODO: signal where the model occurs in references to ir_model
 
 
-def rename_xmlids(cr, xmlids_spec):
+def rename_xmlids(cr, xmlids_spec, allow_merge=False):
     """
     Rename XML IDs. Typically called in the pre script.
     One usage example is when an ID changes module. In OpenERP 6 for example,
@@ -909,16 +909,57 @@ def rename_xmlids(cr, xmlids_spec):
     although they were still being defined in their respective module).
 
     :param xmlids_spec: a list of tuples (old module.xmlid, new module.xmlid).
+    :param allow_merge: if the new ID already exists, try to merge the records.
+        This is recommended when renaming module categories, which are
+        generated on the fly by the Odoo database initialization routine and
+        may resurface over a longer period of time. In general though, this
+        option should be avoided. Renaming to existing IDs is usually an
+        error, and because this method is usually called in the pre-stage,
+        the applied merge method is by SQL which is incomplete and can lead
+        to inconsistencies in the database.
     """
+    get_data_query = (
+        """SELECT res_id, model FROM ir_model_data
+        WHERE module=%s AND name=%s""")
     for (old, new) in xmlids_spec:
         if '.' not in old or '.' not in new:
             logger.error(
                 'Cannot rename XMLID %s to %s: need the module '
                 'reference to be specified in the IDs' % (old, new))
-        else:
-            query = ("UPDATE ir_model_data SET module = %s, name = %s "
-                     "WHERE module = %s and name = %s")
-            logged_query(cr, query, tuple(new.split('.') + old.split('.')))
+            continue
+        cr.execute(get_data_query, tuple(old.split('.')))
+        old_row = cr.fetchone()
+        if not old_row:
+            logger.info('XMLID %s not found when renaming to %s', old, new)
+            continue
+        if allow_merge:
+            cr.execute(get_data_query, tuple(new.split('.')))
+            new_row = cr.fetchone()
+            if new_row:
+                logger.info(
+                    'XMLID %s already exists when renaming from %s: Merging.',
+                    new, old)
+                if new_row[1] != old_row[1]:
+                    do_raise(
+                        "Cannot merge XMLIDs %s, %s because they don't belong "
+                        "to the same model (%s, %s)" % (
+                            old, new, old_row[1], new_row[1]))
+                table = old_row[1].replace('.', '_')
+                if not table_exists(cr, table):
+                    do_raise(
+                        "Cannot merge XMLIDs %s, %s because the table I "
+                        "guessed (%s) based on the model name (%s) does not "
+                        "exist." % (old, new, table, old_row[1]))
+                # Cannot import merge_records until after Odoo initialization
+                from .openupgrade_merge_records import merge_records
+                env = api.Environment(cr, SUPERUSER_ID, {})
+                merge_records(
+                    env, old_row[1], [old_row[0]], new_row[0],
+                    method="sql", model_table=table)
+                continue
+        query = ("UPDATE ir_model_data SET module = %s, name = %s "
+                 "WHERE module = %s and name = %s")
+        logged_query(cr, query, tuple(new.split('.') + old.split('.')))
 
 
 def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
