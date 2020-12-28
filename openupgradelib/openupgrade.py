@@ -982,16 +982,43 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
     if already_exists:
         return False
     else:
+        query = "INSERT INTO ir_model_data ({fields}) VALUES ({values})"
+        fields = [
+            "create_uid",
+            "create_date",
+            "write_uid",
+            "write_date",
+            "noupdate",
+            "name",
+            "module",
+            "model",
+            "res_id",
+        ]
+        args = (
+            SUPERUSER_ID,
+            AsIs("(now() at time zone 'UTC')"),
+            SUPERUSER_ID,
+            AsIs("(now() at time zone 'UTC')"),
+            noupdate,
+            xmlid,
+            module,
+            model,
+            res_id,
+        )
+        if version_info[0] < 14:
+            fields += ["date_init", "date_update"]
+            args += (
+                AsIs("(now() at time zone 'UTC')"),
+                AsIs("(now() at time zone 'UTC')"),
+            )
         logged_query(
             cr,
-            "INSERT INTO ir_model_data (create_uid, create_date, "
-            "write_uid, write_date, date_init, date_update, noupdate, "
-            "name, module, model, res_id) "
-            "VALUES (%s, (now() at time zone 'UTC'), %s, "
-            "(now() at time zone 'UTC'), (now() at time zone 'UTC'), "
-            "(now() at time zone 'UTC'), %s, %s, %s, %s, %s)", (
-                SUPERUSER_ID, SUPERUSER_ID, noupdate,
-                xmlid, module, model, res_id))
+            query.format(
+                fields=",".join([_ for _ in fields]),
+                values=",".join(["%s" for _ in args]),
+            ),
+            args,
+        )
         return True
 
 
