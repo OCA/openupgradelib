@@ -163,6 +163,8 @@ __all__ = [
     'delete_records_safely_by_xml_id',
     'set_xml_ids_noupdate_value',
     'convert_to_company_dependent',
+    'cow_templates_mark_if_equal_to_upstream',
+    'cow_templates_replicate_upstream',
 ]
 
 
@@ -2606,3 +2608,89 @@ def convert_to_company_dependent(
                 )
             ), args,
         )
+
+
+def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
+    """Record which COW'd templates are equal to their upstream equivalents.
+
+    This is meant to be executed in a pre-migration script.
+
+    This only makes sense if:
+
+    1. Origin is >= v12.
+    2. Website was installed. Hint: run this in website's pre-migration.
+    3. You are going to run :func:`cow_templates_replicate_upstream` in the
+       post-migration.
+    """
+    mark_colname = mark_colname or get_legacy_name("cow_equal_to_upstream")
+    mark_identifier = sql.Identifier(mark_colname)
+    if not column_exists(cr, "ir_ui_view", mark_colname):
+        logged_query(
+            cr,
+            sql.SQL("ALTER TABLE ir_ui_view ADD COLUMN {} BOOLEAN")
+            .format(mark_identifier))
+    # Map all qweb views
+    cr.execute("""
+        SELECT id, arch_db, key, website_id
+        WHERE type == 'qweb' AND key IS NOT NULL
+    """)
+    views_map = {}
+    for id_, arch_db, key, website_id in cr.fetchall():
+        views_map[(key, website_id)] = (id_, arch_db)
+    # Detect website-specific views COW'd without alterations from upstream
+    equal = []
+    for (key, website_id), (id_, arch_db) in views_map.items():
+        if not website_id:
+            # Skip upstream views
+            continue
+        try:
+            upstream_arch = views_map[(key, None)][1]
+        except KeyError:
+            # Skip website-specific views that have no upstream equivalent
+            continue
+        # It seems that, when you just use the `customize_show` widget without
+        # ever touching the view, the COW system duplicates `arch_db`
+        # preserving even the same whitespace.
+        # In case this is proven false under some circumstances, we would need
+        # to do a smarter XML comparison here.
+        if arch_db == upstream_arch:
+            equal.append(id_)
+    # Mark equal views
+    logged_query(
+        cr,
+        sql.SQL("UPDATE ir_ui_view SET {} = TRUE WHERE ID IN %s")
+        .format(mark_identifier),
+        (equal,),
+    )
+
+
+def cow_templates_replicate_upstream(cr, mark_colname=None):
+    """Reset COW'd templates to their upstream equivalents.
+
+    This is meant to be executed in a post-migration script.
+
+    This only makes sense if:
+
+    1. Origin is >= v12.
+    2. Website was installed. Hint: run this in website's post-migration.
+    3. You ran :func:`cow_templates_mark_if_equal_to_upstream` in the
+       pre-migration.
+    """
+    mark_colname = mark_colname or get_legacy_name("cow_equal_to_upstream")
+    mark_identifier = sql.Identifier(mark_colname)
+    logged_query(
+        cr,
+        sql.SQL("""
+            UPDATE ir_ui_view AS specific
+            SET arch_db = generic.arch_db
+            FROM ir_ui_view AS generic
+            WHERE
+                specific.{} IS NOT NULL AND
+                specific.website_id IS NOT NULL AND
+                generic.website_id IS NULL AND
+                specific.key = generic.key AND
+                specific.type = 'qweb' AND
+                generic.type = 'qweb'
+        """)
+        .format(mark_identifier),
+    )
