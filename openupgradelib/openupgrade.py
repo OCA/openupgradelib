@@ -2214,12 +2214,13 @@ def disable_invalid_filters(env):
         )
         # DOMAIN
         try:
-            # Strange artifact found in a filter
-            domain = f.domain.replace('%%', '%')
-            model.search(
-                safe_eval(domain, {'time': time, 'uid': env.uid}),
-                limit=1,
-            )
+            with savepoint(env.cr):
+                # Strange artifact found in a filter
+                domain = f.domain.replace('%%', '%')
+                model.search(
+                    safe_eval(domain, {'time': time, 'uid': env.uid}),
+                    limit=1,
+                )
         except Exception:
             logger.warning(
                 format_message(f) + "as it contains an invalid domain."
