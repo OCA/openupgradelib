@@ -2687,7 +2687,7 @@ def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
     # Mark equal views
     logged_query(
         cr,
-        sql.SQL("UPDATE ir_ui_view SET {} = TRUE WHERE ID IN %s")
+        sql.SQL("UPDATE ir_ui_view SET {} = TRUE WHERE id = ANY(%s)")
         .format(mark_identifier),
         (equal,),
     )
