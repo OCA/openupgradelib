@@ -2661,7 +2661,7 @@ def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
     cr.execute("""
         SELECT id, arch_db, key, website_id
         FROM ir_ui_view
-        WHERE type == 'qweb' AND key IS NOT NULL
+        WHERE type = 'qweb' AND key IS NOT NULL
     """)
     views_map = {}
     for id_, arch_db, key, website_id in cr.fetchall():
