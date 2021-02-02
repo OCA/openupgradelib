@@ -248,26 +248,49 @@ def _change_translations_orm(env, model_name, record_ids, target_record_id,
             records = records[1:]
         if records:
             records.unlink()
-            logger.debug("Deleted %s extra translations for %s.",
-                         len(records), group['name'])
+            logger.debug("Deleted %s extra translations for %s (lang = %s).",
+                         len(records), group['name'], group['lang'])
 
 
 def _change_translations_sql(env, model_name, record_ids, target_record_id,
                              exclude_columns):
     if ('ir_translation', 'res_id') in exclude_columns:
         return
-    # TODO: To be handled with the same approach as in ORM method
     logged_query(
-        env.cr,
-        """
-        UPDATE ir_translation SET res_id = %(target_record_id)s
-        WHERE type = 'model' AND res_id in %(record_ids)s
-        AND name like %(model_name)s || ',%%'""",
+        env.cr, """
+        UPDATE ir_translation it
+        SET res_id = %(target_record_id)s
+        FROM (
+            SELECT min(it.id) as id, it.name, it.lang
+            FROM ir_translation it
+            LEFT JOIN ir_translation it2 ON (
+                it2.type = it.type AND it2.name = it.name
+                AND it2.lang = it.lang AND it2.res_id = %(target_record_id)s)
+            WHERE it.type = 'model' AND it.res_id IN %(record_ids)s
+                AND it.name like %(model_name)s || ',%%' AND it2.id IS NULL
+            GROUP BY it.name, it.lang
+        ) AS to_update
+        WHERE it.id = to_update.id""",
         {
             'target_record_id': target_record_id,
             'record_ids': record_ids,
             'model_name': model_name,
         }, skip_no_result=True)
+    logged_query(
+        env.cr, """
+        DELETE FROM ir_translation it
+        USING (
+            SELECT it.id
+            FROM ir_translation it
+            WHERE it.type = 'model' AND it.res_id IN %(record_ids)s
+                AND it.name like %(model_name)s || ',%%'
+        ) AS to_delete
+        WHERE it.id = to_delete.id""",
+        {
+            'target_record_id': target_record_id,
+            'record_ids': record_ids,
+            'model_name': model_name,
+        })
 
 
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
