@@ -597,9 +597,29 @@ def rename_fields(env, field_spec, no_deep=False):
         # Delete possible existing field entry
         # Example: https://github.com/OCA/OpenUpgrade/issues/2339
         cr.execute(
-            """DELETE FROM ir_model_fields WHERE name = %s AND model = %s""",
+            """DELETE FROM ir_model_fields WHERE name = %s AND model = %s
+            RETURNING id""",
             (new_field, model),
         )
+        row = cr.fetchone()
+        if row:
+            cr.execute(
+                """
+                SELECT module||'.'||name
+                FROM ir_model_data WHERE model = 'ir.model.fields'
+                    AND res_id = %s
+                """, (row[0],))
+            xmlids = [xmlid for xmlid, in cr.fetchall()]
+            lg = logger.error if xmlids else logger.warning
+            lg(
+                "When renaming field %s of model %s to %s, an existing field "
+                "with the new name was encountered. This could be a "
+                "error in a migration script, or a remnant from a previous "
+                "upgrade or an uninstalled module.",
+                old_field, model, new_field)
+            if xmlids:
+                lg("The following data entry(s) were found for this field: %s",
+                   ','.join(xmlids))
         # Rename corresponding field entry
         cr.execute("""
             UPDATE ir_model_fields
