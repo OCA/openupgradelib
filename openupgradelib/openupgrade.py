@@ -2320,25 +2320,26 @@ def add_fields(env, field_spec):
         # Add SQL column
         if not table_name:
             table_name = env[model_name]._table
-        sql_type = sql_type or sql_type_mapping.get(field_type)
-        if sql_type:
-            query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
-                sql.Identifier(table_name),
-                sql.Identifier(field_name),
-                sql.SQL(sql_type),
-            )
-            args = []
-            if init_value:
-                query += sql.SQL(" DEFAULT %s")
-                args.append(init_value)
-            logged_query(env.cr, query, args)
-            if init_value:
-                logged_query(env.cr, sql.SQL(
-                    "ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
-                        sql.Identifier(table_name),
-                        sql.Identifier(field_name),
-                    )
+        if not column_exists(env.cr, table_name, field_name):
+            sql_type = sql_type or sql_type_mapping.get(field_type)
+            if sql_type:
+                query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
+                    sql.Identifier(table_name),
+                    sql.Identifier(field_name),
+                    sql.SQL(sql_type),
                 )
+                args = []
+                if init_value:
+                    query += sql.SQL(" DEFAULT %s")
+                    args.append(init_value)
+                logged_query(env.cr, query, args)
+                if init_value:
+                    logged_query(env.cr, sql.SQL(
+                        "ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
+                            sql.Identifier(table_name),
+                            sql.Identifier(field_name),
+                        )
+                    )
         # Add ir.model.fields entry
         env.cr.execute(
             "SELECT id FROM ir_model WHERE model = %s", (model_name, ),
@@ -2347,38 +2348,55 @@ def add_fields(env, field_spec):
         if not row:
             continue
         model_id = row[0]
-        # `select_level` is required in ir.model.fields for Odoo <= v8
-        extra_cols = extra_placeholders = sql.SQL("")
-        if version_info < (9, 0):
-            extra_cols = sql.SQL(", select_level")
-            extra_placeholders = sql.SQL(", %(select_level)s")
-        logged_query(
-            env.cr,
-            sql.SQL(
-                """
-                INSERT INTO ir_model_fields (
-                    model_id, model, name, field_description,
-                    ttype, state{extra_cols}
-                ) VALUES (
-                    %(model_id)s, %(model)s, %(name)s, %(field_description)s,
-                    %(ttype)s, %(state)s{extra_placeholders}
-                ) RETURNING id
-                """
-            ).format(
-                extra_cols=extra_cols,
-                extra_placeholders=extra_placeholders,
-            ),
-            {
-                "model_id": model_id,
-                "model": model_name,
-                "name": field_name,
-                "field_description": "OU",
-                "ttype": field_type,
-                "state": "base",
-                "select_level": "0",
-            },
+        env.cr.execute(
+            "SELECT id FROM ir_model_fields "
+            "WHERE model_id = %s AND name = %s",
+            (model_id, field_name)
         )
-        field_id = env.cr.fetchone()[0]
+        row = env.cr.fetchone()
+        field_id = row and row[0] or False
+        if field_id:
+            logger.warning(
+                "add_fields: There's already an entry for %s in %s. This may "
+                "mean that there's some misconfiguration, or simply that "
+                "another module added the same field previously." % (
+                    field_name, model_name,
+                )
+            )
+        else:
+            # `select_level` is required in ir.model.fields for Odoo <= v8
+            extra_cols = extra_placeholders = sql.SQL("")
+            if version_info < (9, 0):
+                extra_cols = sql.SQL(", select_level")
+                extra_placeholders = sql.SQL(", %(select_level)s")
+            logged_query(
+                env.cr,
+                sql.SQL(
+                    """
+                    INSERT INTO ir_model_fields (
+                        model_id, model, name, field_description,
+                        ttype, state{extra_cols}
+                    ) VALUES (
+                        %(model_id)s, %(model)s, %(name)s,
+                        %(field_description)s, %(ttype)s,
+                        %(state)s{extra_placeholders}
+                    ) RETURNING id
+                    """
+                ).format(
+                    extra_cols=extra_cols,
+                    extra_placeholders=extra_placeholders,
+                ),
+                {
+                    "model_id": model_id,
+                    "model": model_name,
+                    "name": field_name,
+                    "field_description": "OU",
+                    "ttype": field_type,
+                    "state": "base",
+                    "select_level": "0",
+                },
+            )
+            field_id = env.cr.fetchone()[0]
         # Add ir.model.data entry
         if not module or version_info[0] >= 12:
             continue
