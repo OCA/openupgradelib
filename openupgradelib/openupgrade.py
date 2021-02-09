@@ -592,14 +592,9 @@ def rename_fields(env, field_spec, no_deep=False):
         if column_exists(cr, table, old_field):
             if column_exists(cr, table, new_field):
                 # Remnant of old versions? We rename existing one
+                # Example: https://github.com/OCA/OpenUpgrade/issues/2339
                 rename_columns(cr, {table: [(new_field, None)]})
             rename_columns(cr, {table: [(old_field, new_field)]})
-        # Delete possible existing field entry
-        # Example: https://github.com/OCA/OpenUpgrade/issues/2339
-        cr.execute(
-            """DELETE ir_model_fields WHERE name = %s AND model = %s""",
-            (new_field, model),
-        )
         # Rename corresponding field entry
         cr.execute("""
             UPDATE ir_model_fields
@@ -607,11 +602,6 @@ def rename_fields(env, field_spec, no_deep=False):
             WHERE name = %s
                 AND model = %s
             """, (new_field, old_field, model),
-        )
-        # Delete possible translations entries for new field
-        cr.execute(
-            """DELETE ir_translation WHERE name=%s AND type='model'""",
-            ("%s,%s" % (model, new_field), ),
         )
         # Rename translations
         cr.execute("""
