@@ -2646,7 +2646,7 @@ def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
     1. Origin is >= v12.
     2. Website was installed. Hint: run this in website's pre-migration.
     3. You are going to run :func:`cow_templates_replicate_upstream` in the
-       post-migration.
+       end-migration.
     """
     mark_colname = mark_colname or get_legacy_name("cow_equal_to_upstream")
     mark_identifier = sql.Identifier(mark_colname)
@@ -2694,12 +2694,12 @@ def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
 def cow_templates_replicate_upstream(cr, mark_colname=None):
     """Reset COW'd templates to their upstream equivalents.
 
-    This is meant to be executed in a post-migration script.
+    This is meant to be executed in an end-migration script.
 
     This only makes sense if:
 
     1. Origin is >= v12.
-    2. Website was installed. Hint: run this in website's post-migration.
+    2. Website was installed. Hint: run this in website's end-migration.
     3. You ran :func:`cow_templates_mark_if_equal_to_upstream` in the
        pre-migration.
     """
