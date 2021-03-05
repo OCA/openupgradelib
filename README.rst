@@ -20,6 +20,8 @@ OpenUpgrade Library
 
 A library with support functions to be called from Odoo migration scripts.
 
+Inconsequential change, just to test travis failing
+
 * Free software: AGPL-3 license
 * Documentation: https://openupgradelib.readthedocs.org.
 
