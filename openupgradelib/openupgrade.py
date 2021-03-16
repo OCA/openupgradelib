@@ -110,6 +110,14 @@ if version_info[0] > 7:
 else:
     api = False
 
+# Setting the target version as an environment variable allows OpenUpgrade
+# to skip methods that are called in every version but really only need to
+# run in the target version. Make the target version available to OpenUpgrade
+# with `export OPENUPGRADE_TARGET_VERSION=13.0` (when migrating up to 13.0)
+target_version = os.environ.get("OPENUPGRADE_TARGET_VERSION")
+if target_version:
+    is_target_version = version_info[0] == int(float(target_version))
+
 
 # The server log level has not been set at this point
 # so to log at loglevel debug we need to set it
@@ -2171,6 +2179,11 @@ def disable_invalid_filters(env):
 
     :param env: Environment parameter.
     """
+    if target_version and not is_target_version:
+        logger.info(
+            "Deferring `disable_invalid_filters` until this migration reaches "
+            "target version %s", target_version)
+        return
     try:
         from odoo.tools.safe_eval import safe_eval
     except ImportError:
