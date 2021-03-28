@@ -3,4 +3,5 @@ coveralls
 flake8
 pep8-naming
 lxml<=4.3.4
+progressbar2
 psycopg2==2.7.3.1
