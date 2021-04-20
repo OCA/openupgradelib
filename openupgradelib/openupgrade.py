@@ -2546,10 +2546,11 @@ def delete_records_safely_by_xml_id(env, xml_ids):
     """
     for xml_id in xml_ids:
         logger.debug('Deleting record for XML-ID %s', xml_id)
-        record = env.ref(xml_id, raise_if_not_found=False)
-        if not record:
-            continue
         try:
+            # This can raise an environment KeyError if the model is not loaded
+            record = env.ref(xml_id, raise_if_not_found=False)
+            if not record:
+                continue
             safe_unlink(record, do_raise=True)
         except Exception as e:
             logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
