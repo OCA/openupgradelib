@@ -171,6 +171,7 @@ __all__ = [
     'rename_property',
     'delete_record_translations',
     'disable_invalid_filters',
+    'safe_unlink',
     'delete_records_safely_by_xml_id',
     'set_xml_ids_noupdate_value',
     'convert_to_company_dependent',
@@ -2513,6 +2514,30 @@ def update_module_moved_fields(
     )
 
 
+def safe_unlink(records, do_raise=False):
+    """Allow for errors to occur during unlinking of records.
+
+    Prevent broken database transactions, and by default, catch exceptions.
+
+    :param records: an iterable (not necessarily recordset) of records to
+        unlink.
+    :param do_raise: when set to True, don't catch exceptions but let them
+        be raised.
+    """
+    for record in records:
+        logger.debug("Deleting record %s#%s", record._name, record.id)
+        if not record.exists():
+            continue
+        try:
+            with record.env.cr.savepoint():
+                record.unlink()
+        except Exception as e:
+            if do_raise:
+                raise
+            logger.info("Error deleting %s#%s: %s",
+                        record._name, record.id, repr(e))
+
+
 def delete_records_safely_by_xml_id(env, xml_ids):
     """This removes in the safest possible way the records whose XML-IDs are
     passed as argument.
@@ -2521,13 +2546,13 @@ def delete_records_safely_by_xml_id(env, xml_ids):
     """
     for xml_id in xml_ids:
         logger.debug('Deleting record for XML-ID %s', xml_id)
+        record = env.ref(xml_id, raise_if_not_found=False)
+        if not record:
+            continue
         try:
-            with env.cr.savepoint():
-                record = env.ref(xml_id, raise_if_not_found=False)
-                if record and record.exists():
-                    record.unlink()
+            safe_unlink(record, do_raise=True)
         except Exception as e:
-            logger.error('Error deleting XML-ID %s: %s', xml_id, repr(e))
+            logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
 
 
 def chunked(records, single=True):
