@@ -2456,6 +2456,9 @@ def update_module_moved_fields(
     """Update module for field definition in general tables that have been
     moved from one module to another.
 
+    No need to use this method: moving the XMLID is covered in
+    Odoo and OpenUpgrade natively.
+
     :param cr: Database cursor
     :param model: model name
     :param moved_fields: list of moved fields
