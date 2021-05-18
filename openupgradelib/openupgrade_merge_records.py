@@ -30,7 +30,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
             JOIN information_schema.constraint_column_usage AS ccu
                 ON ccu.constraint_name = tc.constraint_name
                 AND ccu.table_schema = tc.table_schema
-            WHERE constraint_type = 'FOREIGN KEY'
+            WHERE tc.constraint_type = 'FOREIGN KEY'
             AND ccu.table_name = %s and ccu.column_name = 'id'
         """, (model_table,))
     for table, column in env.cr.fetchall():
@@ -682,6 +682,53 @@ def _delete_records_orm(env, model_name, record_ids, target_record_id):
         )
 
 
+def _check_recurrence(env, model_name, record_ids, target_record_id,
+                      model_table=None):
+    if not model_table:
+        model_table = env[model_name]._table
+    env.cr.execute("""
+        SELECT tc.table_name, kcu.column_name, COALESCE(imf.column1, 'id')
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage AS ccu
+            ON ccu.constraint_name = tc.constraint_name
+            AND ccu.table_schema = tc.table_schema
+        JOIN ir_model_fields AS imf
+            ON imf.model = %s AND imf.relation = imf.model AND ((
+                imf.name = kcu.column_name AND
+                tc.table_name = ccu.table_name) OR (
+                imf.column2 = kcu.column_name AND
+                tc.table_name = imf.relation_table))
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_name = %s and ccu.column_name = 'id'
+        """, (model_name, model_table))
+    for table, column, origin in env.cr.fetchall():
+        query = sql.SQL(
+            """SELECT {column} FROM {table}
+            WHERE {origin} = %(target_record_id)s"""
+        ).format(
+            table=sql.Identifier(table), column=sql.Identifier(column),
+            origin=sql.Identifier(origin),
+        )
+        env.cr.execute(query, {
+            'target_record_id': target_record_id,
+        })
+        new_parent_row = env.cr.fetchall()
+        if new_parent_row and new_parent_row[0] in record_ids:
+            # When we already have recursive hierarchy, doing a
+            # merge of a parent into one of their children let the
+            # awkward situation where the child points to itself,
+            # so we avoid it checking this condition
+            logger.info(
+                "Couldn't merge %s record(s) of model %s to record_id %s"
+                " to avoid recursion with field %s of table %s",
+                len(record_ids), model_name, target_record_id, origin, table)
+            return True
+    return False
+
+
 def merge_records(env, model_name, record_ids, target_record_id,
                   field_spec=None, method='orm', delete=True,
                   exclude_columns=None, model_table=None):
@@ -724,6 +771,8 @@ def merge_records(env, model_name, record_ids, target_record_id,
         record_ids = env[model_name].browse(record_ids).exists().ids
         if not record_ids:
             return
+        if _check_recurrence(env, model_name, record_ids, target_record_id):
+            return
         _change_many2one_refs_orm(*args)
         _change_many2many_refs_orm(*args)
         _change_reference_refs_orm(*args)
@@ -743,6 +792,10 @@ def merge_records(env, model_name, record_ids, target_record_id,
             sql.Identifier(model_table)), (tuple(record_ids), ))
         record_ids = [x[0] for x in env.cr.fetchall()]
         if not record_ids:
+            return
+        if _check_recurrence(
+                env, model_name, record_ids, target_record_id,
+                model_table=model_table):
             return
         args3 = args + (model_table, )
         _change_foreign_key_refs(*args3)
