@@ -2063,6 +2063,7 @@ def date_to_datetime_tz(
             'date_field_name': date_field_name,
             'datetime_field_name': datetime_field_name,
             'timezone': timezone,
+            'user_field_name': user_field_name,
         }
         logged_query(
             cr,
@@ -2072,7 +2073,7 @@ def date_to_datetime_tz(
                 my_table.%(date_field_name)s::TIMESTAMP AT TIME ZONE 'UTC'
             FROM res_partner rp, res_users ru
             WHERE my_table.%(date_field_name)s IS NOT NULL
-                AND my_table.user_id=ru.id
+                AND my_table.%(user_field_name)s=ru.id
                 AND ru.partner_id=rp.id
                 AND rp.tz='%(timezone)s';
             """ % values)
