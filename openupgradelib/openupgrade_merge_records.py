@@ -496,7 +496,8 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 # Remove remaining records non updated (that are duplicates)
                 logged_query(env.cr, sql.SQL(
                     "DELETE FROM {table} "
-                    "WHERE {res_id_column} IN %(record_ids)s"
+                    "WHERE {model_column} = %(model_name)s "
+                    "AND {res_id_column} IN %(record_ids)s"
                 ).format(**format_args), query_args, skip_no_result=True)
 
 
