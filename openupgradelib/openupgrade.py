@@ -9,6 +9,7 @@ import os
 import inspect
 import uuid
 import logging as _logging_module
+import functools
 from datetime import datetime
 from functools import wraps
 try:
@@ -132,6 +133,7 @@ logger.setLevel(_logging_module.DEBUG)
 __all__ = [
     'migrate',
     'logging',
+    'progress',
     'load_data',
     'add_fields',
     'copy_columns',
@@ -1883,6 +1885,52 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     logger.exception(exc)
                     raise
 
+        return wrapped_function
+    return wrap
+
+
+def progress(index=1, prefix=None):
+    """This is a decorator for any sub function called in an OpenUpgrade script
+    (pre, post or end migration script).
+
+    Decorate functions that may take time. If a function is decorated, we
+    provide an iterable argument that will be looped on and call the original
+    function, while a progress bar will be displayed.
+
+    Function: 28% (152 of 529) I#####      I Elapsed Time: 0:00:03 ETA: 0:01:32
+
+    :param index: Index of the argument to be used as iterable. Default to the
+      second argument. It will pass each of the elements of the iterable in the
+      same place.
+    :param title: Optional title for prefixing the progress bar. If not
+      specified, the function name will be used.
+
+    Typical use::
+
+        @openupgrade.progress()
+        def migrate_some_stuff(env, record)
+            # some custom code
+            ...
+
+        @openupgrade.migrate()
+        def migrate(env, version):
+            records = ...  # get an iterable
+            migrate_some_stuff(env, records)
+    """
+    def wrap(func):
+        @functools.wraps(func)
+        def wrapped_function(*args, **kwargs):
+            import progressbar
+            elems = args[index]
+            prefix2 = prefix or str(func.__name__) + ": "
+            with progressbar.ProgressBar(
+                prefix=prefix2, max_value=len(elems)
+            ) as bar:
+                for elem in elems:
+                    args_copy = list(args)
+                    args_copy[index] = elem
+                    func(*args_copy, **kwargs)
+                    bar.update(bar.value + 1)
         return wrapped_function
     return wrap
 
