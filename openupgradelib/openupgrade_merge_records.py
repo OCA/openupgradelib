@@ -7,7 +7,7 @@ import logging
 import functools
 from psycopg2 import sql
 from psycopg2 import ProgrammingError, IntegrityError
-from psycopg2.errorcodes import UNIQUE_VIOLATION
+from psycopg2.errorcodes import UNDEFINED_COLUMN, UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
 from .openupgrade import logged_query, version_info
 from .openupgrade_tools import column_exists, table_exists
@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
-                             exclude_columns, model_table):
+                             exclude_columns, model_table, extra_where=None):
     # As found on https://stackoverflow.com/questions/1152260
     # /postgres-sql-to-list-table-foreign-keys
     # Adapted for specific Odoo structures like many2many tables
@@ -39,20 +39,27 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
         # Try one big swoop first
         env.cr.execute('SAVEPOINT sp1')  # can't use env.cr.savepoint() in base
         try:
+            query = sql.SQL(
+                """UPDATE {table}
+                SET {column} = %(target_record_id)s
+                WHERE {column} in %(record_ids)s"""
+            ).format(
+                table=sql.Identifier(table), column=sql.Identifier(column),
+            )
+            if extra_where:
+                query += sql.SQL(extra_where)
             logged_query(
-                env.cr, """UPDATE %(table)s
-                SET "%(column)s" = %(target_record_id)s
-                WHERE "%(column)s" in %(record_ids)s
-                """, {
-                    'table': AsIs(table),
-                    'column': AsIs(column),
+                env.cr, query, {
                     'record_ids': record_ids,
                     'target_record_id': target_record_id,
                 }, skip_no_result=True,
             )
         except (ProgrammingError, IntegrityError) as error:
             env.cr.execute('ROLLBACK TO SAVEPOINT sp1')
-            if error.pgcode != UNIQUE_VIOLATION:
+            if error.pgcode == UNDEFINED_COLUMN and extra_where:
+                # extra_where is introducing a bad column. Ignore this table.
+                continue
+            elif error.pgcode != UNIQUE_VIOLATION:
                 raise
             # Fallback on setting each row separately
             m2m_table = not column_exists(env.cr, table, 'id')
