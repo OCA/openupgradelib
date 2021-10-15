@@ -153,6 +153,7 @@ __all__ = [
     'logged_query',
     'column_exists',
     'table_exists',
+    'update_module_moved_models',
     'update_module_moved_fields',
     'update_module_names',
     'add_ir_model_fields',
@@ -2450,6 +2451,56 @@ def update_field_multilang(records, field, method):
             new_value = method(record[field], lang_code, record)
             if record[field] != new_value:
                 record[field] = new_value
+
+
+def update_module_moved_models(cr, model, old_module, new_module):
+    """Update module for model definition in general tables that have been
+    moved from one module to another.
+
+    :param cr: Database cursor
+    :param model: Model name
+    :param old_module: Previous module of the fields
+    :param new_module: New module of the fields
+    """
+    logger.info(
+        "Moving model %s %s from module '%s' to module '%s'",
+        model, old_module, new_module
+    )
+    values = {
+        'new_module': new_module,
+        'old_module': old_module,
+        'model': model
+    }
+    # Update xml-id entries
+    logged_query(
+        cr, """
+        UPDATE ir_model_data imd
+        SET module = %(new_module)s
+        FROM ir_model im
+        WHERE
+            im.model = %(model)s AND
+            imd.module = %(old_module)s AND
+            imd.model = 'ir.model' AND
+            imd.res_id = im.id AND
+            imd.id NOT IN (
+               SELECT id FROM ir_model_data WHERE module = %(new_module)s
+            )
+        """, values,
+    )
+    # Update model translations
+    logged_query(
+        cr, """
+        UPDATE ir_translation it
+        SET module = %(new_module)s
+        FROM ir_model im
+        WHERE
+            im.model = %(model)s AND
+            it.res_id = im.id AND
+            it.module = %(old_module)s AND
+            it.name = 'ir.model,name' AND
+            it.type = 'model'
+        """, values,
+    )
 
 
 def update_module_moved_fields(
