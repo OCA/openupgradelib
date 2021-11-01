@@ -491,15 +491,26 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             query = sql.SQL(
                 """UPDATE {table} SET {res_id_column} = %(target_record_id)s
                 WHERE {model_column} = %(model_name)s
-                AND {res_id_column} in %(record_ids)s
-                """).format(**format_args)
-            if model_to_replace == 'mail.followers':
-                query += sql.SQL("""AND partner_id NOT IN (
-                    SELECT partner_id FROM {table}
-                    WHERE {res_id_column} = %(target_record_id)s
-                )""").format(**format_args)
-            logged_query(env.cr, query, query_args, skip_no_result=True)
-            if model_to_replace == 'mail.followers':
+                """
+            ).format(**format_args)
+            if model_to_replace != 'mail.followers':
+                query += sql.SQL(
+                    "AND {res_id_column} in %(record_ids)s"
+                ).format(**format_args)
+                logged_query(env.cr, query, query_args, skip_no_result=True)
+            else:
+                for record_id in record_ids:
+                    query_args["record_id"] = record_id
+                    query2 = query + sql.SQL(
+                        """AND {res_id_column} = %(record_id)s
+                        AND partner_id NOT IN (
+                            SELECT partner_id FROM {table}
+                            WHERE {res_id_column} = %(target_record_id)s
+                        )"""
+                    ).format(**format_args)
+                    logged_query(
+                        env.cr, query2, query_args, skip_no_result=True,
+                    )
                 # Remove remaining records non updated (that are duplicates)
                 logged_query(env.cr, sql.SQL(
                     "DELETE FROM {table} "
