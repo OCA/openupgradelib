@@ -315,6 +315,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
       * Char, Text and Html fields:
         - 'merge' (default for Text and Html): content is concatenated
           with an ' | ' as separator
+        - 'first_not_null': Put first not null value.
         - other value (default for Char): content on target record is preserved
       * Integer, Float and Monetary fields:
         - 'sum' (default for Float and Monetary): Sum all the values of
@@ -365,7 +366,11 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         if field.type in ('char', 'text', 'html'):
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
-            if op == 'merge':
+            if op == 'first_not_null':
+                _list = filter(lambda x: x, _list)
+                if _list:
+                    vals[field.name] = _list[0]
+            elif op == 'merge':
                 _list = filter(lambda x: x is not False, _list)
                 vals[field.name] = ' | '.join(_list)
         elif field.type in ('integer', 'float', 'monetary'):
