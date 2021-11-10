@@ -353,7 +353,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     """
     model = env[model_name]
     fields = model._fields.values()
-    all_records = model.browse(tuple(record_ids) + (target_record_id, ))
+    all_records = model.browse((target_record_id,) + tuple(record_ids))
     target_record = model.browse(target_record_id)
     vals = {}
     o2m_changes = 0
