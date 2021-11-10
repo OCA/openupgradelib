@@ -346,6 +346,8 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
       * One2many fields:
         - 'merge' (default): combine all the values
         - other value: content on target record is preserved
+      * Many2manyReference fields:
+        - any value: content on target record is preserved
       * Reference fields:
         - any value: content on target record is preserved
       * Selection fields:
