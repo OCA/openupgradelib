@@ -2291,9 +2291,9 @@ def add_fields(env, field_spec):
       * SQL table name: Put `False` if the model is already loaded in the
         registry and thus the SQL table name can be obtained that way.
       * field type: binary, boolean, char, date, datetime, float, html,
-        integer, many2many, many2one, monetary, one2many, reference,
-        selection, text, serialized. The list can vary depending on Odoo
-        version or custom added field types.
+        integer, many2many, many2one, many2one_reference, monetary, one2many,
+        reference, selection, text, serialized. The list can vary depending on
+        Odoo version or custom added field types.
       * SQL field type: If the field type is custom or it's one of the special
         cases (see below), you need to indicate here the SQL type to use
         (from the valid PostgreSQL types):
@@ -2313,6 +2313,7 @@ def add_fields(env, field_spec):
         'integer': 'int4',
         'many2many': False,  # No need to create SQL column
         'many2one': 'int4',
+        'many2one_reference': 'int4',
         'monetary': 'numeric',
         'one2many': False,  # No need to create SQL column
         'reference': 'varchar',
