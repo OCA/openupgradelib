@@ -369,7 +369,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
             if op == 'first_not_null':
-                _list = filter(lambda x: x, _list)
+                _list = [x for x in _list if x]
                 if _list:
                     vals[field.name] = _list[0]
             elif op == 'merge':
