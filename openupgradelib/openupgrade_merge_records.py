@@ -354,7 +354,9 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         is not positive, preserve target value otherwise.
         - other value: content on target record is preserved
       * Reference fields:
-        - any value: content on target record is preserved
+        - 'merge' (default): apply first not null value of the records if
+        value of target record is null, preserve target value otherwise.
+        - other value: content on target record is preserved
       * Selection fields:
         - any value: content on target record is preserved
     """
@@ -368,7 +370,10 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         if not field.store or field.compute or field.related:
             continue  # don't do anything on these cases
         op = field_spec.get(field.name, False)
-        _list = all_records.mapped(field.name)
+        if field.type != 'reference':
+            _list = all_records.mapped(field.name)
+        else:
+            _list = [x[field.name] for x in all_records if x[field.name]]
         if field.type in ('char', 'text', 'html'):
             if not op:
                 op = 'other' if field.type == 'char' else 'merge'
@@ -420,7 +425,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
                 _list = [x for x in _list if x]
                 if not getattr(target_record, field.name) and _list:
                     vals[field.name] = _list[0]
-        elif field.type == 'many2one':
+        elif field.type in ('many2one', 'reference'):
             op = op or 'merge'
             if op == 'merge':
                 if not getattr(target_record, field.name) and _list:
