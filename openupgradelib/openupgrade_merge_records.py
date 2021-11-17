@@ -348,7 +348,11 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         - 'merge' (default): combine all the values
         - other value: content on target record is preserved
       * Many2manyReference fields:
-        - any value: content on target record is preserved
+        - 'merge' (default): if its model_field is in field_spec,
+        delete it from there. Apply first positive (on field and
+        corresponding model_field) of the records if value of target record
+        is not positive, preserve target value otherwise.
+        - other value: content on target record is preserved
       * Reference fields:
         - any value: content on target record is preserved
       * Selection fields:
@@ -421,6 +425,19 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             if op == 'merge':
                 if not getattr(target_record, field.name) and _list:
                     vals[field.name] = _list[0]
+        elif field.type == 'many2one_reference':
+            if field.model_field not in model._fields:
+                continue
+            op = op or 'merge'
+            if op == 'merge':
+                if field.model_field in field_spec:
+                    del field_spec[field.model_field]
+                list_model_field = all_records.mapped(field.model_field)
+                zip_list = [(x, y) for x, y
+                            in zip(_list, list_model_field) if x and y]
+                if not getattr(target_record, field.name) and zip_list:
+                    vals[field.name] = zip_list[0][0]
+                    vals[field.model_field] = zip_list[0][1]
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
