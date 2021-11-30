@@ -300,6 +300,103 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         })
 
 
+def apply_operations_by_field_type(
+        env, model_name, record_ids, target_record_id, field_spec, field_vals,
+        field_type, column, operation, method):
+    vals = {}
+    o2m_changes = 0
+    if method == 'orm':
+        model = env[model_name]
+        all_records = model.browse((target_record_id,) + tuple(record_ids))
+        target_record = model.browse(target_record_id)
+        first_value = getattr(target_record, column)
+        field = model._fields[column]
+    else:
+        first_value = field_vals[0]
+    if field_type in ('char', 'text', 'html'):
+        if not operation:
+            operation = 'other' if field_type == 'char' else 'merge'
+        if operation == 'first_not_null':
+            field_vals = [x for x in field_vals if x]
+            if field_vals:
+                vals[column] = field_vals[0]
+        elif operation == 'merge':
+            _list = filter(lambda x: x is not False, field_vals)
+            vals[column] = ' | '.join(_list)
+    elif field_type in ('integer', 'float', 'monetary'):
+        if not operation:
+            operation = 'other' if field_type == 'integer' else 'sum'
+        if operation == 'sum':
+            vals[column] = sum(field_vals)
+        elif operation == 'avg':
+            vals[column] = sum(field_vals) / len(field_vals)
+        elif operation == 'max':
+            vals[column] = max(field_vals)
+        elif operation == 'min':
+            vals[column] = min(field_vals)
+    elif field_type == 'boolean':
+        operation = operation or 'other'
+        if operation == 'and':
+            vals[column] = functools.reduce(lambda x, y: x & y, field_vals)
+        elif operation == 'or':
+            vals[column] = functools.reduce(lambda x, y: x | y, field_vals)
+    elif field_type in ('date', 'datetime'):
+        if operation:
+            field_vals = filter(lambda x: x is not False, field_vals)
+        operation = field_vals and operation or 'other'
+        if operation == 'max':
+            vals[column] = max(field_vals)
+        elif operation == 'min':
+            vals[column] = min(field_vals)
+    elif field_type == 'many2many' and method == 'orm':
+        operation = operation or 'merge'
+        if operation == 'merge':
+            field_vals = filter(lambda x: x is not False, field_vals)
+            vals[column] = [(4, x.id) for x in field_vals]
+    elif field_type == 'one2many' and method == 'orm':
+        operation = operation or 'merge'
+        if operation == 'merge':
+            o2m_changes += 1
+            field_vals.write({field.inverse_name: target_record_id})
+    elif field_type == 'binary':
+        operation = operation or 'merge'
+        if operation == 'merge':
+            field_vals = [x for x in field_vals if x]
+            if not first_value and field_vals:
+                vals[column] = field_vals[0]
+    elif field_type in ('many2one', 'reference'):
+        operation = operation or 'merge'
+        if operation == 'merge':
+            if method != 'orm':
+                field_vals = [x for x in field_vals if x]
+            if not first_value and field_vals:
+                vals[column] = field_vals[0]
+    elif field_type == 'many2one_reference' and method == 'orm' and\
+            field.model_field in model._fields:
+        operation = operation or 'merge'
+        if operation == 'merge':
+            if field.model_field in field_spec:
+                del field_spec[field.model_field]
+            list_model_field = all_records.mapped(field.model_field)
+            zip_list = [(x, y) for x, y
+                        in zip(field_vals, list_model_field) if x and y]
+            if first_value and zip_list:
+                vals[column] = zip_list[0][0]
+                vals[field.model_field] = zip_list[0][1]
+    # Curate values that haven't changed
+    new_vals = {}
+    if field_type != 'many2many':
+        if vals[column] != first_value:
+            new_vals[column] = vals[column]
+    elif method == 'orm':
+        if [x[1] for x in vals[column]] not in first_value.ids:
+            new_vals[column] = vals[column]
+    if method == 'orm':
+        return new_vals, o2m_changes
+    else:
+        return new_vals
+
+
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
                               field_spec):
     """This method deals with the values on the records to be merged +
@@ -374,75 +471,11 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             _list = all_records.mapped(field.name)
         else:
             _list = [x[field.name] for x in all_records if x[field.name]]
-        if field.type in ('char', 'text', 'html'):
-            if not op:
-                op = 'other' if field.type == 'char' else 'merge'
-            if op == 'first_not_null':
-                _list = [x for x in _list if x]
-                if _list:
-                    vals[field.name] = _list[0]
-            elif op == 'merge':
-                _list = filter(lambda x: x is not False, _list)
-                vals[field.name] = ' | '.join(_list)
-        elif field.type in ('integer', 'float', 'monetary'):
-            if not op:
-                op = 'other' if field.type == 'integer' else 'sum'
-            if op == 'sum':
-                vals[field.name] = sum(_list)
-            elif op == 'avg':
-                vals[field.name] = sum(_list) / len(_list)
-            elif op == 'max':
-                vals[field.name] = max(_list)
-            elif op == 'min':
-                vals[field.name] = min(_list)
-        elif field.type == 'boolean':
-            op = op or 'other'
-            if op == 'and':
-                vals[field.name] = functools.reduce(lambda x, y: x & y, _list)
-            elif op == 'or':
-                vals[field.name] = functools.reduce(lambda x, y: x | y, _list)
-        elif field.type in ('date', 'datetime'):
-            if op:
-                _list = filter(lambda x: x is not False, _list)
-            op = _list and op or 'other'
-            if op == 'max':
-                vals[field.name] = max(_list)
-            elif op == 'min':
-                vals[field.name] = min(_list)
-        elif field.type == 'many2many':
-            op = op or 'merge'
-            if op == 'merge':
-                _list = filter(lambda x: x is not False, _list)
-                vals[field.name] = [(4, x.id) for x in _list]
-        elif field.type == 'one2many':
-            op = op or 'merge'
-            if op == 'merge':
-                o2m_changes += 1
-                _list.write({field.inverse_name: target_record_id})
-        elif field.type == 'binary':
-            op = op or 'merge'
-            if op == 'merge':
-                _list = [x for x in _list if x]
-                if not getattr(target_record, field.name) and _list:
-                    vals[field.name] = _list[0]
-        elif field.type in ('many2one', 'reference'):
-            op = op or 'merge'
-            if op == 'merge':
-                if not getattr(target_record, field.name) and _list:
-                    vals[field.name] = _list[0]
-        elif field.type == 'many2one_reference':
-            if field.model_field not in model._fields:
-                continue
-            op = op or 'merge'
-            if op == 'merge':
-                if field.model_field in field_spec:
-                    del field_spec[field.model_field]
-                list_model_field = all_records.mapped(field.model_field)
-                zip_list = [(x, y) for x, y
-                            in zip(_list, list_model_field) if x and y]
-                if not getattr(target_record, field.name) and zip_list:
-                    vals[field.name] = zip_list[0][0]
-                    vals[field.model_field] = zip_list[0][1]
+        field_vals, field_o2m_changes = apply_operations_by_field_type(
+            env, model_name, record_ids, target_record_id, field_spec,
+            _list, field.type, field.name, op, 'orm')
+        vals.update(field_vals)
+        o2m_changes += field_o2m_changes
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
@@ -457,6 +490,82 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         logger.debug(
             "Write %s value(s) in target record '%s' of model '%s'",
             len(new_vals) + o2m_changes, target_record_id, model_name,
+        )
+
+
+def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
+                              exclude_columns, model_table, field_spec):
+    """This method deals with the values on the records to be merged +
+    the target record, performing operations that makes sense on the meaning
+    of the model.
+
+    :param field_spec: Dictionary with field names as keys and forced operation
+      to perform as values. If a field is not present here, default operation
+      will be performed.
+
+      Possible operations by field types same as _adjust_merged_values_orm.
+    """
+    if not column_exists(env.cr, model_table, 'id'):
+        # TODO: handle one2many and many2many
+        return
+    env.cr.execute(
+        """
+        SELECT isc.column_name, isc.data_type, imf.ttype
+        FROM information_schema.columns isc
+        JOIN ir_model_fields imf ON (
+            imf.name = isc.column_name AND imf.model = %s)
+        WHERE isc.table_name = %s
+        """, (model_table, model_name))
+    dict_column_type = env.cr.fetchall()
+    columns = ', '.join([x[0] for x in dict_column_type])
+    env.cr.execute(
+        sql.SQL(
+            """SELECT {columns}
+            FROM {table}
+            WHERE id IN %(record_ids)s"""
+        ).format(
+            table=sql.Identifier(model_table),
+            columns=sql.Identifier(columns),
+        ), {'record_ids': (target_record_id,) + tuple(record_ids)}
+    )
+    lists = [list(zip(*(env.cr.fetchall())))]
+    new_vals = {}
+    vals = {}
+    for i, column, column_type, field_type in enumerate(dict_column_type):
+        if (model_table, column) in exclude_columns:
+            continue
+        op = field_spec.get(column, False)
+        _list = list(lists[i])
+        field_vals = apply_operations_by_field_type(
+            env, model_name, record_ids, target_record_id, field_spec,
+            _list, field_type, column, op, 'sql')
+        vals.update(field_vals)
+    # Curate values that haven't changed
+    env.cr.execute(
+        sql.SQL("""SELECT %{columns}s
+        FROM {table}
+        WHERE id = %{id}s
+        """).format(table=sql.Identifier(model_table)),
+        {'target_record_id': target_record_id,
+         'columns': ", ". join(list(vals.keys())),
+         }
+    )
+    record_vals = env.cr.dictfetchall()
+    for column in vals:
+        if vals[column] != record_vals[0]:
+            new_vals[column] = vals[column]
+    if new_vals:
+        logged_query(
+            env.cr, sql.SQL(
+                """
+                UPDATE {table}
+                SET {set_value}
+                WHERE id = %(target_record_id)s"""
+            ).format(
+                table=sql.Identifier(model_table), set_value=sql.Identifier(
+                    ", ".join(["{column} = {value}".format(column=x, value=y)
+                               for x, y in new_vals.items()])),
+                ), {'target_record_id': target_record_id}, skip_no_result=True
         )
 
 
@@ -641,7 +750,9 @@ def merge_records(env, model_name, record_ids, target_record_id,
         _change_foreign_key_refs(*args3)
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
-        # TODO: Adjust values of the merged records through SQL
+        if field_spec is not None:
+            args4 = args3 + (field_spec,)
+            _adjust_merged_values_sql(*args4)
         if delete:
             _delete_records_sql(
                 env, model_name, record_ids, target_record_id,
