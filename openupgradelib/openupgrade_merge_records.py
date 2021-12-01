@@ -392,12 +392,12 @@ def apply_operations_by_field_type(
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
                               field_spec):
     """This method deals with the values on the records to be merged +
-    the target record, performing operations that makes sense on the meaning
+    the target record, performing operations that make sense on the meaning
     of the model.
 
-    :param field_spec: Dictionary with field names as keys and forced operation
-      to perform as values. If a field is not present here, default operation
-      will be performed.
+    :param: field_spec: Dictionary with field names as keys and forced
+      operation to perform as values. If a field is not present here, default
+      operation will be performed.
 
       Possible operations by field types:
 
@@ -468,6 +468,8 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
             _list, field.type, field.name, op, 'orm')
         vals.update(field_vals)
         o2m_changes += field_o2m_changes
+    if not vals:
+        return
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
@@ -486,14 +488,14 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
 
 
 def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
-                              exclude_columns, model_table, field_spec):
+                              model_table, field_spec):
     """This method deals with the values on the records to be merged +
-    the target record, performing operations that makes sense on the meaning
+    the target record, performing operations that make sense on the meaning
     of the model.
 
-    :param field_spec: Dictionary with field names as keys and forced operation
-      to perform as values. If a field is not present here, default operation
-      will be performed.
+    :param: field_spec: Dictionary with field names as keys and forced
+      operation to perform as values. If a field is not present here, default
+      operation will be performed.
 
       Possible operations by field types same as _adjust_merged_values_orm.
     """
@@ -524,14 +526,14 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     new_vals = {}
     vals = {}
     for i, column, column_type, field_type in enumerate(dict_column_type):
-        if (model_table, column) in exclude_columns:
-            continue
         op = field_spec.get(column, False)
         _list = list(lists[i])
         field_vals = apply_operations_by_field_type(
             env, model_name, record_ids, target_record_id, field_spec,
             _list, field_type, column, op, 'sql')
         vals.update(field_vals)
+    if not vals:
+        return
     # Curate values that haven't changed
     env.cr.execute(
         sql.SQL("""SELECT %{columns}s
@@ -743,7 +745,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
         if field_spec is not None:
-            args4 = args3 + (field_spec,)
+            args4 = args0 + (model_table,) + (field_spec,)
             _adjust_merged_values_sql(*args4)
         if delete:
             _delete_records_sql(
