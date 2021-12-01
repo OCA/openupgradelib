@@ -711,7 +711,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
     """
     if exclude_columns is None:
         exclude_columns = []
-    if field_spec is None:
+    if field_spec is None and method == 'orm':
         field_spec = {}
     if isinstance(record_ids, list):
         record_ids = tuple(record_ids)
