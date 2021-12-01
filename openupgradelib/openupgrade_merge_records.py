@@ -383,18 +383,10 @@ def apply_operations_by_field_type(
             if first_value and zip_list:
                 vals[column] = zip_list[0][0]
                 vals[field.model_field] = zip_list[0][1]
-    # Curate values that haven't changed
-    new_vals = {}
-    if field_type != 'many2many':
-        if vals[column] != first_value:
-            new_vals[column] = vals[column]
-    elif method == 'orm':
-        if [x[1] for x in vals[column]] not in first_value.ids:
-            new_vals[column] = vals[column]
     if method == 'orm':
-        return new_vals, o2m_changes
+        return vals, o2m_changes
     else:
-        return new_vals
+        return vals
 
 
 def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
