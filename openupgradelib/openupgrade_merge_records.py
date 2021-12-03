@@ -509,7 +509,7 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
         JOIN ir_model_fields imf ON (
             imf.name = isc.column_name AND imf.model = %s)
         WHERE isc.table_name = %s
-        """, (model_table, model_name))
+        """, (model_name, model_table))
     dict_column_type = env.cr.fetchall()
     columns = ', '.join([x[0] for x in dict_column_type])
     env.cr.execute(
