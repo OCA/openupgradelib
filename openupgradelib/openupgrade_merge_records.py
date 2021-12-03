@@ -519,7 +519,7 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
             columns=columns,
         ), {'record_ids': (target_record_id,) + tuple(record_ids)}
     )
-    lists = [list(zip(*(env.cr.fetchall())))]
+    lists = list(zip(*(env.cr.fetchall())))
     new_vals = {}
     vals = {}
     for i, (column, column_type, field_type) in enumerate(dict_column_type):
