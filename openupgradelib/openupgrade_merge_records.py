@@ -522,7 +522,7 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     lists = [list(zip(*(env.cr.fetchall())))]
     new_vals = {}
     vals = {}
-    for i, column, column_type, field_type in enumerate(dict_column_type):
+    for i, (column, column_type, field_type) in enumerate(dict_column_type):
         op = field_spec.get(column, False)
         _list = list(lists[i])
         field_vals = apply_operations_by_field_type(
