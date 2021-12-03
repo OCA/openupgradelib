@@ -321,9 +321,11 @@ def apply_operations_by_field_type(
             if field_vals:
                 vals[column] = field_vals[0]
         elif operation == 'merge':
-            _list = filter(lambda x: x is not False, field_vals)
+            _list = filter(lambda x: x, field_vals)
             vals[column] = ' | '.join(_list)
     elif field_type in ('integer', 'float', 'monetary'):
+        if operation or field_type != 'integer':
+            field_vals = [0 if not x else x for x in field_vals]
         if not operation:
             operation = 'other' if field_type == 'integer' else 'sum'
         if operation == 'sum':
@@ -335,6 +337,8 @@ def apply_operations_by_field_type(
         elif operation == 'min':
             vals[column] = min(field_vals)
     elif field_type == 'boolean':
+        if operation:
+            field_vals = [False if x is None else x for x in field_vals]
         operation = operation or 'other'
         if operation == 'and':
             vals[column] = functools.reduce(lambda x, y: x & y, field_vals)
@@ -342,7 +346,7 @@ def apply_operations_by_field_type(
             vals[column] = functools.reduce(lambda x, y: x | y, field_vals)
     elif field_type in ('date', 'datetime'):
         if operation:
-            field_vals = filter(lambda x: x is not False, field_vals)
+            field_vals = filter(lambda x: x, field_vals)
         operation = field_vals and operation or 'other'
         if operation == 'max':
             vals[column] = max(field_vals)
@@ -519,7 +523,7 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
             columns=columns,
         ), {'record_ids': (target_record_id,) + tuple(record_ids)}
     )
-    lists = [list(zip(*(env.cr.fetchall())))]
+    lists = list(zip(*(env.cr.fetchall())))
     new_vals = {}
     vals = {}
     for i, (column, column_type, field_type) in enumerate(dict_column_type):
