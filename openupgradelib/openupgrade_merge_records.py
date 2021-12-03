@@ -502,8 +502,7 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     if not column_exists(env.cr, model_table, 'id'):
         # TODO: handle one2many and many2many
         return
-    env.cr.execute(
-        """
+    env.cr.execute("""
         SELECT isc.column_name, isc.data_type, imf.ttype
         FROM information_schema.columns isc
         JOIN ir_model_fields imf ON (
@@ -513,13 +512,11 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     dict_column_type = env.cr.fetchall()
     columns = ', '.join([x[0] for x in dict_column_type])
     env.cr.execute(
-        sql.SQL(
-            """SELECT {columns}
-            FROM {table}
-            WHERE id IN %(record_ids)s"""
-        ).format(
-            table=sql.Identifier(model_table),
-            columns=sql.Identifier(columns),
+        """SELECT {columns}
+        FROM {table}
+        WHERE id IN %(record_ids)s""".format(
+            table=model_table,
+            columns=columns,
         ), {'record_ids': (target_record_id,) + tuple(record_ids)}
     )
     lists = [list(zip(*(env.cr.fetchall())))]
@@ -536,13 +533,13 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
         return
     # Curate values that haven't changed
     env.cr.execute(
-        sql.SQL("""SELECT %{columns}s
+        """SELECT {columns}
         FROM {table}
-        WHERE id = %{id}s
-        """).format(table=sql.Identifier(model_table)),
-        {'target_record_id': target_record_id,
-         'columns': ", ". join(list(vals.keys())),
-         }
+        WHERE id = %(target_record_id)s
+        """.format(
+            table=model_table,
+            columns=", ". join(list(vals.keys()))
+        ), {'target_record_id': target_record_id}
     )
     record_vals = env.cr.dictfetchall()
     for column in vals:
@@ -550,15 +547,13 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
             new_vals[column] = vals[column]
     if new_vals:
         logged_query(
-            env.cr, sql.SQL(
-                """
-                UPDATE {table}
-                SET {set_value}
-                WHERE id = %(target_record_id)s"""
-            ).format(
-                table=sql.Identifier(model_table), set_value=sql.Identifier(
-                    ", ".join(["{column} = {value}".format(column=x, value=y)
-                               for x, y in new_vals.items()])),
+            env.cr, """
+            UPDATE {table}
+            SET {set_value}
+            WHERE id = %(target_record_id)s""".format(
+                table=model_table, set_value=", ".join(
+                    ["{column} = {value}".format(column=x, value=y)
+                     for x, y in new_vals.items()]),
                 ), {'target_record_id': target_record_id}, skip_no_result=True
         )
 
