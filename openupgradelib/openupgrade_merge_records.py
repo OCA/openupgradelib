@@ -550,16 +550,21 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
         if vals[column] != record_vals[0]:
             new_vals[column] = vals[column]
     if new_vals:
-        logged_query(
-            env.cr, """
-            UPDATE {table}
-            SET {set_value}
-            WHERE id = %(target_record_id)s""".format(
-                table=model_table, set_value=", ".join(
-                    ["{column} = {value}".format(column=x, value=y)
-                     for x, y in new_vals.items()]),
-                ), {'target_record_id': target_record_id}, skip_no_result=True
+        ident_dict = {x: sql.Identifier(x) for x in new_vals.keys()}
+        query = sql.SQL(
+            "UPDATE {table} SET {set_value} WHERE {id} = %(target_record_id)s"
+        ).format(
+            table=sql.Identifier(model_table),
+            id=sql.Identifier("id"),
+            set_value=sql.SQL(
+                ", ".join([
+                    "{{{field}}} = %({field})s".format(field=x)
+                    for x in new_vals.keys()
+                ])
+            ).format(**ident_dict)
         )
+        new_vals["target_record_id"] = target_record_id
+        logged_query(env.cr, query, new_vals)
 
 
 def _change_generic(env, model_name, record_ids, target_record_id,
