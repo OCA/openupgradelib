@@ -346,7 +346,7 @@ def apply_operations_by_field_type(
             vals[column] = functools.reduce(lambda x, y: x | y, field_vals)
     elif field_type in ('date', 'datetime'):
         if operation:
-            field_vals = filter(lambda x: x, field_vals)
+            field_vals = list(filter(lambda x: x, field_vals))
         operation = field_vals and operation or 'other'
         if operation == 'max':
             vals[column] = max(field_vals)
