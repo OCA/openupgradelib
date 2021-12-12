@@ -2547,6 +2547,10 @@ def delete_records_safely_by_xml_id(env, xml_ids):
     """This removes in the safest possible way the records whose XML-IDs are
     passed as argument.
 
+    If not possible to be removed, and the record is an updatable one
+    (noupdate=0), it's switched to noupdate=1, for avoiding a later error when
+    Odoo performs the regular update cleanup and trying to remove it as well.
+
     :param xml_ids: List of XML-ID string identifiers of the records to remove.
     """
     for xml_id in xml_ids:
@@ -2559,6 +2563,13 @@ def delete_records_safely_by_xml_id(env, xml_ids):
             safe_unlink(record, do_raise=True)
         except Exception as e:
             logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
+            module, name = xml_id.split('.')
+            imd = env["ir.model.data"].search(
+                [("module", "=", module), ("name", "=", name)]
+            )
+            if not imd.noupdate:
+                imd.noupdate = True
+                logger.info("XML-ID %s changed to noupdate.", xml_id)
 
 
 def chunked(records, single=True):
