@@ -2561,7 +2561,8 @@ def delete_records_safely_by_xml_id(env, xml_ids):
             if not record:
                 continue
             safe_unlink(record, do_raise=True)
-        except Exception as e:
+        except (KeyError, IntegrityError,
+                core.exceptions.ValidationError) as e:
             logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
             module, name = xml_id.split('.')
             imd = env["ir.model.data"].search(
