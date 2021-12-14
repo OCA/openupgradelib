@@ -2553,6 +2553,11 @@ def delete_records_safely_by_xml_id(env, xml_ids):
 
     :param xml_ids: List of XML-ID string identifiers of the records to remove.
     """
+    errors = (KeyError, IntegrityError, core.exceptions.Warning)
+    if version_info[0] > 7:
+        errors = errors + (core.exceptions.ValidationError,)
+    if version_info[0] > 8:
+        errors = errors + (core.exceptions.UserError,)
     for xml_id in xml_ids:
         logger.debug('Deleting record for XML-ID %s', xml_id)
         try:
@@ -2561,8 +2566,7 @@ def delete_records_safely_by_xml_id(env, xml_ids):
             if not record:
                 continue
             safe_unlink(record, do_raise=True)
-        except (KeyError, IntegrityError,
-                core.exceptions.ValidationError) as e:
+        except errors as e:
             logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
             module, name = xml_id.split('.')
             imd = env["ir.model.data"].search(
