@@ -63,7 +63,9 @@ One2many = False
 one2many = False
 many2many = False
 except_orm = False
+WarningError = False
 UserError = False
+ValidationError = False
 
 if not hasattr(release, 'version_info'):
     version_info = tuple(map(int, release.version.split('.')))
@@ -79,12 +81,14 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
         many2many = core.osv.fields.many2many
         one2many = core.osv.fields.one2many
 
+    WarningError = core.exceptions.Warning
     if version_info[0] >= 7:
         plaintext2html = tools.mail.plaintext2html
     if version_info[0] >= 8:
         Many2many = core.fields.Many2many
         One2many = core.fields.One2many
-        try:  # version 10
+        ValidationError = core.exceptions.ValidationError
+        try:  # version >=10
             from odoo.exceptions import UserError
         except ImportError:  # version 8 and 9
             from openerp.exceptions import Warning as UserError
@@ -2553,11 +2557,13 @@ def delete_records_safely_by_xml_id(env, xml_ids):
 
     :param xml_ids: List of XML-ID string identifiers of the records to remove.
     """
-    errors = (KeyError, IntegrityError, core.exceptions.Warning)
+    errors = (KeyError, IntegrityError)
+    if version_info[0] > 6 or version_info[0:2] == (6, 1):
+        errors = errors + (WarningError,)
     if version_info[0] > 7:
-        errors = errors + (core.exceptions.ValidationError,)
+        errors = errors + (ValidationError,)
     if version_info[0] > 8:
-        errors = errors + (core.exceptions.UserError,)
+        errors = errors + (UserError,)
     for xml_id in xml_ids:
         logger.debug('Deleting record for XML-ID %s', xml_id)
         try:
