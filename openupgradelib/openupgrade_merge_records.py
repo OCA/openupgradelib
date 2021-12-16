@@ -176,11 +176,11 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
     for row in rows:
         try:
             model = env[row[0]]
+            if not model._auto:  # Discard SQL views
+                continue
+            table = model._table
         except KeyError:
-            continue
-        if not model._auto:  # Discard SQL views
-            continue
-        table = model._table
+            table = row[0].replace(".", "_")  # guess table
         if not table_exists(cr, table):
             continue
         column = row[1]
