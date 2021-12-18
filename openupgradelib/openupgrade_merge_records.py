@@ -50,7 +50,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                 query += sql.SQL(extra_where)
             logged_query(
                 env.cr, query, {
-                    'record_ids': record_ids,
+                    'record_ids': tuple(record_ids),
                     'target_record_id': target_record_id,
                 }, skip_no_result=True,
             )
@@ -69,7 +69,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                     'target_column': AsIs(target_column),
                     'table': AsIs(table),
                     'column': AsIs(column),
-                    'record_ids': record_ids,
+                    'record_ids': tuple(record_ids),
                 },
             )
             for row in list(set([x[0] for x in env.cr.fetchall()])):
@@ -100,7 +100,7 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                     {
                         'table': AsIs(table),
                         'column': AsIs(column),
-                        'record_ids': record_ids,
+                        'record_ids': tuple(record_ids),
                     }, skip_no_result=True,
                 )
         else:
@@ -280,7 +280,7 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         WHERE it.id = to_update.id""",
         {
             'target_record_id': target_record_id,
-            'record_ids': record_ids,
+            'record_ids': tuple(record_ids),
             'model_name': model_name,
         }, skip_no_result=True)
     logged_query(
@@ -622,7 +622,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             query_args = {
                 'model_name': model_name,
                 'target_record_id': target_record_id,
-                'record_ids': record_ids,
+                'record_ids': tuple(record_ids),
             }
             query = sql.SQL(
                 """UPDATE {table} SET {res_id_column} = %(target_record_id)s
