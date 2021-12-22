@@ -402,6 +402,8 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     :param: field_spec: Dictionary with field names as keys and forced
       operation to perform as values. If a field is not present here, default
       operation will be performed.
+      Note: If you pass 'openupgrade_other_fields': 'preserve' in the dict,
+      the fields that are not specified in the dict will not be adjusted.
 
       Possible operations by field types:
 
@@ -460,6 +462,9 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     vals = {}
     o2m_changes = 0
     for field in fields:
+        if field_spec.get('openupgrade_other_fields', '') == 'preserve' \
+                and field.name not in field_spec:
+            continue
         if not field.store or field.compute or field.related:
             continue  # don't do anything on these cases
         op = field_spec.get(field.name, False)
@@ -500,6 +505,8 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     :param: field_spec: Dictionary with field names as keys and forced
       operation to perform as values. If a field is not present here, default
       operation will be performed.
+      Note: If you pass 'openupgrade_other_fields': 'preserve' in the dict,
+      the fields that are not specified in the dict will not be adjusted.
 
       Possible operations by field types same as _adjust_merged_values_orm.
     """
@@ -527,6 +534,9 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
     new_vals = {}
     vals = {}
     for i, (column, column_type, field_type) in enumerate(dict_column_type):
+        if field_spec.get('openupgrade_other_fields', '') == 'preserve' \
+                and column not in field_spec:
+            continue
         op = field_spec.get(column, False)
         _list = list(lists[i])
         field_vals = apply_operations_by_field_type(
