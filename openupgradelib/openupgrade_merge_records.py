@@ -578,16 +578,27 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
 
 
 def _change_generic(env, model_name, record_ids, target_record_id,
-                    exclude_columns, method='orm'):
-    """ Update known generic style res_id/res_model references """
+                    exclude_columns, method='orm', new_model_name=None):
+    """Update known generic style res_id/res_model references.
+    :param env: ORM environment
+    :param model_name: Name of the model that have the generic references.
+    :param record_ids: List of ids of the records to be changed.
+    :param target_record_id: ID of the target record to host the source records
+    :param exclude_columns: list of columns to exclude from the update
+    :param method: 'orm' or 'sql'
+    :param new_model_name: If specified, name of the new model to use in the
+      references. This is useful for being used outside the merge records
+      feature, for example when replacing one model per another (i.e.:
+      account.invoice > account.move).
+    """
     for model_to_replace, res_id_column, model_column in [
-            ('calendar.event', 'res_id', 'res_model'),
-            ('ir.attachment', 'res_id', 'res_model'),
-            ('mail.activity', 'res_id', 'res_model'),
-            ('mail.followers', 'res_id', 'res_model'),
-            ('mail.message', 'res_id', 'model'),
-            ('rating.rating', 'res_id', 'res_model'),
-            ]:
+        ('calendar.event', 'res_id', 'res_model'),
+        ('ir.attachment', 'res_id', 'res_model'),
+        ('mail.activity', 'res_id', 'res_model'),
+        ('mail.followers', 'res_id', 'res_model'),
+        ('mail.message', 'res_id', 'model'),
+        ('rating.rating', 'res_id', 'res_model'),
+    ]:
         try:
             model = env[model_to_replace].with_context(active_test=False)
         except KeyError:
@@ -602,8 +613,11 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                 (model_column, '=', model_name),
                 (res_id_column, 'in', record_ids)])
             if records:
+                vals = {res_id_column: target_record_id}
+                if new_model_name:
+                    vals[model_column] = new_model_name
                 if model_to_replace != 'mail.followers':
-                    records.write({res_id_column: target_record_id})
+                    records.write(vals)
                 else:
                     # We need to avoid duplicated results in this model
                     target_duplicated = model.search([
@@ -614,8 +628,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                     dup_partners = target_duplicated.mapped('partner_id')
                     duplicated = records.filtered(lambda x: (
                         x.partner_id in dup_partners))
-                    (records - duplicated).write({
-                        res_id_column: target_record_id})
+                    (records - duplicated).write(vals)
                     duplicated.unlink()
                 logger.debug(
                     "Changed %s record(s) of model '%s'",
@@ -631,13 +644,19 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             }
             query_args = {
                 'model_name': model_name,
+                'new_model_name': new_model_name or model_name,
                 'target_record_id': target_record_id,
                 'record_ids': tuple(record_ids),
             }
             query = sql.SQL(
-                """UPDATE {table} SET {res_id_column} = %(target_record_id)s
-                WHERE {model_column} = %(model_name)s
-                """
+                "UPDATE {table} SET {res_id_column} = %(target_record_id)s"
+            ).format(**format_args)
+            if new_model_name:
+                query += sql.SQL(
+                    ", {model_column} = %(new_model_name)s"
+                ).format(**format_args)
+            query += sql.SQL(
+                " WHERE {model_column} = %(model_name)s "
             ).format(**format_args)
             if model_to_replace != 'mail.followers':
                 query += sql.SQL(
@@ -652,6 +671,7 @@ def _change_generic(env, model_name, record_ids, target_record_id,
                         AND partner_id NOT IN (
                             SELECT partner_id FROM {table}
                             WHERE {res_id_column} = %(target_record_id)s
+                                AND {model_column} = %(new_model_name)s
                         )"""
                     ).format(**format_args)
                     logged_query(
