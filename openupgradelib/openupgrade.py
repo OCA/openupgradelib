@@ -1042,8 +1042,8 @@ def drop_columns(cr, column_spec):
             cr.execute('ALTER TABLE "%s" DROP COLUMN "%s"' %
                        (table, column))
         else:
-            logger.warn("table %s: column %s did not exist",
-                        table, column)
+            logger.warning("table %s: column %s did not exist",
+                           table, column)
 
 
 def update_workflow_workitems(cr, pool, ref_spec_actions):
@@ -1678,7 +1678,7 @@ def message(cr, module, table, column,
     argslist.insert(0, module)
     prefix = 'Module %s' + prefix
 
-    logger.warn(prefix + message, *argslist, **kwargs)
+    logger.warning(prefix + message, *argslist, **kwargs)
 
 
 def deactivate_workflow_transitions(cr, model, transitions=None):
