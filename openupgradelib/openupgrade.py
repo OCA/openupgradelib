@@ -841,14 +841,12 @@ def rename_models(cr, model_spec):
             logged_query(
                 cr, """
                 UPDATE ir_property
-                SET value_reference = regexp_replace(
-                    value_reference, %(old_pattern)s, %(new_pattern)s
-                )
-                WHERE fields_id IN %(field_ids)s
-                AND value_reference ~ %(old_pattern)s""", {
-                    'field_ids': tuple(field_ids),
-                    'old_pattern': r"^%s,[ ]*([0-9]*)" % old,
-                    'new_pattern': r"%s,\1" % new,
+                SET value_reference = replace(
+                    value_reference, %(old_string)s, %(new_string)s)
+                WHERE value_reference like %(old_pattern)s""", {
+                    "old_pattern": "%s,%%" % old,
+                    "old_string": "%s," % old,
+                    "new_string": "%s," % new,
                 },
             )
         # Update export profiles references
