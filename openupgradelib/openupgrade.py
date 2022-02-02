@@ -825,6 +825,16 @@ def rename_models(cr, model_spec):
             "UPDATE ir_filters SET model_id = %s "
             "WHERE model_id = %s", (new, old,),
         )
+        logged_query(
+            cr, """
+            UPDATE ir_property
+            SET res_id = replace(res_id, %(old_string)s, %(new_string)s)
+            WHERE res_id like %(old_pattern)s""", {
+                "old_pattern": "%s,%%" % old,
+                "old_string": "%s," % old,
+                "new_string": "%s," % new,
+            },
+        )
         # Handle properties that reference to this model
         logged_query(
             cr,
