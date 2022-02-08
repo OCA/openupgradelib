@@ -294,9 +294,13 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
         fp = tools.file_open(pathname)
     except OSError:
         if tools.config.get('upgrade_path'):
-            pathname = os.path.join(
-                tools.config['upgrade_path'], module_name, filename)
-            fp = open(pathname)
+            for path in tools.config['upgrade_path'].split(','):
+                pathname = os.path.join(path, module_name, filename)
+                try:
+                    fp = open(pathname)
+                    break
+                except OSError:
+                    pass
         else:
             raise
 
