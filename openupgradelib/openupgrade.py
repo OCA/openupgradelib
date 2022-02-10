@@ -2559,7 +2559,7 @@ def safe_unlink(records, do_raise=False):
                         record._name, record.id, repr(e))
 
 
-def delete_records_safely_by_xml_id(env, xml_ids):
+def delete_records_safely_by_xml_id(env, xml_ids, delete_childs=False):
     """This removes in the safest possible way the records whose XML-IDs are
     passed as argument.
 
@@ -2568,6 +2568,8 @@ def delete_records_safely_by_xml_id(env, xml_ids):
     Odoo performs the regular update cleanup and trying to remove it as well.
 
     :param xml_ids: List of XML-ID string identifiers of the records to remove.
+    :param delete_childs: If true, also child ids of the given xml_ids will
+        be deleted.
     """
     errors = (KeyError, IntegrityError)
     if version_info[0] > 6 or version_info[0:2] == (6, 1):
@@ -2583,7 +2585,12 @@ def delete_records_safely_by_xml_id(env, xml_ids):
             record = env.ref(xml_id, raise_if_not_found=False)
             if not record:
                 continue
-            safe_unlink(record, do_raise=True)
+            if delete_childs:
+                child_and_parent_records = env["ir.ui.view"].search(
+                    [("inherit_id", "child_of", record.id)], order="id desc")
+                safe_unlink(child_and_parent_records, do_raise=True)
+            else:
+                safe_unlink(record, do_raise=True)
         except errors as e:
             logger.info('Error deleting XML-ID %s: %s', xml_id, repr(e))
             module, name = xml_id.split('.')
