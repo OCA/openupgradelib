@@ -2239,13 +2239,17 @@ def disable_invalid_filters(env):
         columns = (
             getattr(model, '_columns', False) or getattr(model, '_fields')
         )
+
+        globaldict = {'uid': env.uid}
+        if version_info[0] < 14:
+            globaldict.update({'time': time})
         # DOMAIN
         try:
             with savepoint(env.cr):
                 # Strange artifact found in a filter
                 domain = f.domain.replace('%%', '%')
                 model.search(
-                    safe_eval(domain, {'time': time, 'uid': env.uid}),
+                    safe_eval(domain, globaldict),
                     limit=1,
                 )
         except Exception:
@@ -2256,7 +2260,7 @@ def disable_invalid_filters(env):
             continue
         # CONTEXT GROUP BY
         try:
-            context = safe_eval(f.context, {'time': time, 'uid': env.uid})
+            context = safe_eval(f.context, globaldict)
             assert(isinstance(context, dict))
         except Exception:
             logger.warning(
