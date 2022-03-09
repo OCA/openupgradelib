@@ -880,7 +880,7 @@ def rename_models(cr, model_spec):
                     cr, 'email_template', 'model'):
                 logged_query(
                     cr,
-                    'UPDATE email_template SET model=%s'
+                    'UPDATE email_template SET model=%s '
                     'where model=%s', (new, old),
                 )
         if is_module_installed(cr, 'mail'):
@@ -898,7 +898,7 @@ def rename_models(cr, model_spec):
             if table_exists(cr, 'mail_template'):
                 logged_query(
                     cr,
-                    'UPDATE mail_template SET model=%s'
+                    'UPDATE mail_template SET model=%s '
                     'where model=%s', (new, old),
                 )
             if table_exists(cr, 'mail_followers'):
