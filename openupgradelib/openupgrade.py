@@ -698,6 +698,19 @@ def rename_fields(env, field_spec, no_deep=False):
                     'new_pattern': "$$'%s'$$" % new_field,
                 }, (model, ),
             )
+        if table_exists(env.cr, 'mail_template'):
+            # Rename appearances on mail template
+            cr.execute("""
+                UPDATE mail_template mt
+                SET body_html =
+                    replace(body_html, %(old_pattern)s, %(new_pattern)s)
+                WHERE mt.model = %%s
+                    AND mt.body_html ~ %(old_pattern)s
+                """ % {
+                    'old_pattern': "$$object.%s$$" % old_field,
+                    'new_pattern': "$$object.%s$$" % new_field,
+                }, (model, ),
+            )
 
 
 def rename_tables(cr, table_spec):
