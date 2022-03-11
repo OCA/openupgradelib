@@ -863,6 +863,33 @@ def rename_models(cr, model_spec):
                     "new_string": "%s," % new,
                 },
             )
+        # Handle models that reference to this model using reference fields
+        cr.execute("""
+             SELECT model, name
+             FROM ir_model_fields
+             WHERE ttype='reference'
+             """)
+        rows = cr.fetchall()
+        for row in rows:
+            table = row[0].replace('.', '_')
+            if not table_exists(cr, table):
+                continue
+            column = row[1]
+            if not column_exists(cr, table, column):
+                continue
+            logged_query(
+                cr, """
+                 UPDATE %(table)s
+                 SET %(column)s = replace(
+                    %(column)s, '%(old)s,', '%(new)s,')
+                 WHERE %(column)s LIKE '%(old)s,%%'
+                 """ % {
+                    "table": table,
+                    "column": column,
+                    "old": old,
+                    "new": new,
+                }, skip_no_result=True,
+            )
         # Update export profiles references
         logged_query(
             cr, "UPDATE ir_exports SET resource = %s WHERE resource = %s",
