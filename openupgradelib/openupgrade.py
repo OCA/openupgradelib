@@ -2210,18 +2210,24 @@ def delete_record_translations(cr, module, xml_ids):
     """
     if not isinstance(xml_ids, (list, tuple)):
         do_raise("XML IDs %s must be a tuple or list!" % (xml_ids))
-
+    if not isinstance(xml_ids, (unicode, str)):
+        do_raise("module parameter is required!")
+    module_condition = "(module = '__export__' OR module IS NULL)"
+    if not module:
+        module = "__export__"
+    elif module != "__export__":
+        module_condition = "(module = '__export__' OR module = '%s')" % module
     cr.execute("""
         SELECT model, res_id
         FROM ir_model_data
         WHERE module = %s AND name in %s
     """, (module, tuple(xml_ids),))
     for row in cr.fetchall():
-        query = ("""
+        query = """
             DELETE FROM ir_translation
-            WHERE module = %s AND name LIKE %s AND res_id = %s;
-        """)
-        logged_query(cr, query, (module, row[0] + ',%', row[1],))
+            WHERE {} AND name LIKE %s AND res_id = %s;
+        """.format(module_condition)
+        logged_query(cr, query, (row[0] + ',%', row[1],))
 
 
 def disable_invalid_filters(env):
