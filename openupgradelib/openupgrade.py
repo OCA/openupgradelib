@@ -145,6 +145,7 @@ __all__ = [
     'rename_fields',
     'rename_tables',
     'rename_models',
+    'merge_models',
     'rename_xmlids',
     'add_xmlid',
     'chunked',
@@ -942,6 +943,105 @@ def rename_models(cr, model_spec):
                 )
 
     # TODO: signal where the model occurs in references to ir_model
+
+
+def merge_models(cr, old_model, new_model, ref_field):
+    """
+    Update model references for models that have merged to an existing model.
+    :param old_model: old model
+    :param new_model: destination model
+    :param ref_field: name of the field in new model that references
+    the id of the old model. Usually created before calling this method.
+
+    WARNING: This method doesn't move the records from old_model to new_model
+    tables. You should have to do that previously in the migration scripts.
+    """
+    logger.info("model %s: merging to %s", old_model, new_model)
+    model_table = new_model.replace('.', '_')
+    renames = [
+        ('ir_attachment', 'res_model', 'res_id', ''),
+        ('ir_model_data', 'model', 'res_id', ''),
+        ('ir_filters', 'model_id', '', ''),
+        ('ir_exports', 'resource', '', ''),
+    ]
+    if is_module_installed(cr, 'mail'):
+        renames += [
+            ('mail_message', 'model', 'res_id', ''),
+            ('mail_message_subtype', 'res_model', '', ''),
+            ('mail_activity', 'res_model', 'res_id', 'res_model_id'),
+            ('mail_activity_type', '', '', 'res_model_id'),
+            ('mail_template', 'model', '', 'model_id'),
+            ('mail_alias', '', '', 'alias_model_id'),
+            ('mail_alias', '', 'alias_parent_thread_id',
+             'alias_parent_model_id'),
+            # mail_followers: special case handled below
+        ]
+    for (table, model_name_column, res_id_column, model_id_column) in renames:
+        if not table_exists(cr, table):
+            continue
+        old_model_id, new_model_id = "", ""
+        query_2a, query_2b, query_3 = "", "", ""
+        query_1a = """{model_name_column} = %(new_model)s"""
+        query_1b = """t.{model_name_column} = %(old_model)s"""
+        if res_id_column:
+            query_2a = """, {res_id_column} = mt.id
+                FROM {model_table} mt"""
+            query_2b = """ AND mt.{ref_field} = t.{res_id_column}"""
+        if model_id_column:
+            pre_query = """
+                SELECT id
+                FROM ir_model
+                WHERE model = %(model)s"""
+            cr.execute(sql.SQL(pre_query), {
+                "model": new_model,
+            })
+            new_model_id = cr.fetchone()[0]
+            query_3 = """, {model_id_column} = %(new_model_id)s"""
+            if not model_name_column:
+                cr.execute(sql.SQL(pre_query), {
+                    "model": old_model,
+                })
+                old_model_id = cr.fetchone()[0]
+                query_1a = ""
+                query_1b = """t.{model_id_column} = %(old_model_id)s"""
+                query_3 = """{model_id_column} = %(new_model_id)s"""
+        query = """
+            UPDATE {table} t
+            SET """ + query_1a + query_3 + query_2a + """
+            WHERE """ + query_1b + query_2b
+        logged_query(cr, sql.SQL(query).format(
+            model_table=sql.Identifier(model_table),
+            table=sql.Identifier(table),
+            model_name_column=sql.Identifier(model_name_column),
+            res_id_column=sql.Identifier(res_id_column),
+            model_id_column=sql.Identifier(model_id_column),
+            ref_field=sql.Identifier(ref_field)
+        ), {
+            "old_model": old_model,
+            "old_model_id": old_model_id,
+            "new_model": new_model,
+            "new_model_id": new_model_id,
+        })
+    if table_exists(cr, 'mail_followers'):
+        logged_query(cr, sql.SQL("""
+            UPDATE mail_followers mf
+                SET res_model = %(new_model)s, res_id = mt.id
+                FROM {model_table} mt
+                JOIN mail_followers mf1
+                    ON (am.{ref_field} = mf1.res_id
+                        AND mf1.res_model = %(old_model)s)
+                LEFT JOIN mail_followers mf2
+                    ON (mt.id = mf2.res_id
+                        AND mf2.res_model = %(new_model)s
+                        AND mf2.partner_id = mf1.partner_id)
+                WHERE mf.id = mf1.id AND mf2.id IS NULL
+        """).format(
+                model_table=sql.Identifier(model_table),
+                ref_field=sql.Identifier(ref_field)
+            ), {
+                "old_model": old_model,
+                "new_model": new_model,
+            })
 
 
 def rename_xmlids(cr, xmlids_spec, allow_merge=False):
