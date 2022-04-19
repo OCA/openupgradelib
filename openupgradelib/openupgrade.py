@@ -1028,7 +1028,7 @@ def merge_models(cr, old_model, new_model, ref_field):
                 SET res_model = %(new_model)s, res_id = mt.id
                 FROM {model_table} mt
                 JOIN mail_followers mf1
-                    ON (am.{ref_field} = mf1.res_id
+                    ON (mt.{ref_field} = mf1.res_id
                         AND mf1.res_model = %(old_model)s)
                 LEFT JOIN mail_followers mf2
                     ON (mt.id = mf2.res_id
