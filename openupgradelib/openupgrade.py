@@ -1858,7 +1858,8 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                 use_env2 = use_env is None and version_info[0] >= 10 or use_env
                 if use_env2:
                     assert version_info[0] >= 8, 'you need at least v8'
-                    contextmanagers.enter_context(api.Environment.manage())
+                    if version_info[0] <= 14:
+                        contextmanagers.enter_context(api.Environment.manage())
                 try:
                     frame = inspect.getargvalues(inspect.stack()[1][0])
                     stage = frame.locals['stage']
