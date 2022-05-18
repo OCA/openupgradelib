@@ -159,6 +159,7 @@ __all__ = [
     'column_exists',
     'table_exists',
     'update_module_moved_fields',
+    'update_module_moved_models',
     'update_module_names',
     'add_ir_model_fields',
     'get_legacy_name',
@@ -2664,6 +2665,64 @@ def update_module_moved_fields(
                 it.type = 'field'
             ))
         """, vals,
+    )
+
+
+def update_module_moved_models(cr, model, old_module, new_module):
+    """Update module for model definition in general tables that have been
+    moved from one module to another.
+    :param cr: Database cursor
+    :param model: Model name
+    :param old_module: Previous module of the models
+    :param new_module: New module of the models
+    """
+    table = model.replace('.', '_')
+    logger.info(
+        "Moving model %s from module '%s' to module '%s'",
+        model, old_module, new_module
+    )
+    logged_query(
+        cr,
+        'UPDATE ir_model_data SET module=%s '
+        'WHERE model = %s AND module = %s',
+        (new_module, model, old_module),
+    )
+    logged_query(
+        cr,
+        "UPDATE ir_model_data SET module=%s "
+        "WHERE name=model_%s AND model = 'ir.model' AND module = %s "
+        "RETURNING res_id",
+        (new_module, table, old_module),
+    )
+    model_id = cr.fetchone()
+    if model_id:
+        logged_query(
+            cr,
+            "UPDATE ir_model_relation SET module=%s "
+            "WHERE model = %s AND module = %s",
+            (new_module, model_id[0], old_module),
+        )
+        logged_query(
+            cr,
+            "UPDATE ir_model_constraint SET module=%s "
+            "WHERE model = %s AND module = %s",
+            (old_module, new_module, model_id[0]),
+        )
+    underscore = "_" if version_info[0] < 12 else "__"
+    logged_query(
+        cr, """UPDATE ir_model_data imd
+        SET module = %s
+        FROM ir_model_fields imf
+        WHERE imd.model = 'ir.model.fields'
+            AND imd.name = 'field_' || '%s' || '%s' || imf.name
+            AND imf.model = %s AND imd.module = %s""",
+        (new_module, AsIs(table), AsIs(underscore), model, old_module),
+    )
+    logged_query(
+        cr,
+        "UPDATE ir_translation SET module=%s "
+        "WHERE name LIKE %s AND module = %s",
+        (new_module, model + ',%', old_module),
     )
 
 
