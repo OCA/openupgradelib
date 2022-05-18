@@ -2690,9 +2690,9 @@ def update_module_moved_models(cr, model, old_module, new_module):
     logged_query(
         cr,
         "UPDATE ir_model_data SET module=%s "
-        "WHERE name=model_%s AND model = 'ir.model' AND module = %s "
+        "WHERE name='model_' || '%s' AND model = 'ir.model' AND module = %s "
         "RETURNING res_id",
-        (new_module, table, old_module),
+        (new_module, AsIs(table), old_module),
     )
     model_id = cr.fetchone()
     if model_id:
