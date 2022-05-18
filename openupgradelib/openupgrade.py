@@ -2698,15 +2698,19 @@ def update_module_moved_models(cr, model, old_module, new_module):
     if model_id:
         logged_query(
             cr,
-            "UPDATE ir_model_relation SET module=%s "
-            "WHERE model = %s AND module = %s",
+            "UPDATE ir_model_relation imr SET module= imm2.id "
+            "FROM ir_module_module imm, ir_module_module imm2 "
+            "WHERE imm2.name = %s AND imr.model = %s "
+            "AND imm.name = %s AND imr.module = imm.id",
             (new_module, model_id[0], old_module),
         )
         logged_query(
             cr,
-            "UPDATE ir_model_constraint SET module=%s "
-            "WHERE model = %s AND module = %s",
-            (old_module, new_module, model_id[0]),
+            "UPDATE ir_model_constraint imc SET module= imm2.id "
+            "FROM ir_module_module imm, ir_module_module imm2 "
+            "WHERE imm2.name = %s AND imc.model = %s "
+            "AND imm.name = %s AND imc.module = imm.id",
+            (new_module, model_id[0], old_module),
         )
     underscore = "_" if version_info[0] < 12 else "__"
     logged_query(
