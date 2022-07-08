@@ -675,18 +675,39 @@ def rename_fields(env, field_spec, no_deep=False):
         cr.execute(r"""
             UPDATE ir_filters
             SET context = regexp_replace(
-                context, %(old_pattern)s, %(new_pattern)s
+                context, %(old_pattern)s, %(new_pattern)s, 'g'
             )
             WHERE model_id = %%s
                 AND context ~ %(old_pattern)s
             """ % {
                 'old_pattern': (
-                    r"$$('group_by'|'col_group_by'):([^\]]*)"
+                    r"""$$('group_by'|'col_group_by'|'graph_groupbys'
+                           |'pivot_measures'|'pivot_row_groupby'
+                           |'pivot_column_groupby'
+                        ):([\s*][^\]]*)"""
                     r"'%s(:day|:week|:month|:year){0,1}'(.*?\])$$"
                 ) % old_field,
                 'new_pattern': r"$$\1:\2'%s\3'\4$$" % new_field,
             }, (model, ),
         )
+        # Examples of replaced contexts:
+        # {'graph_measure': 'field'
+        cr.execute(r"""
+            UPDATE ir_filters
+            SET context = regexp_replace(
+                context, %(old_pattern)s, %(new_pattern)s, 'g'
+            )
+            WHERE model_id = %%s
+                AND context ~ %(old_pattern)s
+            """ % {
+                'old_pattern': (
+                    r"$$'graph_measure':([\s*])'%s"
+                    r"(:day|:week|:month|:year){0,1}'$$"
+                ) % old_field,
+                'new_pattern': r"$$'graph_measure':\1'%s\2'$$" % new_field,
+            }, (model, ),
+        )
+        # TODO: Rename when the field in ir_ui_view_custom
         if table_exists(env.cr, 'mail_alias'):
             # Rename appearances on mail alias
             cr.execute("""
