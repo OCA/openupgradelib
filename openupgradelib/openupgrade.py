@@ -657,12 +657,14 @@ def rename_fields(env, field_spec, no_deep=False):
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute("""
             UPDATE ir_filters
-            SET domain = replace(domain, %(old_pattern)s, %(new_pattern)s)
+            SET domain = regexp_replace(
+                domain, %(old_pattern)s, %(new_pattern)s, 'g'
+            )
             WHERE model_id = %%s
                 AND domain ~ %(old_pattern)s
             """ % {
-                'old_pattern': "$$'%s'$$" % old_field,
-                'new_pattern': "$$'%s'$$" % new_field,
+                'old_pattern': r"""$$('|")%s('|")$$""" % old_field,
+                'new_pattern': r"$$\1%s\2$$" % new_field,
             }, (model, ),
         )
         # Examples of replaced contexts:
