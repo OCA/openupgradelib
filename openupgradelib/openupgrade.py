@@ -2372,6 +2372,18 @@ def disable_invalid_filters(env):
         globaldict = {'uid': env.uid}
         if version_info[0] < 14:
             globaldict.update({'time': time})
+        if version_info[0] >= 13:
+            try:
+                from odoo.tools.safe_eval import datetime as safe_eval_datetime
+                from odoo.tools.safe_eval import dateutil
+            except ImportError:
+                import datetime as safe_eval_datetime
+                import dateutil
+            globaldict.update({
+                'datetime': safe_eval_datetime,
+                'context_today': safe_eval_datetime.datetime.now,
+                'relativedelta': dateutil.relativedelta.relativedelta,
+            })
         # DOMAIN
         try:
             with savepoint(env.cr):
