@@ -2381,9 +2381,11 @@ def disable_invalid_filters(env):
                     safe_eval(domain, globaldict),
                     limit=1,
                 )
-        except Exception:
+        except Exception as e:
             logger.warning(
-                format_message(f) + "as it contains an invalid domain."
+                format_message(f) +
+                "as it contains an invalid domain %s. Detail: %s",
+                f.domain, e
             )
             f.active = False
             continue
@@ -2391,10 +2393,11 @@ def disable_invalid_filters(env):
         try:
             context = safe_eval(f.context, globaldict)
             assert(isinstance(context, dict))
-        except Exception:
+        except Exception as e:
             logger.warning(
-                format_message(f) + "as it contains an invalid context %s.",
-                f.context
+                format_message(f) +
+                "as it contains an invalid context %s. Detail: %s",
+                f.context, e
             )
             f.active = False
             continue
