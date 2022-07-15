@@ -7,6 +7,7 @@
 import inspect
 import logging as _logging_module
 import os
+import re
 import sys
 import uuid
 from datetime import datetime
@@ -627,6 +628,66 @@ def rename_columns(cr, column_spec):
                 )
 
 
+def _rename_field_on_custom_view(env, model, old_field, new_field):
+    """
+    Rename field from ir.ui.view.custom. Typically called in the pre script.
+    :param env: enviroment variable
+    :param model: the model that contain field to replace
+    :param old_field: old field need to replace
+    :param new_field: new field need to replace
+    """
+    dashboard_view_data = env["ir.ui.view.custom"].search(
+        [("arch", "ilike", old_field)]
+    )
+    for r in dashboard_view_data:
+        parsed_arch = etree.XML(r.arch)
+        act_window_ids = parsed_arch.xpath("//action/@name")
+        actions = env["ir.actions.act_window"].search(
+            [
+                ("id", "in", act_window_ids),
+                ("res_model", "=", model),
+            ]
+        )
+        for action in actions:
+            condition_for_element = "//action[@name='{}']".format(action.id)
+            condition_for_domain = "//action[@name='{}']/@domain".format(action.id)
+            condition_for_context = "//action[@name='{}']/@context".format(action.id)
+            arch_element = parsed_arch.xpath(condition_for_element)
+            for index in range(len(arch_element)):
+                elem = arch_element[index]
+                arch_domain = elem.xpath(condition_for_domain)[index]
+                arch_context = elem.xpath(condition_for_context)[index]
+                context_expr = (
+                    r"""('group_by'|'col_group_by'|'graph_groupbys'|'orderedBy'
+                        |'pivot_measures'|'pivot_row_groupby'|'pivot_column_groupby'
+                        ):([\s*][^\]]*)'%s(:day|:week|:month|:year)
+                        {0,1}'(.*?\])"""
+                    % old_field
+                )
+                context_expr = context_expr.replace("\n", "").replace(" ", "")
+                arch_context = re.sub(
+                    context_expr,
+                    r"\1:\2'%s\3'\4" % new_field,
+                    arch_context,
+                )
+                arch_context = re.sub(
+                    r"""'graph_measure':([\s*])'%s(:day|:week|:month|:year)
+                    {0,1}'"""
+                    % old_field,
+                    r"'graph_measure':\1'%s\2'" % new_field,
+                    arch_context,
+                )
+                arch_domain = re.sub(
+                    r"""('|")%s('|")""" % old_field,
+                    r"\1%s\2" % new_field,
+                    arch_domain,
+                )
+                elem.set("domain", arch_domain)
+                elem.set("context", arch_context)
+            new_arch = etree.tostring(parsed_arch, encoding="unicode")
+            r.write({"arch": new_arch})
+
+
 def rename_fields(env, field_spec, no_deep=False):
     """Rename fields. Typically called in the pre script. WARNING: If using
     this on base module, pass the argument ``no_deep`` with True value for
@@ -790,6 +851,10 @@ def rename_fields(env, field_spec, no_deep=False):
                 },
                 (model,),
             )
+        # Perform rename field on a custom view used on dashboard
+        # TODO: Rename when the field is part of a submodel (ex. m2one.field)
+        if version_info[0] > 9:
+            _rename_field_on_custom_view(env, model, old_field, new_field)
 
 
 def rename_tables(cr, table_spec):
