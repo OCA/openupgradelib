@@ -179,6 +179,7 @@ __all__ = [
     'disable_invalid_filters',
     'safe_unlink',
     'delete_records_safely_by_xml_id',
+    'delete_sql_constraint_safely',
     'set_xml_ids_noupdate_value',
     'convert_to_company_dependent',
     'cow_templates_mark_if_equal_to_upstream',
@@ -2826,6 +2827,25 @@ def delete_records_safely_by_xml_id(env, xml_ids):
             if not imd.noupdate:
                 imd.noupdate = True
                 logger.info("XML-ID %s changed to noupdate.", xml_id)
+
+
+def delete_sql_constraint_safely(env, module, table, name):
+    """In case of obsolete constraints, run this in pre-migration script.
+    Useful from v14 onwards.
+    :param module: Module where the sql constraint was declared
+    :param table: Table where the sql constraint belongs
+    :param name: Name of the sql constraint as it was declared"""
+    logged_query(
+        env.cr,
+        """ALTER TABLE {}
+           DROP CONSTRAINT IF EXISTS {}""".format(
+            table, table + "_" + name
+        ),
+    )
+    if version_info[0] > 13:
+        delete_records_safely_by_xml_id(
+            env, [module + ".constraint_" + table + "_" + name]
+        )
 
 
 def chunked(records, single=True):
