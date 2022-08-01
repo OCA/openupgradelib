@@ -14,9 +14,9 @@
    :target: https://pypi.python.org/pypi/openupgradelib
    :alt: Pypi Package
    
-.. image:: https://img.shields.io/badge/License-AGPL%20v3-blue.svg
+.. image:: https://img.shields.io/badge/license-AGPL--3-blue.png
    :target: https://www.gnu.org/licenses/agpl-3.0
-   :alt: License: AGPL v3
+   :alt: License: AGPL-3
 
 ===============================
 OpenUpgrade Library
