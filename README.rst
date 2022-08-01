@@ -37,7 +37,7 @@ pip/pip3 install --ignore-installed git+https://github.com/OCA/openupgradelib.gi
 Features
 --------
 
-The OpenUpgrade library contains all kinds of helper functions for wrting scripts to migrate between odoo versions, in OpenUpgrade itself or in the migration scripts of your own module (in either major or minor version upgrades). Once installed, it can be used in your scripts as
+The OpenUpgrade library contains all kinds of helper functions for writing scripts to migrate between odoo versions, in OpenUpgrade itself or in the migration scripts of your own module (in either major or minor version upgrades). Once installed, it can be used in your scripts as
 
 `from openupgradelib import openupgrade`
 
