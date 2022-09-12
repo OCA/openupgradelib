@@ -2428,7 +2428,7 @@ def disable_invalid_filters(env):
         # CONTEXT GROUP BY
         try:
             context = safe_eval(f.context, globaldict)
-            assert(isinstance(context, dict))
+            assert isinstance(context, dict)
         except Exception as e:
             logger.warning(
                 format_message(f) +

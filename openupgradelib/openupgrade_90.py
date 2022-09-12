@@ -53,7 +53,8 @@ def convert_binary_field_to_attachment(env, field_spec):
             last_id = 0
             while True:
                 env.cr.execute(
-                    """SELECT id, {0} FROM {1} WHERE {0} IS NOT NULL AND id > {2}
+                    """SELECT id, {0} FROM {1}
+                    WHERE {0} IS NOT NULL AND id > {2}
                     ORDER BY id LIMIT 500;
                     """.format(column, model._table, last_id)
                 )
