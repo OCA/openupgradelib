@@ -2178,7 +2178,8 @@ def move_field_m2o(
                 {field_new_model: value})
 
 
-def convert_field_to_html(cr, table, field_name, html_field_name):
+def convert_field_to_html(
+        cr, table, field_name, html_field_name, verbose=True):
     """
     Convert field value to HTML value.
 
@@ -2195,12 +2196,14 @@ def convert_field_to_html(cr, table, field_name, html_field_name):
         }
     )
     for row in cr.fetchall():
-        logged_query(
-            cr, "UPDATE %(table)s SET %(field)s = %%s WHERE id = %%s" % {
-                'field': html_field_name,
-                'table': table,
-            }, (plaintext2html(row[1]), row[0])
-        )
+        query = "UPDATE %(table)s SET %(field)s = %%s WHERE id = %%s" % {
+            'field': html_field_name,
+            'table': table,
+        }
+        if verbose:
+            logged_query(cr, query, (plaintext2html(row[1]), row[0]))
+        else:
+            cr.execute(query, (plaintext2html(row[1]), row[0]))
 
 
 def date_to_datetime_tz(
