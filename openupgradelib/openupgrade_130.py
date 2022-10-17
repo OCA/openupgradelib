@@ -102,7 +102,7 @@ def convert_old_style_tax_tag_to_new(
 
 
 def unlink_invalid_tax_tags_from_move_lines(
-        env, base_tag_xmlids, tax_tag_xmlids):
+        env, module, base_tag_xmlids, tax_tag_xmlids):
     openupgrade.logged_query(env.cr, """
         DELETE FROM account_account_tag_account_move_line_rel r
         WHERE
@@ -110,14 +110,14 @@ def unlink_invalid_tax_tags_from_move_lines(
                 SELECT res_id FROM ir_model_data
                 WHERE
                     model = 'account.account.tag' AND
-                    module = 'l10n_nl' AND
+                    module = %s AND
                     name IN ('""" + "','".join(tax_tag_xmlids) + """')
             ) AND
             account_move_line_id IN (
                 SELECT id FROM account_move_line
                 WHERE tax_base_amount = 0
             )
-    """)
+    """, [module])
     openupgrade.logged_query(env.cr, """
         DELETE FROM account_account_tag_account_move_line_rel r
         WHERE
@@ -125,18 +125,18 @@ def unlink_invalid_tax_tags_from_move_lines(
                 SELECT res_id FROM ir_model_data
                 WHERE
                     model = 'account.account.tag' AND
-                    module = 'l10n_nl' AND
+                    module = %s AND
                     name IN ('""" + "','".join(base_tag_xmlids) + """')
             ) AND
             account_move_line_id IN (
                 SELECT id FROM account_move_line
                 WHERE tax_base_amount <> 0
             )
-    """)
+    """, [module])
 
 
 def unlink_invalid_tax_tags_from_repartition_lines(
-        env, base_tag_xmlids, tax_tag_xmlids):
+        env, module, base_tag_xmlids, tax_tag_xmlids):
     """ The migration script of the account module assigns all tags of
         the account.tax's tag_ids field to the tag_ids field of the new
         account.tax.repartition.line. However, because each repartition
@@ -155,10 +155,10 @@ def unlink_invalid_tax_tags_from_repartition_lines(
                 SELECT res_id FROM ir_model_data
                 WHERE
                     model = 'account.account.tag' AND
-                    module = 'l10n_nl' AND
+                    module = %s AND
                     name IN ('""" + "','".join(tax_tag_xmlids) + """')
             )
-    """)
+    """, [module])
     openupgrade.logged_query(env.cr, """
         DELETE FROM account_account_tag_account_tax_repartition_line_rel r
         WHERE
@@ -171,7 +171,7 @@ def unlink_invalid_tax_tags_from_repartition_lines(
                 SELECT res_id FROM ir_model_data
                 WHERE
                     model = 'account.account.tag' AND
-                    module = 'l10n_nl' AND
+                    module = %s AND
                     name IN ('""" + "','".join(base_tag_xmlids) + """')
             )
-    """)
+    """, [module])
