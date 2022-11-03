@@ -292,7 +292,7 @@ def load_data(cr, module_name, filename, idref=None, mode='init'):
     logger.info('%s: loading %s' % (module_name, filename))
     _, ext = os.path.splitext(filename)
     pathname = os.path.join(module_name, filename)
-
+    fp = False
     try:
         fp = tools.file_open(pathname)
     except OSError:
