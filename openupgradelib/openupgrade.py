@@ -905,18 +905,25 @@ def rename_models(cr, model_spec):
             column = row[1]
             if not column_exists(cr, table, column):
                 continue
+            query = """
+                UPDATE {table}
+                    SET {column} = replace(
+                    {column}, %(old)s, %(new)s)
+                 WHERE {column} LIKE %(old_like)s
+            """
+            sql_query = sql.SQL(query).format(
+                table=sql.Identifier(table),
+                column=sql.Identifier(column)
+            )
             logged_query(
-                cr, """
-                 UPDATE %(table)s
-                 SET %(column)s = replace(
-                    %(column)s, '%(old)s,', '%(new)s,')
-                 WHERE %(column)s LIKE '%(old)s,%%'
-                 """ % {
-                    "table": table,
-                    "column": column,
-                    "old": old,
-                    "new": new,
-                }, skip_no_result=True,
+                cr,
+                sql_query,
+                {
+                    "old": old + ',',
+                    "old_like": old + ',%%',
+                    "new": new + ',',
+                },
+                skip_no_result=True,
             )
         # Update export profiles references
         logged_query(
