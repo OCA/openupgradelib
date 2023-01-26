@@ -353,6 +353,7 @@ def convert_field_bootstrap_3to4(env, model_name, field_name, domain=None,
                                  method='orm'):
     """This converts all the values for the given model and field, being
     able to restrict to a domain of affected records.
+
     :param env: Odoo environment.
     :param model_name: Name of the model that contains the field.
     :param field_name: Name of the field that contains the BS3 HTML content.
