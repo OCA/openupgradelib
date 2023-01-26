@@ -23,7 +23,7 @@
 # This module provides simple tools for openupgrade migration, specific for
 # the 6.1 -> 7.0 migration. It is kept in later editions to keep all the API
 # docs in the latest release.
-import openupgrade
+from . import openupgrade
 
 
 def set_partner_id_from_partner_address_id(
