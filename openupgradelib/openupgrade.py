@@ -1003,13 +1003,16 @@ def merge_models(cr, old_model, new_model, ref_field):
             ('mail_message', 'model', 'res_id', ''),
             ('mail_message_subtype', 'res_model', '', ''),
             ('mail_activity', 'res_model', 'res_id', 'res_model_id'),
-            ('mail_activity_type', '', '', 'res_model_id'),
             ('mail_template', 'model', '', 'model_id'),
             ('mail_alias', '', '', 'alias_model_id'),
             ('mail_alias', '', 'alias_parent_thread_id',
              'alias_parent_model_id'),
             # mail_followers: special case handled below
         ]
+        if version_info[0] < 15:
+            renames.append(('mail_activity_type', '', '', 'res_model_id'))
+        else:
+            renames.append(('mail_activity_type', 'res_model', '', ''))
     for (table, model_name_column, res_id_column, model_id_column) in renames:
         if not table_exists(cr, table):
             continue
