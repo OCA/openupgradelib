@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- # fmt: skip
 # Copyright 2017 Tecnativa - Pedro M. Baeza <pedro.baeza@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
@@ -39,8 +39,8 @@ def convert_binary_field_to_attachment(env, field_spec):
           the second element is None, then the column name is taken
           calling `get_legacy_name` method, which is the typical technique.
     """
-    logger = logging.getLogger('OpenUpgrade')
-    attachment_model = env['ir.attachment']
+    logger = logging.getLogger("OpenUpgrade")
+    attachment_model = env["ir.attachment"]
     for model_name in field_spec:
         model = env[model_name]
         for field, column in field_spec[model_name]:
@@ -56,30 +56,38 @@ def convert_binary_field_to_attachment(env, field_spec):
                     """SELECT id, {0} FROM {1}
                     WHERE {0} IS NOT NULL AND id > {2}
                     ORDER BY id LIMIT 500;
-                    """.format(column, model._table, last_id)
+                    """.format(
+                        column, model._table, last_id
+                    )
                 )
                 rows = env.cr.fetchall()
                 if not rows:
                     break
                 logger.info(
                     "  converting {0} items starting after {1}..."
-                    "".format(len(rows), last_id))
+                    "".format(len(rows), last_id)
+                )
                 for row in rows:
                     last_id = row[0]
                     data = bytes(row[1])
-                    if data and data != 'None':
-                        attachment_model.create({
-                            'name': field,
-                            'res_model': model_name,
-                            'res_field': field,
-                            'res_id': last_id,
-                            'type': 'binary',
-                            'datas': data,
-                        })
+                    if data and data != "None":
+                        attachment_model.create(
+                            {
+                                "name": field,
+                                "res_model": model_name,
+                                "res_field": field,
+                                "res_id": last_id,
+                                "type": "binary",
+                                "datas": data,
+                            }
+                        )
             # Remove source column for cleaning the room
-            env.cr.execute("ALTER TABLE {} DROP COLUMN {}".format(
-                model._table, column,
-            ))
+            env.cr.execute(
+                "ALTER TABLE {} DROP COLUMN {}".format(
+                    model._table,
+                    column,
+                )
+            )
 
 
 def replace_account_types(env, type_spec, unlink=True):
@@ -89,27 +97,28 @@ def replace_account_types(env, type_spec, unlink=True):
 xmlid of new account.account.type)
     :param unlink: attempt to unlink the old account type
     """
-    logger = logging.getLogger('OpenUpgrade')
+    logger = logging.getLogger("OpenUpgrade")
     for old_type, new_type in type_spec:
         try:
             type8 = env.ref(old_type)
         except ValueError:
-            if getattr(threading.currentThread(), 'testing', False):
+            if getattr(threading.currentThread(), "testing", False):
                 raise
             continue
 
         type9 = env.ref(new_type)
-        for table in ('account_account',
-                      'account_account_template',
-                      'account_move_line'):
+        for table in (
+            "account_account",
+            "account_account_template",
+            "account_move_line",
+        ):
             env.cr.execute(
                 "UPDATE %s SET user_type_id = %s WHERE user_type_id = %s",
-                (AsIs(table), type9.id, type8.id))
+                (AsIs(table), type9.id, type8.id),
+            )
         if unlink:
             with env.cr.savepoint():
                 try:
                     type8.unlink()
                 except Exception as e:
-                    logger.info(
-                        'Could not remove account type %s: %s',
-                        old_type, e)
+                    logger.info("Could not remove account type %s: %s", old_type, e)

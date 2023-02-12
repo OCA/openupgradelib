@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 import sys
 
-__author__ = 'Odoo Community Association (OCA)'
-__email__ = 'support@odoo-community.org'
+__author__ = "Odoo Community Association (OCA)"
+__email__ = "support@odoo-community.org"
 __doc__ = """A library with support functions to be called from Odoo \
 migration scripts."""
 __license__ = "AGPL-3"

@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*- # fmt: skip
 ##############################################################################
 #
 #    OpenERP, Open Source Management Solution
@@ -52,8 +52,9 @@ def get_last_post_for_model(cr, uid, ids, model_pool):
     for obj in model_pool.browse(cr, uid, ids):
         message_ids = obj.message_ids
         if message_ids:
-            res[obj.id] = sorted(
-                message_ids, key=lambda x: x.date, reverse=True)[0].date
+            res[obj.id] = sorted(message_ids, key=lambda x: x.date, reverse=True)[
+                0
+            ].date
         else:
             res[obj.id] = False
     return res
@@ -76,7 +77,8 @@ def set_message_last_post(cr, uid, pool, models):
         models = [models]
     for model in models:
         model_pool = pool[model]
-        query = sql.SQL("""
+        query = sql.SQL(
+            """
             UPDATE {table} main
             SET message_last_post = mm.last_date
             FROM (SELECT res_id, MAX(date) AS last_date
@@ -84,13 +86,19 @@ def set_message_last_post(cr, uid, pool, models):
                   WHERE model = %s AND date IS NOT NULL
                   GROUP BY res_id) AS mm
             WHERE main.id = mm.res_id
-        """).format(table=sql.Identifier(model_pool._table))
+        """
+        ).format(table=sql.Identifier(model_pool._table))
         logged_query(cr, query, (model,))
 
 
 def update_aliases(
-        cr, registry, model_name, set_parent_thread_id,
-        alias_defaults=None, defaults_id_key=False):
+    cr,
+    registry,
+    model_name,
+    set_parent_thread_id,
+    alias_defaults=None,
+    defaults_id_key=False,
+):
     """
     Update a model's aliases according to how they are configured
     in the model's create() method.
@@ -104,19 +112,20 @@ def update_aliases(
     :param defaults_id_key: When defined, add this key to each alias' \
     defaults dictionary with the resource id as its value.
     """
-    model_id = registry['ir.model'].search(
-        cr, SUPERUSER_ID, [('model', '=', model_name)])[0]
-    vals = {'alias_parent_model_id': model_id}
+    model_id = registry["ir.model"].search(
+        cr, SUPERUSER_ID, [("model", "=", model_name)]
+    )[0]
+    vals = {"alias_parent_model_id": model_id}
     if defaults_id_key and alias_defaults is None:
         alias_defaults = {}
     res_ids = registry[model_name].search(
-        cr, SUPERUSER_ID, [], context={'active_test': False})
-    for res in registry[model_name].browse(
-            cr, SUPERUSER_ID, res_ids):
+        cr, SUPERUSER_ID, [], context={"active_test": False}
+    )
+    for res in registry[model_name].browse(cr, SUPERUSER_ID, res_ids):
         if set_parent_thread_id:
-            vals['alias_parent_thread_id'] = res.id
+            vals["alias_parent_thread_id"] = res.id
         if defaults_id_key:
             alias_defaults[defaults_id_key] = res.id
         if alias_defaults is not None:
-            vals['alias_defaults'] = str(alias_defaults)
+            vals["alias_defaults"] = str(alias_defaults)
         res.alias_id.write(vals)
