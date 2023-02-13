@@ -3,12 +3,12 @@ language: python
 sudo: false
 
 python:
-  - "3.6"  # But switching to 2.7 in the script
+    - "3.6" # But switching to 2.7 in the script
 
 addons:
     apt:
         packages:
-            - python3-lxml  # because pip installation is slow
+            - python3-lxml # because pip installation is slow
             - python3-simplejson
             - python3-serial
             - python3-yaml
@@ -27,39 +27,51 @@ script:
     - python setup.py install
     # Run functional tests from 6.1 to 11.0
     - set -e
-    - git clone https://github.com/oca/openupgrade --depth 1 --no-single-branch -b 6.1 ~/openupgrade
+    - git clone https://github.com/oca/openupgrade --depth 1 --no-single-branch -b 6.1
+      ~/openupgrade
     - cd ~/openupgrade
     - pip install psycopg2-binary
-    - git reset --hard origin/8.0  # earliest version to include requirements
-    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
+    - git reset --hard origin/8.0 # earliest version to include requirements
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r
+      /dev/stdin
     - createdb testdb
     - git reset --hard origin/6.1
-    - ./openerp-server -d testdb -i openupgradelib_tests --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - ./openerp-server -d testdb -i openupgradelib_tests --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # Run the migration of the test addon in 6.1
-    - echo "UPDATE ir_module_module SET latest_version = '6.0.1.0.0' WHERE name = 'openupgradelib_tests'" | psql testdb
-    - ./openerp-server -d testdb -u openupgradelib_tests --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - echo "UPDATE ir_module_module SET latest_version = '6.0.1.0.0' WHERE name =
+      'openupgradelib_tests'" | psql testdb
+    - ./openerp-server -d testdb -u openupgradelib_tests --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     - echo "UPDATE ir_module_module SET demo = FALSE" | psql testdb
     # 7.0 -> 8.0
     - git reset --hard origin/7.0
-    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - ./openerp-server -d testdb -u all --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # 7.0 -> 8.0
     - git reset --hard origin/8.0
-    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - ./openerp-server -d testdb -u all --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # 8.0 -> 9.0
     - git reset --hard origin/9.0
-    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
-    - ./openerp-server -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r
+      /dev/stdin
+    - ./openerp-server -d testdb -u all --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # 9.0 -> 10.0
     - git reset --hard origin/10.0
-    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
-    - ./odoo-bin -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r
+      /dev/stdin
+    - ./odoo-bin -d testdb -u all --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # 10.0 -> 11.0 (switch to Python 3.6)
     - source ~/virtualenv/python3.6/bin/activate
     - pushd /home/travis/build/OCA/openupgradelib && python setup.py install && popd
     - pip install psycopg2-binary
     - git reset --hard origin/11.0
-    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r /dev/stdin
-    - flake8 ~/build/OCA/openupgradelib
-    - ./odoo-bin -d testdb -u all --addons-path addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
+    - egrep -v "(openupgradelib)|(psycopg2)" requirements.txt | pip install -q -r
+      /dev/stdin
+    - ./odoo-bin -d testdb -u all --addons-path
+      addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
     # Build docs
     - pip install -q sphinx; sh ~/openupgrade/scripts/build_openupgrade_docs

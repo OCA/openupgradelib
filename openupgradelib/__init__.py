@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 import sys
 
-__author__ = 'Odoo Community Association (OCA)'
-__email__ = 'support@odoo-community.org'
+__author__ = "Odoo Community Association (OCA)"
+__email__ = "support@odoo-community.org"
 __doc__ = """A library with support functions to be called from Odoo \
 migration scripts."""
 __license__ = "AGPL-3"
@@ -13,12 +12,12 @@ try:
         from importlib.metadata import version, PackageNotFoundError
     else:
         from importlib_metadata import version, PackageNotFoundError
-except ImportError:
+except ImportError:  # pylint: disable=W7938
     # this happens when setup.py imports openupgradelib
     pass
 else:
     try:
         __version__ = version("openupgradelib")
-    except PackageNotFoundError:
+    except PackageNotFoundError:  # pylint: disable=W7938
         # package is not installed
         pass

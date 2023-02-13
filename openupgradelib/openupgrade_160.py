@@ -5,8 +5,10 @@
 the >=16.0 migration.
 """
 import itertools
-from .openupgrade import logged_query, table_exists
+
 from odoo.tools.translate import _get_translation_upgrade_queries
+
+from .openupgrade import logged_query, table_exists
 
 
 def migrate_translations_to_jsonb(env, fields_spec):

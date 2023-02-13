@@ -1,23 +1,31 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 # Copyright 2018 Tecnativa - Pedro M. Baeza
 # Copyright 2018 Opener B.V. - Stefan Rijnhart
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-import logging
 import functools
-from psycopg2 import sql
-from psycopg2 import ProgrammingError, IntegrityError
+import logging
+
+from psycopg2 import IntegrityError, ProgrammingError, sql
 from psycopg2.errorcodes import UNDEFINED_COLUMN, UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
+
 from .openupgrade import logged_query, version_info
 from .openupgrade_tools import column_exists, table_exists
 
-logger = logging.getLogger('OpenUpgrade')
+logger = logging.getLogger("OpenUpgrade")
 logger.setLevel(logging.DEBUG)
 
 
-def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
-                             exclude_columns, model_table, extra_where=None):
+def _change_foreign_key_refs(
+    env,
+    model_name,
+    record_ids,
+    target_record_id,
+    exclude_columns,
+    model_table,
+    extra_where=None,
+):
     # As found on https://stackoverflow.com/questions/1152260
     # /postgres-sql-to-list-table-foreign-keys
     # Adapted for specific Odoo structures like many2many tables
@@ -32,87 +40,102 @@ def _change_foreign_key_refs(env, model_name, record_ids, target_record_id,
                 AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY'
             AND ccu.table_name = %s and ccu.column_name = 'id'
-        """, (model_table,))
+        """,
+        (model_table,),
+    )
     for table, column in env.cr.fetchall():
         if (table, column) in exclude_columns:
             continue
         # Try one big swoop first
-        env.cr.execute('SAVEPOINT sp1')  # can't use env.cr.savepoint() in base
+        env.cr.execute("SAVEPOINT sp1")  # can't use env.cr.savepoint() in base
         try:
             query = sql.SQL(
                 """UPDATE {table}
                 SET {column} = %(target_record_id)s
                 WHERE {column} in %(record_ids)s"""
             ).format(
-                table=sql.Identifier(table), column=sql.Identifier(column),
+                table=sql.Identifier(table),
+                column=sql.Identifier(column),
             )
             if extra_where:
                 query += sql.SQL(extra_where)
             logged_query(
-                env.cr, query, {
-                    'record_ids': tuple(record_ids),
-                    'target_record_id': target_record_id,
-                }, skip_no_result=True,
+                env.cr,
+                query,
+                {
+                    "record_ids": tuple(record_ids),
+                    "target_record_id": target_record_id,
+                },
+                skip_no_result=True,
             )
         except (ProgrammingError, IntegrityError) as error:
-            env.cr.execute('ROLLBACK TO SAVEPOINT sp1')
+            env.cr.execute("ROLLBACK TO SAVEPOINT sp1")
             if error.pgcode == UNDEFINED_COLUMN and extra_where:
                 # extra_where is introducing a bad column. Ignore this table.
                 continue
             elif error.pgcode != UNIQUE_VIOLATION:
                 raise
             # Fallback on setting each row separately
-            m2m_table = not column_exists(env.cr, table, 'id')
-            target_column = column if m2m_table else 'id'
-            env.cr.execute("""SELECT %(target_column)s FROM %(table)s
-                WHERE "%(column)s" in %(record_ids)s""", {
-                    'target_column': AsIs(target_column),
-                    'table': AsIs(table),
-                    'column': AsIs(column),
-                    'record_ids': tuple(record_ids),
+            m2m_table = not column_exists(env.cr, table, "id")
+            target_column = column if m2m_table else "id"
+            env.cr.execute(
+                """SELECT %(target_column)s FROM %(table)s
+                WHERE "%(column)s" in %(record_ids)s""",
+                {
+                    "target_column": AsIs(target_column),
+                    "table": AsIs(table),
+                    "column": AsIs(column),
+                    "record_ids": tuple(record_ids),
                 },
             )
             for row in list(set([x[0] for x in env.cr.fetchall()])):
-                env.cr.execute('SAVEPOINT sp2')
+                env.cr.execute("SAVEPOINT sp2")
                 try:
                     logged_query(
-                        env.cr, """UPDATE %(table)s
+                        env.cr,
+                        """UPDATE %(table)s
                         SET "%(column)s" = %(target_record_id)s
-                        WHERE %(target_column)s = %(record_id)s""", {
-                            'target_column': AsIs(target_column),
-                            'table': AsIs(table),
-                            'column': AsIs(column),
-                            'record_id': row,
-                            'target_record_id': target_record_id,
+                        WHERE %(target_column)s = %(record_id)s""",
+                        {
+                            "target_column": AsIs(target_column),
+                            "table": AsIs(table),
+                            "column": AsIs(column),
+                            "record_id": row,
+                            "target_record_id": target_record_id,
                         },
                     )
                 except (ProgrammingError, IntegrityError) as error:
-                    env.cr.execute('ROLLBACK TO SAVEPOINT sp2')
+                    env.cr.execute("ROLLBACK TO SAVEPOINT sp2")
                     if error.pgcode != UNIQUE_VIOLATION:
                         raise
                 else:
-                    env.cr.execute('RELEASE SAVEPOINT sp2')
+                    env.cr.execute("RELEASE SAVEPOINT sp2")
             if m2m_table:
                 # delete remaining values that could not be merged
                 logged_query(
-                    env.cr, """DELETE FROM %(table)s
+                    env.cr,
+                    """DELETE FROM %(table)s
                     WHERE "%(column)s" in %(record_ids)s""",
                     {
-                        'table': AsIs(table),
-                        'column': AsIs(column),
-                        'record_ids': tuple(record_ids),
-                    }, skip_no_result=True,
+                        "table": AsIs(table),
+                        "column": AsIs(column),
+                        "record_ids": tuple(record_ids),
+                    },
+                    skip_no_result=True,
                 )
         else:
-            env.cr.execute('RELEASE SAVEPOINT sp1')
+            env.cr.execute("RELEASE SAVEPOINT sp1")
 
 
-def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
-                              exclude_columns):
-    fields = env['ir.model.fields'].search([
-        ('ttype', '=', 'many2one'),
-        ('relation', '=', model_name),
-    ])
+def _change_many2one_refs_orm(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
+    fields = env["ir.model.fields"].search(
+        [
+            ("ttype", "=", "many2one"),
+            ("relation", "=", model_name),
+        ]
+    )
     for field in fields:
         try:
             model = env[field.model].with_context(active_test=False)
@@ -120,59 +143,76 @@ def _change_many2one_refs_orm(env, model_name, record_ids, target_record_id,
             continue
         field_name = field.name
         if (
-            not model._auto or not model._fields.get(field_name) or
-            not field.store or (model._table, field_name) in exclude_columns
+            not model._auto
+            or not model._fields.get(field_name)
+            or not field.store
+            or (model._table, field_name) in exclude_columns
         ):
             continue  # Discard SQL views + invalid fields + non-stored fields
-        records = model.search([(field_name, 'in', record_ids)])
+        records = model.search([(field_name, "in", record_ids)])
         if records:
             records.write({field_name: target_record_id})
             logger.debug(
                 "Changed %s record(s) in many2one field '%s' of model '%s'",
-                len(records), field_name, field.model,
+                len(records),
+                field_name,
+                field.model,
             )
 
 
-def _change_many2many_refs_orm(env, model_name, record_ids, target_record_id,
-                               exclude_columns):
-    fields = env['ir.model.fields'].search([
-        ('ttype', '=', 'many2many'),
-        ('relation', '=', model_name),
-    ])
+def _change_many2many_refs_orm(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
+    fields = env["ir.model.fields"].search(
+        [
+            ("ttype", "=", "many2many"),
+            ("relation", "=", model_name),
+        ]
+    )
     for field in fields:
         try:
             model = env[field.model].with_context(active_test=False)
         except KeyError:
             continue
         field_name = field.name
-        if (not model._auto or not model._fields.get(field_name) or
-                not field.store or
-                (model._table, field_name) in exclude_columns):
+        if (
+            not model._auto
+            or not model._fields.get(field_name)
+            or not field.store
+            or (model._table, field_name) in exclude_columns
+        ):
             continue  # Discard SQL views + invalid fields + non-stored fields
-        records = model.search([(field_name, 'in', record_ids)])
+        records = model.search([(field_name, "in", record_ids)])
         if records:
-            records.write({
-                field_name: (
-                    [(3, x) for x in record_ids] + [(4, target_record_id)]
-                ),
-            })
+            records.write(
+                {
+                    field_name: (
+                        [(3, x) for x in record_ids] + [(4, target_record_id)]
+                    ),
+                }
+            )
             logger.debug(
                 "Changed %s record(s) in many2many field '%s' of model '%s'",
-                len(records), field_name, field.model,
+                len(records),
+                field_name,
+                field.model,
             )
 
 
-def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
-                               exclude_columns):
+def _change_reference_refs_sql(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
     cr = env.cr
-    cr.execute("""
+    cr.execute(
+        """
         SELECT model, name
         FROM ir_model_fields
         WHERE ttype='reference'
-        """)
+        """
+    )
     rows = cr.fetchall()
-    if ('ir.property', 'value_reference') not in rows:
-        rows.append(('ir.property', 'value_reference'))
+    if ("ir.property", "value_reference") not in rows:
+        rows.append(("ir.property", "value_reference"))
     for row in rows:
         try:
             model = env[row[0]]
@@ -184,87 +224,113 @@ def _change_reference_refs_sql(env, model_name, record_ids, target_record_id,
         if not table_exists(cr, table):
             continue
         column = row[1]
-        if not column_exists(cr, table, column) or (
-                (table, column) in exclude_columns):
+        if not column_exists(cr, table, column) or ((table, column) in exclude_columns):
             continue
-        where = ' OR '.join(
+        where = " OR ".join(
             ["%s = '%s,%s'" % (column, model_name, x) for x in record_ids]
         )
         logged_query(
-            cr, """
+            cr,
+            """
             UPDATE %s
             SET %s = %s
             WHERE %s
-            """, (
-                AsIs(table), AsIs(column),
-                '%s,%s' % (model_name, target_record_id), AsIs(where)
-            ), skip_no_result=True,
+            """,
+            (
+                AsIs(table),
+                AsIs(column),
+                "%s,%s" % (model_name, target_record_id),
+                AsIs(where),
+            ),
+            skip_no_result=True,
         )
 
 
-def _change_reference_refs_orm(env, model_name, record_ids, target_record_id,
-                               exclude_columns):
-    fields = env['ir.model.fields'].search([('ttype', '=', 'reference')])
+def _change_reference_refs_orm(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
+    fields = env["ir.model.fields"].search([("ttype", "=", "reference")])
     if version_info[0] >= 12:
-        fields |= env.ref('base.field_ir_property__value_reference')
+        fields |= env.ref("base.field_ir_property__value_reference")
     else:
-        fields |= env.ref('base.field_ir_property_value_reference')
+        fields |= env.ref("base.field_ir_property_value_reference")
     for field in fields:
         try:
             model = env[field.model].with_context(active_test=False)
         except KeyError:
             continue
         field_name = field.name
-        if (not model._auto or not model._fields.get(field_name) or
-                not field.store or
-                (model._table, field_name) in exclude_columns):
+        if (
+            not model._auto
+            or not model._fields.get(field_name)
+            or not field.store
+            or (model._table, field_name) in exclude_columns
+        ):
             continue  # Discard SQL views + invalid fields + non-stored fields
-        expr = ['%s,%s' % (model_name, x) for x in record_ids]
-        records = model.search([(field_name, 'in', expr)])
+        expr = ["%s,%s" % (model_name, x) for x in record_ids]
+        records = model.search([(field_name, "in", expr)])
         if records:
-            records.write({
-                field_name: '%s,%s' % (model_name, target_record_id),
-            })
+            records.write(
+                {
+                    field_name: "%s,%s" % (model_name, target_record_id),
+                }
+            )
             logger.debug(
                 "Changed %s record(s) in reference field '%s' of model '%s'",
-                len(records), field_name, field.model,
+                len(records),
+                field_name,
+                field.model,
             )
 
 
-def _change_translations_orm(env, model_name, record_ids, target_record_id,
-                             exclude_columns):
-    if ('ir_translation', 'res_id') in exclude_columns:
+def _change_translations_orm(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
+    if ("ir_translation", "res_id") in exclude_columns:
         return
-    translation_obj = env['ir.translation']
-    groups = translation_obj.read_group([
-        ('type', '=', 'model'),
-        ('res_id', 'in', record_ids),
-        ('name', 'like', '%s,%%' % model_name),
-    ], ['name', 'lang'], ['name', 'lang'], lazy=False)
+    translation_obj = env["ir.translation"]
+    groups = translation_obj.read_group(
+        [
+            ("type", "=", "model"),
+            ("res_id", "in", record_ids),
+            ("name", "like", "%s,%%" % model_name),
+        ],
+        ["name", "lang"],
+        ["name", "lang"],
+        lazy=False,
+    )
     for group in groups:
-        target_translation = translation_obj.search([
-            ('type', '=', 'model'),
-            ('res_id', '=', target_record_id),
-            ('name', '=', group['name']),
-            ('lang', '=', group['lang']),
-        ])
-        records = translation_obj.search(group['__domain'])
+        target_translation = translation_obj.search(
+            [
+                ("type", "=", "model"),
+                ("res_id", "=", target_record_id),
+                ("name", "=", group["name"]),
+                ("lang", "=", group["lang"]),
+            ]
+        )
+        records = translation_obj.search(group["__domain"])
         if not target_translation and records:
             # There is no target translation, we pick one for being the new one
             records[:1].res_id = target_record_id
             records = records[1:]
         if records:
             records.unlink()
-            logger.debug("Deleted %s extra translations for %s (lang = %s).",
-                         len(records), group['name'], group['lang'])
+            logger.debug(
+                "Deleted %s extra translations for %s (lang = %s).",
+                len(records),
+                group["name"],
+                group["lang"],
+            )
 
 
-def _change_translations_sql(env, model_name, record_ids, target_record_id,
-                             exclude_columns):
-    if ('ir_translation', 'res_id') in exclude_columns:
+def _change_translations_sql(
+    env, model_name, record_ids, target_record_id, exclude_columns
+):
+    if ("ir_translation", "res_id") in exclude_columns:
         return
     logged_query(
-        env.cr, """
+        env.cr,
+        """
         UPDATE ir_translation it
         SET res_id = %(target_record_id)s
         FROM (
@@ -279,12 +345,15 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         ) AS to_update
         WHERE it.id = to_update.id""",
         {
-            'target_record_id': target_record_id,
-            'record_ids': tuple(record_ids),
-            'model_name': model_name,
-        }, skip_no_result=True)
+            "target_record_id": target_record_id,
+            "record_ids": tuple(record_ids),
+            "model_name": model_name,
+        },
+        skip_no_result=True,
+    )
     logged_query(
-        env.cr, """
+        env.cr,
+        """
         DELETE FROM ir_translation it
         USING (
             SELECT it.id
@@ -294,18 +363,29 @@ def _change_translations_sql(env, model_name, record_ids, target_record_id,
         ) AS to_delete
         WHERE it.id = to_delete.id""",
         {
-            'target_record_id': target_record_id,
-            'record_ids': record_ids,
-            'model_name': model_name,
-        })
+            "target_record_id": target_record_id,
+            "record_ids": record_ids,
+            "model_name": model_name,
+        },
+    )
 
 
+# flake8: noqa: C901
 def apply_operations_by_field_type(
-        env, model_name, record_ids, target_record_id, field_spec, field_vals,
-        field_type, column, operation, method):
+    env,
+    model_name,
+    record_ids,
+    target_record_id,
+    field_spec,
+    field_vals,
+    field_type,
+    column,
+    operation,
+    method,
+):
     vals = {}
     o2m_changes = 0
-    if method == 'orm':
+    if method == "orm":
         model = env[model_name]
         all_records = model.browse((target_record_id,) + tuple(record_ids))
         target_record = model.browse(target_record_id)
@@ -313,88 +393,91 @@ def apply_operations_by_field_type(
         field = model._fields[column]
     else:
         first_value = field_vals[0]
-    if field_type in ('char', 'text', 'html'):
+    if field_type in ("char", "text", "html"):
         if not operation:
-            operation = 'other' if field_type == 'char' else 'merge'
-        if operation == 'first_not_null':
+            operation = "other" if field_type == "char" else "merge"
+        if operation == "first_not_null":
             field_vals = [x for x in field_vals if x]
             if field_vals:
                 vals[column] = field_vals[0]
-        elif operation == 'merge':
+        elif operation == "merge":
             _list = filter(lambda x: x, field_vals)
-            vals[column] = ' | '.join(_list)
-    elif field_type in ('integer', 'float', 'monetary'):
-        if operation or field_type != 'integer':
+            vals[column] = " | ".join(_list)
+    elif field_type in ("integer", "float", "monetary"):
+        if operation or field_type != "integer":
             field_vals = [0 if not x else x for x in field_vals]
         if not operation:
-            operation = 'other' if field_type == 'integer' else 'sum'
-        if operation == 'sum':
+            operation = "other" if field_type == "integer" else "sum"
+        if operation == "sum":
             vals[column] = sum(field_vals)
-        elif operation == 'avg':
+        elif operation == "avg":
             vals[column] = sum(field_vals) / len(field_vals)
-        elif operation == 'max':
+        elif operation == "max":
             vals[column] = max(field_vals)
-        elif operation == 'min':
+        elif operation == "min":
             vals[column] = min(field_vals)
-    elif field_type == 'boolean':
+    elif field_type == "boolean":
         if operation:
             field_vals = [False if x is None else x for x in field_vals]
-        operation = operation or 'other'
-        if operation == 'and':
+        operation = operation or "other"
+        if operation == "and":
             vals[column] = functools.reduce(lambda x, y: x & y, field_vals)
-        elif operation == 'or':
+        elif operation == "or":
             vals[column] = functools.reduce(lambda x, y: x | y, field_vals)
-    elif field_type in ('date', 'datetime'):
+    elif field_type in ("date", "datetime"):
         if operation:
             field_vals = list(filter(lambda x: x, field_vals))
-        operation = field_vals and operation or 'other'
-        if operation == 'max':
+        operation = field_vals and operation or "other"
+        if operation == "max":
             vals[column] = max(field_vals)
-        elif operation == 'min':
+        elif operation == "min":
             vals[column] = min(field_vals)
-    elif field_type == 'many2many' and method == 'orm':
-        operation = operation or 'merge'
-        if operation == 'merge':
+    elif field_type == "many2many" and method == "orm":
+        operation = operation or "merge"
+        if operation == "merge":
             field_vals = filter(lambda x: x is not False, field_vals)
             vals[column] = [(4, x.id) for x in field_vals]
-    elif field_type == 'one2many' and method == 'orm':
-        operation = operation or 'merge'
-        if operation == 'merge':
+    elif field_type == "one2many" and method == "orm":
+        operation = operation or "merge"
+        if operation == "merge":
             o2m_changes += 1
             field_vals.write({field.inverse_name: target_record_id})
-    elif field_type == 'binary':
-        operation = operation or 'merge'
-        if operation == 'merge':
+    elif field_type == "binary":
+        operation = operation or "merge"
+        if operation == "merge":
             field_vals = [x for x in field_vals if x]
             if not first_value and field_vals:
                 vals[column] = field_vals[0]
-    elif field_type in ('many2one', 'reference'):
-        operation = operation or 'merge'
-        if operation == 'merge':
-            if method != 'orm':
+    elif field_type in ("many2one", "reference"):
+        operation = operation or "merge"
+        if operation == "merge":
+            if method != "orm":
                 field_vals = [x for x in field_vals if x]
             if not first_value and field_vals:
                 vals[column] = field_vals[0]
-    elif field_type == 'many2one_reference' and method == 'orm' and\
-            field.model_field in model._fields:
-        operation = operation or 'merge'
-        if operation == 'merge':
+    elif (
+        field_type == "many2one_reference"
+        and method == "orm"
+        and field.model_field in model._fields
+    ):
+        operation = operation or "merge"
+        if operation == "merge":
             if field.model_field in field_spec:
                 del field_spec[field.model_field]
             list_model_field = all_records.mapped(field.model_field)
-            zip_list = [(x, y) for x, y
-                        in zip(field_vals, list_model_field) if x and y]
+            zip_list = [(x, y) for x, y in zip(field_vals, list_model_field) if x and y]
             if first_value and zip_list:
                 vals[column] = zip_list[0][0]
                 vals[field.model_field] = zip_list[0][1]
-    if method == 'orm':
+    if method == "orm":
         return vals, o2m_changes
     else:
         return vals
 
 
-def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
-                              field_spec):
+def _adjust_merged_values_orm(
+    env, model_name, record_ids, target_record_id, field_spec
+):
     """This method deals with the values on the records to be merged +
     the target record, performing operations that make sense on the meaning
     of the model.
@@ -462,19 +545,30 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     vals = {}
     o2m_changes = 0
     for field in fields:
-        if field_spec.get('openupgrade_other_fields', '') == 'preserve' \
-                and field.name not in field_spec:
+        if (
+            field_spec.get("openupgrade_other_fields", "") == "preserve"
+            and field.name not in field_spec
+        ):
             continue
         if not field.store or field.compute or field.related:
             continue  # don't do anything on these cases
         op = field_spec.get(field.name, False)
-        if field.type != 'reference':
+        if field.type != "reference":
             _list = all_records.mapped(field.name)
         else:
             _list = [x[field.name] for x in all_records if x[field.name]]
         field_vals, field_o2m_changes = apply_operations_by_field_type(
-            env, model_name, record_ids, target_record_id, field_spec,
-            _list, field.type, field.name, op, 'orm')
+            env,
+            model_name,
+            record_ids,
+            target_record_id,
+            field_spec,
+            _list,
+            field.type,
+            field.name,
+            op,
+            "orm",
+        )
         vals.update(field_vals)
         o2m_changes += field_o2m_changes
     if not vals:
@@ -482,7 +576,7 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
     # Curate values that haven't changed
     new_vals = {}
     for f in vals:
-        if model._fields[f].type != 'many2many':
+        if model._fields[f].type != "many2many":
             if vals[f] != getattr(target_record, f):
                 new_vals[f] = vals[f]
         else:
@@ -492,12 +586,15 @@ def _adjust_merged_values_orm(env, model_name, record_ids, target_record_id,
         target_record.write(new_vals)
         logger.debug(
             "Write %s value(s) in target record '%s' of model '%s'",
-            len(new_vals) + o2m_changes, target_record_id, model_name,
+            len(new_vals) + o2m_changes,
+            target_record_id,
+            model_name,
         )
 
 
-def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
-                              model_table, field_spec):
+def _adjust_merged_values_sql(
+    env, model_name, record_ids, target_record_id, model_table, field_spec
+):
     """This method deals with the values on the records to be merged +
     the target record, performing operations that make sense on the meaning
     of the model.
@@ -510,38 +607,53 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
 
       Possible operations by field types same as _adjust_merged_values_orm.
     """
-    if not column_exists(env.cr, model_table, 'id'):
+    if not column_exists(env.cr, model_table, "id"):
         # TODO: handle one2many and many2many
         return
-    env.cr.execute("""
+    env.cr.execute(
+        """
         SELECT isc.column_name, isc.data_type, imf.ttype
         FROM information_schema.columns isc
         JOIN ir_model_fields imf ON (
             imf.name = isc.column_name AND imf.model = %s)
         WHERE isc.table_name = %s
-        """, (model_name, model_table))
+        """,
+        (model_name, model_table),
+    )
     dict_column_type = env.cr.fetchall()
-    columns = ', '.join([x[0] for x in dict_column_type])
+    columns = ", ".join([x[0] for x in dict_column_type])
     env.cr.execute(
         """SELECT {columns}
         FROM {table}
         WHERE id IN %(record_ids)s""".format(
             table=model_table,
             columns=columns,
-        ), {'record_ids': (target_record_id,) + tuple(record_ids)}
+        ),
+        {"record_ids": (target_record_id,) + tuple(record_ids)},
     )
     lists = list(zip(*(env.cr.fetchall())))
     new_vals = {}
     vals = {}
-    for i, (column, column_type, field_type) in enumerate(dict_column_type):
-        if field_spec.get('openupgrade_other_fields', '') == 'preserve' \
-                and column not in field_spec:
+    for i, (column, _column_type, field_type) in enumerate(dict_column_type):
+        if (
+            field_spec.get("openupgrade_other_fields", "") == "preserve"
+            and column not in field_spec
+        ):
             continue
         op = field_spec.get(column, False)
         _list = list(lists[i])
         field_vals = apply_operations_by_field_type(
-            env, model_name, record_ids, target_record_id, field_spec,
-            _list, field_type, column, op, 'sql')
+            env,
+            model_name,
+            record_ids,
+            target_record_id,
+            field_spec,
+            _list,
+            field_type,
+            column,
+            op,
+            "sql",
+        )
         vals.update(field_vals)
     if not vals:
         return
@@ -551,9 +663,9 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
         FROM {table}
         WHERE id = %(target_record_id)s
         """.format(
-            table=model_table,
-            columns=", ". join(list(vals.keys()))
-        ), {'target_record_id': target_record_id}
+            table=model_table, columns=", ".join(list(vals.keys()))
+        ),
+        {"target_record_id": target_record_id},
     )
     record_vals = env.cr.dictfetchall()
     for column in vals:
@@ -567,18 +679,27 @@ def _adjust_merged_values_sql(env, model_name, record_ids, target_record_id,
             table=sql.Identifier(model_table),
             id=sql.Identifier("id"),
             set_value=sql.SQL(
-                ", ".join([
-                    "{{{field}}} = %({field})s".format(field=x)
-                    for x in new_vals.keys()
-                ])
-            ).format(**ident_dict)
+                ", ".join(
+                    [
+                        "{{{field}}} = %({field})s".format(field=x)
+                        for x in new_vals.keys()
+                    ]
+                )
+            ).format(**ident_dict),
         )
         new_vals["target_record_id"] = target_record_id
         logged_query(env.cr, query, new_vals)
 
 
-def _change_generic(env, model_name, record_ids, target_record_id,
-                    exclude_columns, method='orm', new_model_name=None):
+def _change_generic(
+    env,
+    model_name,
+    record_ids,
+    target_record_id,
+    exclude_columns,
+    method="orm",
+    new_model_name=None,
+):
     """Update known generic style res_id/res_model references.
     :param env: ORM environment
     :param model_name: Name of the model that have the generic references.
@@ -592,12 +713,12 @@ def _change_generic(env, model_name, record_ids, target_record_id,
       account.invoice > account.move).
     """
     for model_to_replace, res_id_column, model_column in [
-        ('calendar.event', 'res_id', 'res_model'),
-        ('ir.attachment', 'res_id', 'res_model'),
-        ('mail.activity', 'res_id', 'res_model'),
-        ('mail.followers', 'res_id', 'res_model'),
-        ('mail.message', 'res_id', 'model'),
-        ('rating.rating', 'res_id', 'res_model'),
+        ("calendar.event", "res_id", "res_model"),
+        ("ir.attachment", "res_id", "res_model"),
+        ("mail.activity", "res_id", "res_model"),
+        ("mail.followers", "res_id", "res_model"),
+        ("mail.message", "res_id", "model"),
+        ("rating.rating", "res_id", "res_model"),
     ]:
         try:
             model = env[model_to_replace].with_context(active_test=False)
@@ -605,101 +726,122 @@ def _change_generic(env, model_name, record_ids, target_record_id,
             continue
         if (model._table, res_id_column) in exclude_columns:
             continue
-        if method == 'orm':
-            if not model._fields.get(model_column) or \
-                    not model._fields.get(res_id_column):
+        if method == "orm":
+            if not model._fields.get(model_column) or not model._fields.get(
+                res_id_column
+            ):
                 continue
-            records = model.search([
-                (model_column, '=', model_name),
-                (res_id_column, 'in', record_ids)])
+            records = model.search(
+                [(model_column, "=", model_name), (res_id_column, "in", record_ids)]
+            )
             if records:
                 vals = {res_id_column: target_record_id}
                 if new_model_name:
                     vals[model_column] = new_model_name
-                if model_to_replace != 'mail.followers':
+                if model_to_replace != "mail.followers":
                     records.write(vals)
                 else:
                     # We need to avoid duplicated results in this model
-                    target_duplicated = model.search([
-                        (model_column, '=', model_name),
-                        (res_id_column, '=', target_record_id),
-                        ('partner_id', 'in', records.mapped('partner_id').ids),
-                    ])
-                    dup_partners = target_duplicated.mapped('partner_id')
-                    duplicated = records.filtered(lambda x: (
-                        x.partner_id in dup_partners))
+                    target_duplicated = model.search(
+                        [
+                            (model_column, "=", model_name),
+                            (res_id_column, "=", target_record_id),
+                            ("partner_id", "in", records.mapped("partner_id").ids),
+                        ]
+                    )
+                    dup_partners = target_duplicated.mapped("partner_id")
+                    duplicated = records.filtered(
+                        lambda x: (x.partner_id in dup_partners)
+                    )
                     (records - duplicated).write(vals)
                     duplicated.unlink()
                 logger.debug(
-                    "Changed %s record(s) of model '%s'",
-                    len(records), model_to_replace)
+                    "Changed %s record(s) of model '%s'", len(records), model_to_replace
+                )
         else:
-            if not column_exists(env.cr, model._table, res_id_column) or \
-                    not column_exists(env.cr, model._table, model_column):
+            if not column_exists(
+                env.cr, model._table, res_id_column
+            ) or not column_exists(env.cr, model._table, model_column):
                 continue
             format_args = {
-                'table': sql.Identifier(model._table),
-                'res_id_column': sql.Identifier(res_id_column),
-                'model_column': sql.Identifier(model_column),
+                "table": sql.Identifier(model._table),
+                "res_id_column": sql.Identifier(res_id_column),
+                "model_column": sql.Identifier(model_column),
             }
             query_args = {
-                'model_name': model_name,
-                'new_model_name': new_model_name or model_name,
-                'target_record_id': target_record_id,
-                'record_ids': tuple(record_ids),
+                "model_name": model_name,
+                "new_model_name": new_model_name or model_name,
+                "target_record_id": target_record_id,
+                "record_ids": tuple(record_ids),
             }
             query = sql.SQL(
                 "UPDATE {table} SET {res_id_column} = %(target_record_id)s"
             ).format(**format_args)
             if new_model_name:
-                query += sql.SQL(
-                    ", {model_column} = %(new_model_name)s"
-                ).format(**format_args)
-            query += sql.SQL(
-                " WHERE {model_column} = %(model_name)s "
-            ).format(**format_args)
-            if model_to_replace != 'mail.followers':
-                query += sql.SQL(
-                    "AND {res_id_column} in %(record_ids)s"
-                ).format(**format_args)
+                query += sql.SQL(", {model_column} = %(new_model_name)s").format(
+                    **format_args
+                )
+            query += sql.SQL(" WHERE {model_column} = %(model_name)s ").format(
+                **format_args
+            )
+            if model_to_replace != "mail.followers":
+                query += sql.SQL("AND {res_id_column} in %(record_ids)s").format(
+                    **format_args
+                )
                 logged_query(env.cr, query, query_args, skip_no_result=True)
             else:
                 for record_id in record_ids:
                     query_args["record_id"] = record_id
-                    query2 = query + sql.SQL(
-                        """AND {res_id_column} = %(record_id)s
+                    query2 = (
+                        query
+                        + sql.SQL(
+                            """AND {res_id_column} = %(record_id)s
                         AND partner_id NOT IN (
                             SELECT partner_id FROM {table}
                             WHERE {res_id_column} = %(target_record_id)s
                                 AND {model_column} = %(new_model_name)s
                         )"""
-                    ).format(**format_args)
+                        ).format(**format_args)
+                    )
                     logged_query(
-                        env.cr, query2, query_args, skip_no_result=True,
+                        env.cr,
+                        query2,
+                        query_args,
+                        skip_no_result=True,
                     )
                 # Remove remaining records non updated (that are duplicates)
-                logged_query(env.cr, sql.SQL(
-                    "DELETE FROM {table} "
-                    "WHERE {model_column} = %(model_name)s "
-                    "AND {res_id_column} IN %(record_ids)s"
-                ).format(**format_args), query_args, skip_no_result=True)
+                logged_query(
+                    env.cr,
+                    sql.SQL(
+                        "DELETE FROM {table} "
+                        "WHERE {model_column} = %(model_name)s "
+                        "AND {res_id_column} IN %(record_ids)s"
+                    ).format(**format_args),
+                    query_args,
+                    skip_no_result=True,
+                )
 
 
-def _delete_records_sql(env, model_name, record_ids, target_record_id,
-                        model_table=None):
+def _delete_records_sql(
+    env, model_name, record_ids, target_record_id, model_table=None
+):
     if not model_table:
         model_table = env[model_name]._table
     logged_query(
-        env.cr, "DELETE FROM ir_model_data WHERE model = %s AND res_id IN %s",
+        env.cr,
+        "DELETE FROM ir_model_data WHERE model = %s AND res_id IN %s",
         (model_name, tuple(record_ids)),
     )
     logged_query(
-        env.cr, "DELETE FROM ir_attachment "
-                "WHERE res_model = %s AND res_id IN %s",
+        env.cr,
+        "DELETE FROM ir_attachment " "WHERE res_model = %s AND res_id IN %s",
         (model_name, tuple(record_ids)),
     )
-    logged_query(env.cr, sql.SQL("DELETE FROM {} WHERE id IN %s").format(
-        sql.Identifier(model_table)), (tuple(record_ids), ))
+    logged_query(
+        env.cr,
+        sql.SQL("DELETE FROM {} WHERE id IN %s").format(sql.Identifier(model_table)),
+        (tuple(record_ids),),
+    )
 
 
 def _delete_records_orm(env, model_name, record_ids, target_record_id):
@@ -708,15 +850,16 @@ def _delete_records_orm(env, model_name, record_ids, target_record_id):
         records.unlink()
         logger.debug(
             "Deleted %s source record(s) of model '%s'",
-            len(record_ids), model_name,
+            len(record_ids),
+            model_name,
         )
 
 
-def _check_recurrence(env, model_name, record_ids, target_record_id,
-                      model_table=None):
+def _check_recurrence(env, model_name, record_ids, target_record_id, model_table=None):
     if not model_table:
         model_table = env[model_name]._table
-    env.cr.execute("""
+    env.cr.execute(
+        """
         SELECT tc.table_name, kcu.column_name, COALESCE(imf.column1, 'id')
         FROM information_schema.table_constraints AS tc
         JOIN information_schema.key_column_usage AS kcu
@@ -733,18 +876,24 @@ def _check_recurrence(env, model_name, record_ids, target_record_id,
                 tc.table_name = imf.relation_table))
         WHERE tc.constraint_type = 'FOREIGN KEY'
         AND ccu.table_name = %s and ccu.column_name = 'id'
-        """, (model_name, model_table))
+        """,
+        (model_name, model_table),
+    )
     for table, column, origin in env.cr.fetchall():
         query = sql.SQL(
             """SELECT {column} FROM {table}
             WHERE {origin} = %(target_record_id)s"""
         ).format(
-            table=sql.Identifier(table), column=sql.Identifier(column),
+            table=sql.Identifier(table),
+            column=sql.Identifier(column),
             origin=sql.Identifier(origin),
         )
-        env.cr.execute(query, {
-            'target_record_id': target_record_id,
-        })
+        env.cr.execute(
+            query,
+            {
+                "target_record_id": target_record_id,
+            },
+        )
         new_parent_row = env.cr.fetchall()
         if new_parent_row and new_parent_row[0] in record_ids:
             # When we already have recursive hierarchy, doing a
@@ -754,14 +903,27 @@ def _check_recurrence(env, model_name, record_ids, target_record_id,
             logger.info(
                 "Couldn't merge %s record(s) of model %s to record_id %s"
                 " to avoid recursion with field %s of table %s",
-                len(record_ids), model_name, target_record_id, origin, table)
+                len(record_ids),
+                model_name,
+                target_record_id,
+                origin,
+                table,
+            )
             return True
     return False
 
 
-def merge_records(env, model_name, record_ids, target_record_id,
-                  field_spec=None, method='orm', delete=True,
-                  exclude_columns=None, model_table=None):
+def merge_records(
+    env,
+    model_name,
+    record_ids,
+    target_record_id,
+    field_spec=None,
+    method="orm",
+    delete=True,
+    exclude_columns=None,
+    model_table=None,
+):
     """Merge several records into the target one.
 
     NOTE: This should be executed in end migration scripts for assuring that
@@ -786,17 +948,18 @@ def merge_records(env, model_name, record_ids, target_record_id,
     """
     if exclude_columns is None:
         exclude_columns = []
-    if field_spec is None and method == 'orm':
+    if field_spec is None and method == "orm":
         field_spec = {}
     if isinstance(record_ids, list):
         record_ids = tuple(record_ids)
     args0 = (env, model_name, record_ids, target_record_id)
-    args = args0 + (exclude_columns, )
+    args = args0 + (exclude_columns,)
     if target_record_id in record_ids:
-        raise Exception("You can't put the target record in the list or "
-                        "records to be merged.")
-    _change_generic(*args, method=method)
-    if method == 'orm':
+        raise Exception(
+            "You can't put the target record in the list or " "records to be merged."
+        )
+    _change_generic(*args, method=method)  # pylint: disable=E1124
+    if method == "orm":
         # Check which records to be merged exist
         record_ids = env[model_name].browse(record_ids).exists().ids
         if not record_ids:
@@ -807,7 +970,7 @@ def merge_records(env, model_name, record_ids, target_record_id,
         _change_many2many_refs_orm(*args)
         _change_reference_refs_orm(*args)
         _change_translations_orm(*args)
-        args2 = args0 + (field_spec, )
+        args2 = args0 + (field_spec,)
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
@@ -818,16 +981,20 @@ def merge_records(env, model_name, record_ids, target_record_id,
         # Check which records to be merged exist
         if not model_table:
             model_table = env[model_name]._table
-        env.cr.execute(sql.SQL("SELECT id FROM {} WHERE id IN %s").format(
-            sql.Identifier(model_table)), (tuple(record_ids), ))
+        env.cr.execute(
+            sql.SQL("SELECT id FROM {} WHERE id IN %s").format(
+                sql.Identifier(model_table)
+            ),
+            (tuple(record_ids),),
+        )
         record_ids = [x[0] for x in env.cr.fetchall()]
         if not record_ids:
             return
         if _check_recurrence(
-                env, model_name, record_ids, target_record_id,
-                model_table=model_table):
+            env, model_name, record_ids, target_record_id, model_table=model_table
+        ):
             return
-        args3 = args + (model_table, )
+        args3 = args + (model_table,)
         _change_foreign_key_refs(*args3)
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
@@ -836,5 +1003,5 @@ def merge_records(env, model_name, record_ids, target_record_id,
             _adjust_merged_values_sql(*args4)
         if delete:
             _delete_records_sql(
-                env, model_name, record_ids, target_record_id,
-                model_table=model_table)
+                env, model_name, record_ids, target_record_id, model_table=model_table
+            )

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 ##############################################################################
 #
 #    OpenERP, Open Source Management Solution
@@ -28,19 +28,20 @@ from lxml.html import fromstring
 
 
 def table_exists(cr, table):
-    """ Check whether a certain table or view exists """
-    cr.execute('SELECT 1 FROM pg_class WHERE relname = %s', (table,))
+    """Check whether a certain table or view exists"""
+    cr.execute("SELECT 1 FROM pg_class WHERE relname = %s", (table,))
     return cr.fetchone()
 
 
 def column_exists(cr, table, column):
-    """ Check whether a certain column exists """
+    """Check whether a certain column exists"""
     cr.execute(
-        'SELECT count(attname) FROM pg_attribute '
-        'WHERE attrelid = '
-        '( SELECT oid FROM pg_class WHERE relname = %s ) '
-        'AND attname = %s',
-        (table, column))
+        "SELECT count(attname) FROM pg_attribute "
+        "WHERE attrelid = "
+        "( SELECT oid FROM pg_class WHERE relname = %s ) "
+        "AND attname = %s",
+        (table, column),
+    )
     return cr.fetchone()[0] == 1
 
 
@@ -93,15 +94,17 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
     return tostring(fragment, pretty_print=pretty_print, encoding="unicode")
 
 
-def convert_xml_node(node,
-                     attr_add=None,
-                     attr_rm=frozenset(),
-                     class_add="",
-                     class_rm="",
-                     style_add=None,
-                     style_rm=frozenset(),
-                     tag="",
-                     wrap=""):
+def convert_xml_node(
+    node,
+    attr_add=None,
+    attr_rm=frozenset(),
+    class_add="",
+    class_rm="",
+    style_add=None,
+    style_rm=frozenset(),
+    tag="",
+    wrap="",
+):
     """Apply conversions to an XML node.
 
     All parameters except :param:`node` can be a callable that return the
@@ -163,8 +166,10 @@ def convert_xml_node(node,
     # Obtain attributes, classes and styles
     classes = set(node.attrib.get("class", "").split())
     styles = node.attrib.get("style", "").split(";")
-    styles = {key.strip(): val.strip() for key, val in
-              (style.split(":", 1) for style in styles if ":" in style)}
+    styles = {
+        key.strip(): val.strip()
+        for key, val in (style.split(":", 1) for style in styles if ":" in style)
+    }
     # Convert incoming callable arguments into values
     originals = {
         "attrs": dict(node.attrib.items()),
@@ -217,8 +222,7 @@ def convert_xml_node(node,
         wrapper.append(node)
 
 
-def convert_html_replacement_class_shortcut(class_rm="", class_add="",
-                                            **kwargs):
+def convert_html_replacement_class_shortcut(class_rm="", class_add="", **kwargs):
     """Shortcut to create a class replacement spec.
 
     :param str class_rm:
@@ -236,8 +240,10 @@ def convert_html_replacement_class_shortcut(class_rm="", class_add="",
     """
     kwargs.setdefault("selector", ".%s" % ".".join(class_rm.split()))
     assert kwargs["selector"] != "."
-    kwargs.update({
-        "class_rm": class_rm,
-        "class_add": class_add,
-    })
+    kwargs.update(
+        {
+            "class_rm": class_rm,
+            "class_add": class_add,
+        }
+    )
     return kwargs
