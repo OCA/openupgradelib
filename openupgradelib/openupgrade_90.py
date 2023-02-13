@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- # fmt: skip
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 # Copyright 2017 Tecnativa - Pedro M. Baeza <pedro.baeza@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 

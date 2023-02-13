@@ -50,7 +50,7 @@ with mock.patch(import_str, side_effect=import_mock):
 
 
 class TestOpenupgradelib(unittest.TestCase):
-    def setUp(self):
+    def setUp(self):  # pylint: disable=W8106
         self.cr = mock.Mock()
         self.cr.savepoint = mock_contextmanager
 
@@ -66,7 +66,7 @@ class TestOpenupgradelib(unittest.TestCase):
         migrate_with_cr(self.cr, "irrelevant.version")
         migrate_with_env(self.cr, "irrelevant.version")
 
-    def tearDown(self):
+    def tearDown(self):  # pylint: disable=W8106
         pass
 
 

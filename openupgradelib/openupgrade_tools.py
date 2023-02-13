@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- # fmt: skip
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 ##############################################################################
 #
 #    OpenERP, Open Source Management Solution

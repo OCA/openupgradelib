@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- # fmt: skip
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 # Copyright 2011-2020 Therp BV <https://therp.nl>.
 # Copyright 2016-2020 Tecnativa - Pedro M. Baeza.
 # Copyright Odoo Community Association (OCA)
@@ -112,7 +112,7 @@ else:
 def do_raise(error):
     if UserError:
         raise UserError(error)
-    raise except_orm("Error", error)
+    raise except_orm("Error", error)  # pylint: disable=C8107
 
 
 if sys.version_info[0] == 3:
@@ -248,7 +248,7 @@ def check_values_selection_field(cr, table_name, field_name, allowed_values):
     .. versionadded:: 8.0
     """
     res = True
-    cr.execute(
+    cr.execute(  # pylint: disable=E8103
         "SELECT %s, count(*) FROM %s GROUP BY %s;"
         % (field_name, table_name, field_name)
     )
@@ -315,7 +315,7 @@ def load_data(cr, module_name, filename, idref=None, mode="init"):
                 try:
                     fp = open(pathname)
                     break
-                except OSError:
+                except OSError:  # pylint: disable=W7938
                     pass
         else:
             raise
@@ -610,7 +610,7 @@ def rename_columns(cr, column_spec):
             if new is None:
                 new = get_legacy_name(old)
             logger.info("table %s, column %s: renaming to %s", table, old, new)
-            cr.execute(
+            cr.execute(  # pylint: disable=E8103
                 'ALTER TABLE "%s" RENAME "%s" TO "%s"'
                 % (
                     table,
@@ -621,7 +621,7 @@ def rename_columns(cr, column_spec):
             old_index_name = "%s_%s_index" % (table, old)
             new_index_name = "%s_%s_index" % (table, new)
             if len(new_index_name) <= 63:
-                cr.execute(
+                cr.execute(  # pylint: disable=E8103
                     'ALTER INDEX IF EXISTS "%s" RENAME TO "%s"'
                     % (old_index_name, new_index_name)
                 )
@@ -813,7 +813,7 @@ def rename_tables(cr, table_spec):
         if new is None:
             new = get_legacy_name(old)
         logger.info("table %s: renaming to %s", old, new)
-        cr.execute(
+        cr.execute(  # pylint: disable=E8103
             'ALTER TABLE "%s" RENAME TO "%s"'
             % (
                 old,
@@ -1350,7 +1350,9 @@ def drop_columns(cr, column_spec):
     for (table, column) in column_spec:
         logger.info("table %s: drop column %s", table, column)
         if column_exists(cr, table, column):
-            cr.execute('ALTER TABLE "%s" DROP COLUMN "%s"' % (table, column))
+            cr.execute(  # pylint: disable=E8103
+                'ALTER TABLE "%s" DROP COLUMN "%s"' % (table, column)
+            )
         else:
             logger.warning("table %s: column %s did not exist", table, column)
 
@@ -1462,7 +1464,7 @@ def delete_model_workflow(cr, model, drop_indexes=False):
     logged_query(cr, "DELETE FROM wkf WHERE osv = %s", (model,))
     # Remove temporary indexes if asked to do so
     if drop_indexes:
-        for index, table, col in _index_loop():
+        for index, _table, _col in _index_loop():
             logged_query(cr, sql.SQL("DROP INDEX {}").format(index))
 
 
@@ -1494,7 +1496,7 @@ def warn_possible_dataloss(cr, pool, old_module, fields):
             ],
         )
         if not module_ids:
-            cr.execute(
+            cr.execute(  # pylint: disable=E8103
                 "SELECT count(*) FROM (SELECT %s from %s group by %s) "
                 "as tmp" % (field["field"], field["table"], field["field"])
             )
@@ -1524,6 +1526,7 @@ def warn_possible_dataloss(cr, pool, old_module, fields):
                 )
 
 
+# flake8: noqa: C901
 def set_defaults(cr, pool, default_spec, force=False, use_orm=False):
     """
     Set default value. Useful for fields that are newly required. Uses orm, so
@@ -1830,7 +1833,10 @@ def m2o_to_x2m(cr, model, table, field, source_field):
 
     .. versionadded:: 8.0
     """
-    columns = getattr(model, "_columns", False) or getattr(model, "_fields")
+    try:
+        columns = model._fields
+    except AttributeError:
+        columns = model._columns
     if not columns.get(field):
         do_raise(
             "m2o_to_x2m: field %s doesn't exist in model %s" % (field, model._name)
@@ -2306,7 +2312,7 @@ def move_field_m2o(
     .. versionadded:: 8.0
     """
 
-    def default_func(cr, pool, id, vals):
+    def default_func(cr, pool, rec_id, vals):
         """This function return the value the most present in vals."""
         quantity = {}.fromkeys(set(vals), 0)
         for val in vals:
@@ -2325,7 +2331,7 @@ def move_field_m2o(
     table_old_model = pool[registry_old_model]._table
     table_new_model = pool[registry_new_model]._table
     # Manage regular case (all the value are identical)
-    cr.execute(
+    cr.execute(  # pylint: disable=E8103
         " SELECT %s"
         " FROM %s"
         " GROUP BY %s"
@@ -2379,7 +2385,7 @@ def move_field_m2o(
 
     # Manage non-determinist case (some values are different)
     func = compute_func if compute_func else default_func
-    cr.execute(
+    cr.execute(  # pylint: disable=E8103
         " SELECT %s "
         " FROM %s "
         " GROUP BY %s having count(*) != 1;"
@@ -2393,7 +2399,7 @@ def move_field_m2o(
             " WHERE %s = %s;"
             % (field_old_model, table_old_model, m2o_field_old_model, ko_id)
         )
-        cr.execute(query)
+        cr.execute(query)  # pylint: disable=E8103
         if binary_field:
             vals = [str(x[0][:]) if x[0] else False for x in cr.fetchall()]
         else:
@@ -2423,7 +2429,7 @@ def convert_field_to_html(cr, table, field_name, html_field_name, verbose=True):
             "You cannot use this method in an OpenUpgrade version " "prior to 7.0."
         )
         return
-    cr.execute(
+    cr.execute(  # pylint: disable=E8103
         "SELECT id, %(field)s FROM %(table)s WHERE %(field)s IS NOT NULL"
         % {
             "field": field_name,
@@ -2456,7 +2462,7 @@ def date_to_datetime_tz(
 
     .. versionadded:: 8.0
     """
-    cr.execute(
+    cr.execute(  # pylint: disable=E8103
         """
         SELECT distinct(rp.tz)
         FROM %s my_table, res_users ru, res_partner rp
@@ -2549,12 +2555,12 @@ def savepoint(cr):
             yield
     else:
         name = uuid.uuid1().hex
-        cr.execute('SAVEPOINT "%s"' % name)
+        cr.execute('SAVEPOINT "%s"' % name)  # pylint: disable=E8103
         try:
             yield
-            cr.execute('RELEASE SAVEPOINT "%s"' % name)
+            cr.execute('RELEASE SAVEPOINT "%s"' % name)  # pylint: disable=E8103
         except Exception:
-            cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)
+            cr.execute('ROLLBACK TO SAVEPOINT "%s"' % name)  # pylint: disable=E8103
             raise
 
 
@@ -2615,6 +2621,7 @@ def delete_record_translations(cr, module, xml_ids):
         )
 
 
+# flake8: noqa: C901
 def disable_invalid_filters(env):
     """It analyzes all the existing active filters to check if they are still
     correct. If not, they are disabled for avoiding errors when clicking on
@@ -2657,8 +2664,10 @@ def disable_invalid_filters(env):
         if f.model_id not in env:
             continue  # Obsolete or invalid model
         model = env[f.model_id]
-        columns = getattr(model, "_columns", False) or getattr(model, "_fields")
-
+        try:
+            columns = model._fields
+        except AttributeError:
+            columns = model._columns
         globaldict = {"uid": env.uid}
         if version_info[0] < 14:
             globaldict.update({"time": time})
@@ -2887,7 +2896,7 @@ def add_fields(env, field_spec):
                     )""",
                     (name1, module, "ir.model.fields", field_id),
                 )
-        except IntegrityError:
+        except IntegrityError:  # pylint: disable=W7938
             # Do not fail if already present
             pass
 
@@ -2909,7 +2918,7 @@ def update_field_multilang(records, field, method):
     installed_langs = [(records.env.lang or "en_US", "English")]
     if records._fields[field].translate:
         installed_langs = records.env["res.lang"].get_installed()
-    for lang_code, lang_name in installed_langs:
+    for lang_code, _lang_name in installed_langs:
         for record in records.with_context(lang=lang_code):
             new_value = method(record[field], lang_code, record)
             if record[field] != new_value:

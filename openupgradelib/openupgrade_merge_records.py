@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- # fmt: skip
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 # Copyright 2018 Tecnativa - Pedro M. Baeza
 # Copyright 2018 Opener B.V. - Stefan Rijnhart
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
@@ -370,6 +370,7 @@ def _change_translations_sql(
     )
 
 
+# flake8: noqa: C901
 def apply_operations_by_field_type(
     env,
     model_name,
@@ -633,7 +634,7 @@ def _adjust_merged_values_sql(
     lists = list(zip(*(env.cr.fetchall())))
     new_vals = {}
     vals = {}
-    for i, (column, column_type, field_type) in enumerate(dict_column_type):
+    for i, (column, _column_type, field_type) in enumerate(dict_column_type):
         if (
             field_spec.get("openupgrade_other_fields", "") == "preserve"
             and column not in field_spec
@@ -957,7 +958,7 @@ def merge_records(
         raise Exception(
             "You can't put the target record in the list or " "records to be merged."
         )
-    _change_generic(*args, method=method)
+    _change_generic(*args, method=method)  # pylint: disable=E1124
     if method == "orm":
         # Check which records to be merged exist
         record_ids = env[model_name].browse(record_ids).exists().ids

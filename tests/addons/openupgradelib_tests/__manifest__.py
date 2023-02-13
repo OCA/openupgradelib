@@ -4,7 +4,8 @@
     "name": "Openupgradelib Test Addon",
     "version": "1.0.0",  # No version prefix on purpose
     "category": "Migration",
-    "author": "Opener B.V., OCA (Odoo Community Association)",
+    "author": "Opener B.V., Odoo Community Association (OCA)",
+    "license": "AGPL-3",
     "website": "https://github.com/oca/openupgradelib",
     "installable": True,
 }

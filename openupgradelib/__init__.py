@@ -12,12 +12,12 @@ try:
         from importlib.metadata import version, PackageNotFoundError
     else:
         from importlib_metadata import version, PackageNotFoundError
-except ImportError:
+except ImportError:  # pylint: disable=W7938
     # this happens when setup.py imports openupgradelib
     pass
 else:
     try:
         __version__ = version("openupgradelib")
-    except PackageNotFoundError:
+    except PackageNotFoundError:  # pylint: disable=W7938
         # package is not installed
         pass
