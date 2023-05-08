@@ -74,5 +74,3 @@ script:
       /dev/stdin
     - ./odoo-bin -d testdb -u all --addons-path
       addons,/home/travis/build/OCA/openupgradelib/tests/addons --stop-after-init
-    # Build docs
-    - pip install -q sphinx; sh ~/openupgrade/scripts/build_openupgrade_docs
