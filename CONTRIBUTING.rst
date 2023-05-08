@@ -65,8 +65,8 @@ development.
     $ git clone git@github.com:your_name_here/openupgradelib.git
 
 3. Install your local copy into a virtualenv. Assuming you have
-  virtualenvwrapper installed, this is how you set up your fork for local
-  development::
+   virtualenvwrapper installed, this is how you set up your fork for local
+   development::
 
     $ mkvirtualenv openupgradelib
     $ cd openupgradelib/
@@ -79,7 +79,7 @@ development.
    Now you can make your changes locally.
 
 5. When you're done making changes, check that your changes pass flake8 and the
-  tests, including testing other Python versions with tox::
+   tests, including testing other Python versions with tox::
 
     $ flake8 openupgradelib tests
     $ python setup.py test
@@ -102,11 +102,11 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put your
-  new functionality into a function with a docstring, and add the feature to
-  the list in README.rst.
+   new functionality into a function with a docstring, and add the feature to
+   the list in README.rst.
 3. The pull request should work for Python 2.6, 2.7, 3.3, and 3.4, and for
-  PyPy. Check https://travis-ci.org/OCA/openupgradelib/pull_requests
-  and make sure that the tests pass for all supported Python versions.
+   PyPy. Check https://travis-ci.org/OCA/openupgradelib/pull_requests
+   and make sure that the tests pass for all supported Python versions.
 
 Tips
 ----

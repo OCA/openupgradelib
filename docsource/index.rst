@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to OpenUpgrade Library's documentation!
-======================================
+===============================================
 
 Contents:
 
@@ -14,6 +14,7 @@ Contents:
    readme
    installation
    usage
+   API
    contributing
    authors
    history
@@ -24,4 +25,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
