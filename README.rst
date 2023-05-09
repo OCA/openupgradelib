@@ -29,8 +29,3 @@ Install
 Always get the latest version through:
 
 pip/pip3 install --ignore-installed git+https://github.com/OCA/openupgradelib.git@master
-
-Features
---------
-
-* TODO
