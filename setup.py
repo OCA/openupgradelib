@@ -31,7 +31,10 @@ setup(
     url="https://github.com/OCA/openupgradelib",
     packages=["openupgradelib"],
     include_package_data=True,
-    setup_requires=["setuptools_scm"],
+    setup_requires=[
+        "setuptools_scm<6.0.0; python_version <= '3.6'",
+        "setuptools_scm; python_version > '3.6'",
+    ],
     install_requires=[
         "lxml",
         "cssselect",
