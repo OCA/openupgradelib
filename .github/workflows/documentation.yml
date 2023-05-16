@@ -53,4 +53,4 @@ jobs:
       - name: OpenUpgradelib Docs
         run: |
           # try to build the documentation
-          python3 -m sphinx -d ./docs/.doctrees ./docsource ./docs
+          python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs

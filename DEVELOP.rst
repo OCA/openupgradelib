@@ -25,4 +25,4 @@ To contribute to the openupgradelib documentation:
 .. code:: shell
 
     . ./env/bin/activate
-    python3 -m sphinx -d ./docs/.doctrees ./docsource ./docs
+    python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
