@@ -5,8 +5,10 @@
 
 name: Build and commit documentation
 
+
 on:
-  pull_request:
+  push:
+    branches: ["master"]
 
 jobs:
   documentation-commit:
@@ -23,4 +25,12 @@ jobs:
       - name: OpenUpgradelib Docs
         run: |
           # try to build the documentation
+          python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "docs"
+          default_author: github_actions
+          message: "[TEST] HTML documentation"
           python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
