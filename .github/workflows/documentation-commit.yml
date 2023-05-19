@@ -15,6 +15,14 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/oca/oca-ci/py3.10-odoo16.0:latest
     steps:
+      # https://github.com/actions/runner/issues/2033
+      - name: Install GIT
+        run: |
+          # install GIT, as without it checkout would use REST API
+          apt update
+          apt install -y \
+            git
+
       - uses: actions/checkout@v3
 
       - name: Requirements Installation
