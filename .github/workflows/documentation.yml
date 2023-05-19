@@ -8,17 +8,54 @@ on:
 
 jobs:
   documentation:
-    runs-on: ubuntu-22.04
-    container: ghcr.io/oca/oca-ci/py3.10-odoo16.0:latest
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Check out Odoo
+        uses: actions/checkout@v2
+        with:
+          repository: odoo/odoo
+          ref: "15.0"
+          fetch-depth: 1
+          path: odoo
+
+      - name: Check out OpenUpgradelib
+        uses: actions/checkout@v2
+        with:
+          path: openupgradelib
+
+      - name: Configuration
+        run: |
+          sudo apt update
+          sudo apt install \
+              expect \
+              expect-dev \
+              libevent-dev \
+              libldap2-dev \
+              libsasl2-dev \
+              libxml2-dev \
+              libxslt1-dev \
+              nodejs \
+              python3-lxml \
+              python3-passlib \
+              python3-psycopg2 \
+              python3-serial \
+              python3-simplejson \
+              python3-werkzeug \
+              python3-yaml \
+              unixodbc-dev
 
       - name: Requirements Installation
         run: |
-          pip install -e .
-          pip install -r ./doc_requirements.txt
+          pip install -q -r odoo/requirements.txt
+          pip install -e ./openupgradelib
+          pip install -r ./openupgradelib/doc_requirements.txt
 
       - name: OpenUpgradelib Docs
         run: |
           # try to build the documentation
-          python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
+          python3 -m sphinx -W -d ./openupgradelib/docs/.doctrees ./openupgradelib/docsource ./openupgradelib/docs
