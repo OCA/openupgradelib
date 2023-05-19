@@ -27,6 +27,12 @@ jobs:
           # try to build the documentation
           python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
 
+      # https://github.com/actions/runner/issues/2033
+      - name: Set ownership
+        run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
       - name: Commit changes
         uses: EndBug/add-and-commit@v9
         with:
