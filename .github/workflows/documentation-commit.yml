@@ -6,8 +6,7 @@
 name: Build and commit documentation
 
 on:
-  push:
-    branches: ["master"]
+  pull_request:
 
 jobs:
   documentation-commit:
