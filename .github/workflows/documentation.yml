@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/oca/oca-ci/py3.10-odoo16.0:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Requirements Installation
         run: |
