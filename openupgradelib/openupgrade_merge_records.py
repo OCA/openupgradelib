@@ -403,6 +403,21 @@ def apply_operations_by_field_type(
         elif operation == "merge":
             _list = filter(lambda x: x, field_vals)
             vals[column] = " | ".join(_list)
+    elif field_type == "serialized":
+        operation = operation or "first_not_null"
+        if operation == "first_not_null":
+            field_vals.reverse()
+            field_val = {}
+            for x in field_vals:
+                field_val |= x or {}
+            if field_val:
+                if method == "sql":
+                    if field_type == "serialized":
+                        import json
+
+                        vals[column] = json.dumps(field_val)
+                else:
+                    vals[column] = field_val
     elif field_type in ("integer", "float", "monetary"):
         if operation or field_type != "integer":
             field_vals = [0 if not x else x for x in field_vals]
@@ -537,6 +552,9 @@ def _adjust_merged_values_orm(
         - other value: content on target record is preserved
       * Selection fields:
         - any value: content on target record is preserved
+      * Serialized fields:
+        - 'first_not_null' (default): For each found key, put first not null value.
+        - other value: content on target record is preserved
     """
     model = env[model_name]
     fields = model._fields.values()
@@ -642,6 +660,10 @@ def _adjust_merged_values_sql(
             continue
         op = field_spec.get(column, False)
         _list = list(lists[i])
+        if field_type == "serialized":
+            import json
+
+            _list = [x if isinstance(x, dict) else json.loads(x) for x in _list]
         field_vals = apply_operations_by_field_type(
             env,
             model_name,
