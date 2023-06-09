@@ -834,7 +834,7 @@ def _delete_records_sql(
     )
     logged_query(
         env.cr,
-        "DELETE FROM ir_attachment " "WHERE res_model = %s AND res_id IN %s",
+        "DELETE FROM ir_attachment WHERE res_model = %s AND res_id IN %s",
         (model_name, tuple(record_ids)),
     )
     logged_query(
@@ -956,7 +956,7 @@ def merge_records(
     args = args0 + (exclude_columns,)
     if target_record_id in record_ids:
         raise Exception(
-            "You can't put the target record in the list or " "records to be merged."
+            "You can't put the target record in the list or records to be merged."
         )
     _change_generic(*args, method=method)  # pylint: disable=E1124
     if method == "orm":

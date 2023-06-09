@@ -879,7 +879,7 @@ def rename_models(cr, model_spec):
         _new = new.replace(".", "_")
         logged_query(
             cr,
-            "UPDATE ir_model SET model = %s " "WHERE model = %s",
+            "UPDATE ir_model SET model = %s WHERE model = %s",
             (
                 new,
                 old,
@@ -887,7 +887,7 @@ def rename_models(cr, model_spec):
         )
         logged_query(
             cr,
-            "UPDATE ir_model_data SET model = %s " "WHERE model = %s",
+            "UPDATE ir_model_data SET model = %s WHERE model = %s",
             (
                 new,
                 old,
@@ -895,7 +895,7 @@ def rename_models(cr, model_spec):
         )
         logged_query(
             cr,
-            "UPDATE ir_model_data SET name=%s " "WHERE name=%s AND model = 'ir.model'",
+            "UPDATE ir_model_data SET name=%s WHERE name=%s AND model = 'ir.model'",
             (
                 "model_" + _new,
                 "model_" + _old,
@@ -914,7 +914,7 @@ def rename_models(cr, model_spec):
         )
         logged_query(
             cr,
-            "UPDATE ir_attachment SET res_model = %s " "WHERE res_model = %s",
+            "UPDATE ir_attachment SET res_model = %s WHERE res_model = %s",
             (
                 new,
                 old,
@@ -922,7 +922,7 @@ def rename_models(cr, model_spec):
         )
         logged_query(
             cr,
-            "UPDATE ir_model_fields SET model = %s " "WHERE model = %s",
+            "UPDATE ir_model_fields SET model = %s WHERE model = %s",
             (
                 new,
                 old,
@@ -938,7 +938,7 @@ def rename_models(cr, model_spec):
             )
         logged_query(
             cr,
-            "UPDATE ir_filters SET model_id = %s " "WHERE model_id = %s",
+            "UPDATE ir_filters SET model_id = %s WHERE model_id = %s",
             (
                 new,
                 old,
@@ -966,7 +966,7 @@ def rename_models(cr, model_spec):
         field_ids = [x[0] for x in cr.fetchall()]
         logged_query(
             cr,
-            "UPDATE ir_model_fields SET relation = %s " "WHERE relation = %s",
+            "UPDATE ir_model_fields SET relation = %s WHERE relation = %s",
             (
                 new,
                 old,
@@ -1031,7 +1031,7 @@ def rename_models(cr, model_spec):
             # model_name is a related field that in v11 becomes stored
             logged_query(
                 cr,
-                "UPDATE ir_act_server SET model_name = %s " "WHERE model_name = %s",
+                "UPDATE ir_act_server SET model_name = %s WHERE model_name = %s",
                 (
                     new,
                     old,
@@ -1043,7 +1043,7 @@ def rename_models(cr, model_spec):
             ):
                 logged_query(
                     cr,
-                    "UPDATE email_template SET model=%s " "where model=%s",
+                    "UPDATE email_template SET model=%s where model=%s",
                     (new, old),
                 )
         if is_module_installed(cr, "mail"):
@@ -1063,19 +1063,19 @@ def rename_models(cr, model_spec):
             if table_exists(cr, "mail_template"):
                 logged_query(
                     cr,
-                    "UPDATE mail_template SET model=%s " "where model=%s",
+                    "UPDATE mail_template SET model=%s where model=%s",
                     (new, old),
                 )
             if table_exists(cr, "mail_followers"):
                 logged_query(
                     cr,
-                    "UPDATE mail_followers SET res_model=%s " "where res_model=%s",
+                    "UPDATE mail_followers SET res_model=%s where res_model=%s",
                     (new, old),
                 )
             if table_exists(cr, "mail_activity"):
                 logged_query(
                     cr,
-                    "UPDATE mail_activity SET res_model=%s " "where res_model=%s",
+                    "UPDATE mail_activity SET res_model=%s where res_model=%s",
                     (new, old),
                 )
 
@@ -1286,12 +1286,12 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
     For example, a currency was added in the XML data of the base module
     in OpenERP 6 but the user had already created this missing currency
     by hand in it's 5.0 database. In order to avoid having 2 identical
-    currencies (which is in fact blocked by an sql_constraint), you have to
+    currencies (which is in fact blocked by a sql_constraint), you have to
     add the entry in ir_model_data before the upgrade.
     """
-    # Check if the XMLID doesn't already exists
+    # Check if the XMLID doesn't already exist
     cr.execute(
-        "SELECT id FROM ir_model_data WHERE module=%s AND name=%s " "AND model=%s",
+        "SELECT id FROM ir_model_data WHERE module=%s AND name=%s AND model=%s",
         (module, xmlid, model),
     )
     already_exists = cr.fetchone()
@@ -1757,10 +1757,10 @@ def update_module_names(cr, namespec, merge_modules=False):
             "WHERE module = %s"
         )
         logged_query(cr, query, (new_name, old_name))
-        query = "UPDATE ir_module_module_dependency SET name = %s " "WHERE name = %s"
+        query = "UPDATE ir_module_module_dependency SET name = %s WHERE name = %s"
         logged_query(cr, query, (new_name, old_name))
         if version_info[0] > 7 and version_info[0] < 16:
-            query = "UPDATE ir_translation SET module = %s " "WHERE module = %s"
+            query = "UPDATE ir_translation SET module = %s WHERE module = %s"
             logged_query(cr, query, (new_name, old_name))
         if merge_modules:
             # Conserve old_name's state if new_name is uninstalled
@@ -2238,7 +2238,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     filename = frame.locals.get("pyfile") or frame.locals["fp"].name
                 except Exception as exc:
                     logger.error(
-                        "'migrate' decorator: failed to inspect " "the frame above: %s",
+                        "'migrate' decorator: failed to inspect the frame above: %s",
                         exc,
                     )
                 if not version and not no_version:
@@ -2426,7 +2426,7 @@ def convert_field_to_html(cr, table, field_name, html_field_name, verbose=True):
     """
     if version_info[0] < 7:
         logger.error(
-            "You cannot use this method in an OpenUpgrade version " "prior to 7.0."
+            "You cannot use this method in an OpenUpgrade version prior to 7.0."
         )
         return
     cr.execute(  # pylint: disable=E8103
@@ -2830,7 +2830,7 @@ def add_fields(env, field_spec):
             continue
         model_id = row[0]
         env.cr.execute(
-            "SELECT id FROM ir_model_fields " "WHERE model_id = %s AND name = %s",
+            "SELECT id FROM ir_model_fields WHERE model_id = %s AND name = %s",
             (model_id, field_name),
         )
         row = env.cr.fetchone()
@@ -3013,7 +3013,7 @@ def update_module_moved_models(cr, model, old_module, new_module):
     )
     logged_query(
         cr,
-        "UPDATE ir_model_data SET module=%s " "WHERE model = %s AND module = %s",
+        "UPDATE ir_model_data SET module=%s WHERE model = %s AND module = %s",
         (new_module, model, old_module),
     )
     logged_query(
@@ -3056,7 +3056,7 @@ def update_module_moved_models(cr, model, old_module, new_module):
         return
     logged_query(
         cr,
-        "UPDATE ir_translation SET module=%s " "WHERE name LIKE %s AND module = %s",
+        "UPDATE ir_translation SET module=%s WHERE name LIKE %s AND module = %s",
         (new_module, model + ",%", old_module),
     )
 
@@ -3226,7 +3226,7 @@ def convert_to_company_dependent(
         )
     )
     if origin_field_name == destination_field_name:
-        do_raise("A field can't be converted to property without changing " "its name.")
+        do_raise("A field can't be converted to property without changing its name.")
     cr = env.cr
     mapping_type2field = {
         "char": "value_text",
@@ -3243,7 +3243,7 @@ def convert_to_company_dependent(
     # Determine field id, field type and the model name of the relation
     # in case of many2one.
     cr.execute(
-        "SELECT id, relation, ttype FROM ir_model_fields " "WHERE name=%s AND model=%s",
+        "SELECT id, relation, ttype FROM ir_model_fields WHERE name=%s AND model=%s",
         (destination_field_name, model_name),
     )
     destination_field_id, relation, d_field_type = cr.fetchone()
