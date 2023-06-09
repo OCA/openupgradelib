@@ -286,6 +286,8 @@ def _change_reference_refs_orm(
 def _change_translations_orm(
     env, model_name, record_ids, target_record_id, exclude_columns
 ):
+    if version_info[0] > 15:
+        return
     if ("ir_translation", "res_id") in exclude_columns:
         return
     translation_obj = env["ir.translation"]
@@ -326,6 +328,8 @@ def _change_translations_orm(
 def _change_translations_sql(
     env, model_name, record_ids, target_record_id, exclude_columns
 ):
+    if version_info[0] > 15:
+        return
     if ("ir_translation", "res_id") in exclude_columns:
         return
     logged_query(
@@ -403,7 +407,7 @@ def apply_operations_by_field_type(
         elif operation == "merge":
             _list = filter(lambda x: x, field_vals)
             vals[column] = " | ".join(_list)
-    elif field_type == "serialized":
+    elif field_type in ("jsonb", "serialized"):
         operation = operation or "first_not_null"
         if operation == "first_not_null":
             field_vals.reverse()
@@ -416,6 +420,10 @@ def apply_operations_by_field_type(
                         import json
 
                         vals[column] = json.dumps(field_val)
+                    elif field_type == "jsonb":
+                        from psycopg2.extras import Json
+
+                        vals[column] = Json(field_val)
                 else:
                     vals[column] = field_val
     elif field_type in ("integer", "float", "monetary"):
@@ -555,6 +563,9 @@ def _adjust_merged_values_orm(
       * Serialized fields:
         - 'first_not_null' (default): For each found key, put first not null value.
         - other value: content on target record is preserved
+      * Translatable (in v16 or greater) fields as 'Jsonb' columns:
+        - 'first_not_null' (default): For each found key, put first not null value.
+        - other value: content on target record is preserved
     """
     model = env[model_name]
     fields = model._fields.values()
@@ -582,7 +593,7 @@ def _adjust_merged_values_orm(
             target_record_id,
             field_spec,
             _list,
-            field.type,
+            field.type if not (version_info[0] > 15 and field.translate) else "jsonb",
             field.name,
             op,
             "orm",
@@ -652,7 +663,7 @@ def _adjust_merged_values_sql(
     lists = list(zip(*(env.cr.fetchall())))
     new_vals = {}
     vals = {}
-    for i, (column, _column_type, field_type) in enumerate(dict_column_type):
+    for i, (column, column_type, field_type) in enumerate(dict_column_type):
         if (
             field_spec.get("openupgrade_other_fields", "") == "preserve"
             and column not in field_spec
@@ -660,6 +671,8 @@ def _adjust_merged_values_sql(
             continue
         op = field_spec.get(column, False)
         _list = list(lists[i])
+        if column_type == "jsonb":
+            field_type = column_type
         if field_type == "serialized":
             import json
 
