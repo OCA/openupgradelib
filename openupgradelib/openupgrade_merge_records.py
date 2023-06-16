@@ -286,7 +286,7 @@ def _change_reference_refs_orm(
 def _change_translations_orm(
     env, model_name, record_ids, target_record_id, exclude_columns
 ):
-    if ("ir_translation", "res_id") in exclude_columns:
+    if ("ir_translation", "res_id") in exclude_columns or version_info[0] >= 16:
         return
     translation_obj = env["ir.translation"]
     groups = translation_obj.read_group(
@@ -326,7 +326,7 @@ def _change_translations_orm(
 def _change_translations_sql(
     env, model_name, record_ids, target_record_id, exclude_columns
 ):
-    if ("ir_translation", "res_id") in exclude_columns:
+    if ("ir_translation", "res_id") in exclude_columns or version_info[0] >= 16:
         return
     logged_query(
         env.cr,
