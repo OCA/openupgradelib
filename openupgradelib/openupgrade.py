@@ -2851,6 +2851,10 @@ def add_fields(env, field_spec):
             if version_info < (9, 0):
                 extra_cols = sql.SQL(", select_level")
                 extra_placeholders = sql.SQL(", %(select_level)s")
+            if version_info[0] < 16:
+                field_description = "OU"
+            else:
+                field_description = '{"en_US": "OU"}'            
             logged_query(
                 env.cr,
                 sql.SQL(
@@ -2872,7 +2876,7 @@ def add_fields(env, field_spec):
                     "model_id": model_id,
                     "model": model_name,
                     "name": field_name,
-                    "field_description": "OU",
+                    "field_description": field_description,
                     "ttype": field_type,
                     "state": "base",
                     "select_level": "0",
