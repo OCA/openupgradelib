@@ -2585,15 +2585,17 @@ def rename_property(cr, model, old_name, new_name):
     )
 
 
-def delete_record_translations(cr, module, xml_ids):
+def delete_record_translations(cr, module, xml_ids, field_list=None):
     """Cleanup translations of specific records in a module.
 
     :param module: module name
     :param xml_ids: a tuple or list of xml record IDs
+    :param field_list: optional list of field names whose translations will be deleted
     """
     if not isinstance(xml_ids, (list, tuple)):
         do_raise("XML IDs %s must be a tuple or list!" % (xml_ids,))
-
+    if not field_list:
+        field_list = []
     cr.execute(
         """
         SELECT model, res_id
@@ -2609,19 +2611,38 @@ def delete_record_translations(cr, module, xml_ids):
         model = row[0]
         record_id = row[1]
         if version_info[0] < 16:
-            query = """
-                DELETE FROM ir_translation
-                WHERE module = %s AND name LIKE %s AND res_id = %s;
-            """
-            logged_query(
-                cr,
-                query,
-                (
-                    module,
-                    model + ",%",
-                    record_id,
-                ),
-            )
+            if not field_list:
+                query = """
+                    DELETE FROM ir_translation
+                    WHERE module = %s AND name LIKE %s AND res_id = %s;
+                """
+                logged_query(
+                    cr,
+                    query,
+                    (
+                        module,
+                        model + ",%",
+                        record_id,
+                    ),
+                )
+            else:
+                name_comparisons = " OR ".join(
+                    ["name = %s" % (model + "," + field) for field in field_list]
+                )
+                query = """
+                    DELETE FROM ir_translation
+                    WHERE module = %s AND ({name_comparison}) AND res_id = %s;
+                """.format(
+                    name_comparison=name_comparisons
+                )
+                logged_query(
+                    cr,
+                    query,
+                    (
+                        module,
+                        record_id,
+                    ),
+                )
         else:
             table = model.replace(".", "_")
             # we use information_schema to assure the columns exist
@@ -2635,6 +2656,8 @@ def delete_record_translations(cr, module, xml_ids):
                 (model, table),
             )
             list_columns = [x[0] for x in cr.fetchall()]
+            if field_list:
+                list_columns = [x for x in list_columns if x in field_list]
             if not list_columns:
                 continue
             query = """
