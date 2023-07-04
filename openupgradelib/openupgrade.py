@@ -2585,15 +2585,17 @@ def rename_property(cr, model, old_name, new_name):
     )
 
 
-def delete_record_translations(cr, module, xml_ids):
+def delete_record_translations(cr, module, xml_ids, field_list=None):
     """Cleanup translations of specific records in a module.
 
     :param module: module name
     :param xml_ids: a tuple or list of xml record IDs
+    :param field_list: optional list of field names whose translations will be deleted
     """
     if not isinstance(xml_ids, (list, tuple)):
-        do_raise("XML IDs %s must be a tuple or list!" % (xml_ids))
-
+        do_raise("XML IDs %s must be a tuple or list!" % (xml_ids,))
+    if not field_list:
+        field_list = []
     cr.execute(
         """
         SELECT model, res_id
@@ -2606,19 +2608,92 @@ def delete_record_translations(cr, module, xml_ids):
         ),
     )
     for row in cr.fetchall():
-        query = """
-            DELETE FROM ir_translation
-            WHERE module = %s AND name LIKE %s AND res_id = %s;
-        """
-        logged_query(
-            cr,
-            query,
-            (
-                module,
-                row[0] + ",%",
-                row[1],
-            ),
-        )
+        model = row[0]
+        record_id = row[1]
+        if version_info[0] < 16:
+            if not field_list:
+                query = """
+                    DELETE FROM ir_translation
+                    WHERE module = %s AND name LIKE %s AND res_id = %s;
+                """
+                logged_query(
+                    cr,
+                    query,
+                    (
+                        module,
+                        model + ",%",
+                        record_id,
+                    ),
+                )
+            else:
+                name_comparisons = " OR ".join(
+                    ["name = %s" % (model + "," + field) for field in field_list]
+                )
+                query = """
+                    DELETE FROM ir_translation
+                    WHERE module = %s AND ({name_comparison}) AND res_id = %s;
+                """.format(
+                    name_comparison=name_comparisons
+                )
+                logged_query(
+                    cr,
+                    query,
+                    (
+                        module,
+                        record_id,
+                    ),
+                )
+        else:
+            table = model.replace(".", "_")
+            # we use information_schema to assure the columns exist
+            cr.execute(
+                """
+                SELECT isc.column_name
+                FROM information_schema.columns isc
+                JOIN ir_model_fields imf ON (
+                    imf.name = isc.column_name AND imf.model = %s)
+                WHERE isc.table_name = %s AND imf.translate""",
+                (model, table),
+            )
+            list_columns = [x[0] for x in cr.fetchall()]
+            if field_list:
+                list_columns = [x for x in list_columns if x in field_list]
+            if not list_columns:
+                continue
+            query = """
+                SELECT {checks}
+                FROM {table}
+                WHERE id = %s""".format(
+                table=table,
+                checks=", ".join(
+                    [
+                        "{x} IS NOT NULL AND ({x} ? 'en_US') AND "
+                        "(SELECT count(*) FROM jsonb_object_keys({x})) > 1".format(x=x)
+                        for x in list_columns
+                    ]
+                ),
+            )
+            cr.execute(query, (record_id,))
+            checks = cr.fetchall()[0]
+            for i, (column, check) in enumerate(zip(list_columns, checks)):
+                if not check:
+                    list_columns.pop(i)
+            if not list_columns:
+                continue
+            query = """
+                UPDATE {table}
+                SET ({columns}) = ({values})
+                WHERE id = %s""".format(
+                table=table,
+                columns=", ".join(list_columns),
+                values=", ".join(
+                    [
+                        '\'{{"en_US": {x} -> "en_US"}}\'::jsonb'.format(x=x)
+                        for x in list_columns
+                    ]
+                ),
+            )
+            logged_query(cr, query, (record_id,))
 
 
 # flake8: noqa: C901
