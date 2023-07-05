@@ -2688,7 +2688,7 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
                 columns=", ".join(list_columns),
                 values=", ".join(
                     [
-                        '\'{{"en_US": {x} -> "en_US"}}\'::jsonb'.format(x=x)
+                        "jsonb_build_object('en_US', {x} -> 'en_US')".format(x=x)
                         for x in list_columns
                     ]
                 ),
