@@ -169,6 +169,7 @@ __all__ = [
     "update_module_names",
     "add_ir_model_fields",
     "get_legacy_name",
+    "get_model2table",
     "m2o_to_x2m",
     "float_to_integer",
     "message",
@@ -875,8 +876,8 @@ def rename_models(cr, model_spec):
     """
     for (old, new) in model_spec:
         logger.info("model %s: renaming to %s", old, new)
-        _old = old.replace(".", "_")
-        _new = new.replace(".", "_")
+        _old = get_model2table(old)
+        _new = get_model2table(new)
         logged_query(
             cr,
             "UPDATE ir_model SET model = %s WHERE model = %s",
@@ -996,7 +997,7 @@ def rename_models(cr, model_spec):
         )
         rows = cr.fetchall()
         for row in rows:
-            table = row[0].replace(".", "_")
+            table = get_model2table(row[0])
             if not table_exists(cr, table):
                 continue
             column = row[1]
@@ -1094,7 +1095,7 @@ def merge_models(cr, old_model, new_model, ref_field):
     tables. You should have to do that previously in the migration scripts.
     """
     logger.info("model %s: merging to %s", old_model, new_model)
-    model_table = new_model.replace(".", "_")
+    model_table = get_model2table(new_model)
     renames = [
         ("ir_attachment", "res_model", "res_id", ""),
         ("ir_model_data", "model", "res_id", ""),
@@ -1251,7 +1252,7 @@ def rename_xmlids(cr, xmlids_spec, allow_merge=False):
                         "to the same model (%s, %s)"
                         % (old, new, old_row[1], new_row[1])
                     )
-                table = old_row[1].replace(".", "_")
+                table = get_model2table(old_row[1])
                 if not table_exists(cr, table):
                     do_raise(
                         "Cannot merge XMLIDs %s, %s because the table I "
@@ -1813,6 +1814,22 @@ def get_legacy_name(original_name):
         + "_"
         + original_name
     )
+
+
+def get_model2table(model):
+    # map of nonstandard table names
+    model2table = {
+        "ir.actions.actions": "ir_actions",
+        "ir.actions.act_window": "ir_act_window",
+        "ir.actions.act_window.view": "ir_act_window_view",
+        "ir.actions.act_window_close": "ir_actions",
+        "ir.actions.act_url": "ir_act_url",
+        "ir.actions.server": "ir_act_server",
+        "ir.actions.client": "ir_act_client",
+        "ir.actions.report.xml": "ir_act_report_xml",  # model < v11
+        "ir.actions.report": "ir_act_report_xml",  # model >= v11
+    }
+    return model2table.get(model, model.replace(".", "_"))
 
 
 def m2o_to_x2m(cr, model, table, field, source_field):
@@ -2644,7 +2661,7 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
                     ),
                 )
         else:
-            table = model.replace(".", "_")
+            table = get_model2table(model)
             # we use information_schema to assure the columns exist
             cr.execute(
                 """
@@ -2873,7 +2890,10 @@ def add_fields(env, field_spec):
         init_value = vals[6] if len(vals) > 6 else False
         # Add SQL column
         if not table_name:
-            table_name = env[model_name]._table
+            try:
+                table_name = env[model_name]._table
+            except KeyError:
+                table_name = get_model2table(model_name)
         if not column_exists(env.cr, table_name, field_name):
             sql_type = sql_type or sql_type_mapping.get(field_type)
             if sql_type:
@@ -2963,7 +2983,7 @@ def add_fields(env, field_spec):
         # Add ir.model.data entry
         if not module or version_info[0] >= 12:
             continue
-        name1 = "field_%s_%s" % (model_name.replace(".", "_"), field_name)
+        name1 = "field_%s_%s" % (table_name, field_name)
         try:
             with env.cr.savepoint():
                 logged_query(
@@ -3088,7 +3108,7 @@ def update_module_moved_models(cr, model, old_module, new_module):
     :param old_module: Previous module of the models
     :param new_module: New module of the models
     """
-    table = model.replace(".", "_")
+    table = get_model2table(model)
     logger.info(
         "Moving model %s from module '%s' to module '%s'", model, old_module, new_module
     )
