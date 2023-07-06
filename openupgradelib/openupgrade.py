@@ -2680,18 +2680,20 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
                     list_columns.pop(i)
             if not list_columns:
                 continue
+            columns = ", ".join(list_columns)
+            values = ", ".join(
+                "jsonb_build_object('en_US', {x} -> 'en_US')".format(x=x)
+                for x in list_columns
+            )
+            if len(list_columns) > 1:
+                columns = "({})".format(columns)
+                values = "({})".format(values)
             query = """
                 UPDATE {table}
-                SET ({columns}) = ({values})
-                WHERE id = %s""".format(
-                table=table,
-                columns=", ".join(list_columns),
-                values=", ".join(
-                    [
-                        "jsonb_build_object('en_US', {x} -> 'en_US')".format(x=x)
-                        for x in list_columns
-                    ]
-                ),
+                SET {columns} = {values}
+                WHERE id = %s
+            """.format(
+                table=table, columns=columns, values=values
             )
             logged_query(cr, query, (record_id,))
 
