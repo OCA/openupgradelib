@@ -104,6 +104,7 @@ def convert_xml_node(
     style_rm=frozenset(),
     tag="",
     wrap="",
+    attr_rp=None,
 ):
     """Apply conversions to an XML node.
 
@@ -157,9 +158,14 @@ def convert_xml_node(
 
     :param str wrap:
         XML element that will wrap the :param:`node`.
+
+    :param dict attr_rp:
+        Specify a dict of attribute to place from old to the new one
+        Ex: {"data-toggle": "data-bs-togle"} (typical case when convert BS4 to BS5 in odoo 16)
     """
     # Fix params
     attr_add = attr_add or {}
+    attr_rp = attr_rp or {}
     class_add = set(class_add.split())
     class_rm = set(class_rm.split())
     style_add = style_add or {}
@@ -180,6 +186,7 @@ def convert_xml_node(
     _call = lambda v: v(**originals) if callable(v) else v  # noqa: E731
     attr_add = _call(attr_add)
     attr_rm = _call(attr_rm)
+    attr_rp = _call(attr_rp)
     class_add = _call(class_add)
     class_rm = _call(class_rm)
     style_add = _call(style_add)
@@ -187,7 +194,10 @@ def convert_xml_node(
     tag = _call(tag)
     wrap = _call(wrap)
     # Patch node attributes
-    if attr_add or attr_rm:
+    if attr_add or attr_rm or attr_rp:
+        for key, value in attr_rp.items():
+            if key in node.attrib:
+                node.attrib[value] = node.attrib.pop(key, None)
         for key in attr_rm:
             node.attrib.pop(key, None)
         for key, value in attr_add.items():
@@ -244,6 +254,30 @@ def convert_html_replacement_class_shortcut(class_rm="", class_add="", **kwargs)
         {
             "class_rm": class_rm,
             "class_add": class_add,
+        }
+    )
+    return kwargs
+
+
+def replace_html_replacement_attr_shortcut(attr_rp="", **kwargs):
+    """Shortcut to replace an attribute spec.
+
+    :param dict attr_rp:
+        EX: {'data-toggle': 'data-bs-toggle'}
+        Where the 'key' is the attribute will be replaced by the 'value'
+
+    :return dict:
+        Generated spec, to be included in a list of replacements to be
+        passed to :meth:`convert_xml_fragment`.
+    """
+
+    # Disallow selector to be empty
+    assert "selector" in kwargs and kwargs["selector"] != ""
+    # Also to be able to get exact element that have that attribute need selector_mode xpath
+    assert "selector_mode" in kwargs and kwargs["selector_mode"] == "xpath"
+    kwargs.update(
+        {
+            "attr_rp": attr_rp,
         }
     )
     return kwargs
