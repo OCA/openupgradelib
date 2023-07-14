@@ -10,7 +10,7 @@ from psycopg2 import IntegrityError, ProgrammingError, sql
 from psycopg2.errorcodes import UNDEFINED_COLUMN, UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
 
-from .openupgrade import logged_query, version_info
+from .openupgrade import get_model2table, logged_query, version_info
 from .openupgrade_tools import column_exists, table_exists
 
 logger = logging.getLogger("OpenUpgrade")
@@ -216,11 +216,11 @@ def _change_reference_refs_sql(
     for row in rows:
         try:
             model = env[row[0]]
+            if not model._auto:  # Discard SQL views
+                continue
+            table = model._table
         except KeyError:
-            continue
-        if not model._auto:  # Discard SQL views
-            continue
-        table = model._table
+            table = get_model2table(row[0])
         if not table_exists(cr, table):
             continue
         column = row[1]
@@ -757,9 +757,10 @@ def _change_generic(
     ]:
         try:
             model = env[model_to_replace].with_context(active_test=False)
+            table = model._table
         except KeyError:
-            continue
-        if (model._table, res_id_column) in exclude_columns:
+            table = get_model2table(model_to_replace)
+        if (table, res_id_column) in exclude_columns:
             continue
         if method == "orm":
             if not model._fields.get(model_column) or not model._fields.get(
@@ -794,12 +795,12 @@ def _change_generic(
                     "Changed %s record(s) of model '%s'", len(records), model_to_replace
                 )
         else:
-            if not column_exists(
-                env.cr, model._table, res_id_column
-            ) or not column_exists(env.cr, model._table, model_column):
+            if not column_exists(env.cr, table, res_id_column) or not column_exists(
+                env.cr, table, model_column
+            ):
                 continue
             format_args = {
-                "table": sql.Identifier(model._table),
+                "table": sql.Identifier(table),
                 "res_id_column": sql.Identifier(res_id_column),
                 "model_column": sql.Identifier(model_column),
             }
@@ -861,7 +862,10 @@ def _delete_records_sql(
     env, model_name, record_ids, target_record_id, model_table=None
 ):
     if not model_table:
-        model_table = env[model_name]._table
+        try:
+            model_table = env[model_name]._table
+        except KeyError:
+            model_table = get_model2table(model_name)
     logged_query(
         env.cr,
         "DELETE FROM ir_model_data WHERE model = %s AND res_id IN %s",
@@ -892,7 +896,10 @@ def _delete_records_orm(env, model_name, record_ids, target_record_id):
 
 def _check_recurrence(env, model_name, record_ids, target_record_id, model_table=None):
     if not model_table:
-        model_table = env[model_name]._table
+        try:
+            model_table = env[model_name]._table
+        except KeyError:
+            model_table = get_model2table(model_name)
     env.cr.execute(
         """
         SELECT tc.table_name, kcu.column_name, COALESCE(imf.column1, 'id')
@@ -1015,7 +1022,10 @@ def merge_records(
     else:
         # Check which records to be merged exist
         if not model_table:
-            model_table = env[model_name]._table
+            try:
+                model_table = env[model_name]._table
+            except KeyError:
+                model_table = get_model2table(model_name)
         env.cr.execute(
             sql.SQL("SELECT id FROM {} WHERE id IN %s").format(
                 sql.Identifier(model_table)
