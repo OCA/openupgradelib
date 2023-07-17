@@ -759,6 +759,8 @@ def _change_generic(
             model = env[model_to_replace].with_context(active_test=False)
             table = model._table
         except KeyError:
+            if method == "orm":
+                continue
             table = get_model2table(model_to_replace)
         if (table, res_id_column) in exclude_columns:
             continue
