@@ -1034,7 +1034,10 @@ def merge_records(
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
-        env[model_name].recompute()
+        if version_info[0] > 15:
+            env[model_name].flush_model()
+        else:
+            env[model_name].recompute()
         if delete:
             _delete_records_orm(env, model_name, record_ids, target_record_id)
     else:
