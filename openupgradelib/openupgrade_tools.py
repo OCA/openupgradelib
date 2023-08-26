@@ -94,6 +94,7 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
     return tostring(fragment, pretty_print=pretty_print, encoding="unicode")
 
 
+# flake8: noqa: C901
 def convert_xml_node(
     node,
     attr_add=None,
@@ -105,6 +106,7 @@ def convert_xml_node(
     tag="",
     wrap="",
     attr_rp=None,
+    class_rp_by_inline=None,
 ):
     """Apply conversions to an XML node.
 
@@ -160,12 +162,18 @@ def convert_xml_node(
         XML element that will wrap the :param:`node`.
 
     :param dict attr_rp:
-        Specify a dict of attribute to place from old to the new one
+        Specify a dict of attribute to replace from old to the new one
         Ex: {"data-toggle": "data-bs-togle"} (typical case when convert BS4 to BS5 in odoo 16)
+
+    :param dict class_rp_by_inline:
+        Specify a dict of class to replace with inline css
+        Ex: {"text-justify": ["text-align: justify", "anothor_inline"]}
+        (BS5 has removed text-justify class)
     """
     # Fix params
     attr_add = attr_add or {}
     attr_rp = attr_rp or {}
+    class_rp_by_inline = class_rp_by_inline or {}
     class_add = set(class_add.split())
     class_rm = set(class_rm.split())
     style_add = style_add or {}
@@ -187,6 +195,7 @@ def convert_xml_node(
     attr_add = _call(attr_add)
     attr_rm = _call(attr_rm)
     attr_rp = _call(attr_rp)
+    class_rp_by_inline = _call(class_rp_by_inline)
     class_add = _call(class_add)
     class_rm = _call(class_rm)
     style_add = _call(style_add)
@@ -194,15 +203,25 @@ def convert_xml_node(
     tag = _call(tag)
     wrap = _call(wrap)
     # Patch node attributes
-    if attr_add or attr_rm or attr_rp:
-        for key, value in attr_rp.items():
-            if key in node.attrib:
-                node.attrib[value] = node.attrib.pop(key, None)
-        for key in attr_rm:
-            node.attrib.pop(key, None)
-        for key, value in attr_add.items():
-            if key not in node.attrib:
-                node.attrib[key] = value
+    if attr_add or attr_rm or attr_rp or class_rp_by_inline:
+        if class_rp_by_inline:
+            inline_style = ""
+            for _, value in class_rp_by_inline.items():
+                for inline_css_style in value:
+                    inline_style += inline_css_style + ";"
+            if "style" in node.attrib and node.attrib["style"]:
+                node.attrib["style"] += inline_style
+            else:
+                node.attrib["style"] = inline_style
+        else:
+            for key, value in attr_rp.items():
+                if key in node.attrib:
+                    node.attrib[value] = node.attrib.pop(key, None)
+            for key in attr_rm:
+                node.attrib.pop(key, None)
+            for key, value in attr_add.items():
+                if key not in node.attrib:
+                    node.attrib[key] = value
     # Patch node classes
     if class_add or class_rm:
         classes = (classes | class_add) ^ class_rm
@@ -254,6 +273,32 @@ def convert_html_replacement_class_shortcut(class_rm="", class_add="", **kwargs)
         {
             "class_rm": class_rm,
             "class_add": class_add,
+        }
+    )
+    return kwargs
+
+
+def replace_html_replacement_class_rp_by_inline_shortcut(
+    class_rp_by_inline="", **kwargs
+):
+    """Shortcut to replace an attribute spec.
+
+    :param dict attr_rp:
+        EX: {'data-toggle': 'data-bs-toggle'}
+        Where the 'key' is the attribute will be replaced by the 'value'
+
+    :return dict:
+        Generated spec, to be included in a list of replacements to be
+        passed to :meth:`convert_xml_fragment`.
+    """
+
+    # Disallow selector to be empty
+    assert "selector" in kwargs and kwargs["selector"] != ""
+    # Also to be able to get exact element that have that attribute need selector_mode xpath
+    assert "selector_mode" in kwargs and kwargs["selector_mode"] == "xpath"
+    kwargs.update(
+        {
+            "class_rp_by_inline": class_rp_by_inline,
         }
     )
     return kwargs
