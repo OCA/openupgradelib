@@ -17,6 +17,7 @@ from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
     replace_html_replacement_attr_shortcut as _attr_replace,
+    replace_html_replacement_class_rp_by_inline_shortcut as _class_rp_by_inline,
 )
 
 logger = logging.getLogger("OpenUpgrade")
@@ -102,9 +103,13 @@ _BS5_REPLACEMENTS = (
     # Content, Reboot, etc
     _r("thead-light", "table-light"),
     _r("thead-dark", "table-dark"),
-    _r(
-        "text-justify", "text-center"
-    ),  # actually boostrap 5 only drop without any replacements
+    # Special case where text-justify no longer exist
+    _class_rp_by_inline(
+        selector="//*[contains(@class, 'text-justify')]",
+        selector_mode="xpath",
+        class_rp_by_inline={"text-justify": ["text-align: justify"]},
+    ),
+    _r(class_rm="text-justify", class_add=""),
     # RTL
     *(
         _r("%s-%s" % (elem, t4), "%s-%s" % (elem, t5))
