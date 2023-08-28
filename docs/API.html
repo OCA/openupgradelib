@@ -4,18 +4,18 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gfb09131 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gddce67b documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=bf4203ab"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -35,7 +35,7 @@
             OpenUpgrade Library
           </a>
               <div class="version">
-                0.1.dev1+gfb09131
+                0.1.dev1+gddce67b
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -177,7 +177,7 @@
            <div itemprop="articleBody">
              
   <section id="openupgrade-api">
-<h1>OpenUpgrade API<a class="headerlink" href="#openupgrade-api" title="Permalink to this heading"></a></h1>
+<h1>OpenUpgrade API<a class="headerlink" href="#openupgrade-api" title="Link to this heading"></a></h1>
 <p>The OpenUpgrade library contains all kinds of helper functions for your pre and
 post scripts, in OpenUpgrade itself or in the migration scripts of your own
 module (in either major or minor version upgrades). It can be installed with</p>
@@ -189,10 +189,10 @@ module (in either major or minor version upgrades). It can be installed with</p>
 </pre></div>
 </div>
 <section id="module-openupgradelib.openupgrade">
-<span id="general-methods"></span><h2>General methods<a class="headerlink" href="#module-openupgradelib.openupgrade" title="Permalink to this heading"></a></h2>
+<span id="general-methods"></span><h2>General methods<a class="headerlink" href="#module-openupgradelib.openupgrade" title="Link to this heading"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.add_fields">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_fields" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_fields" title="Link to this definition"></a></dt>
 <dd><p>This method adds all the needed stuff for having a new field populated
 in the DB (SQL column, ir.model.fields entry, ir.model.data entry…).</p>
 <p>It’s intended for being run in pre-migration scripts for pre-populating
@@ -230,7 +230,7 @@ in the column for existing records.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.add_ir_model_fields">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_ir_model_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columnspec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_ir_model_fields" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_ir_model_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columnspec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_ir_model_fields" title="Link to this definition"></a></dt>
 <dd><p>Typically, new columns on ir_model_fields need to be added in a very
 early stage in the upgrade process of the base module, in raw sql
 as they need to be in place before any model gets initialized.
@@ -246,7 +246,7 @@ own statement taking them into account.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.add_xmlid">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_xmlid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xmlid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">res_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noupdate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_xmlid" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">add_xmlid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xmlid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">res_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noupdate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.add_xmlid" title="Link to this definition"></a></dt>
 <dd><p>Adds an entry in ir_model_data. Typically called in the pre script.
 One usage example is when an entry has been add in the XML and there is
 a high probability that the user has already created the entry manually.
@@ -259,7 +259,7 @@ add the entry in ir_model_data before the upgrade.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.check_values_selection_field">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">check_values_selection_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.check_values_selection_field" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">check_values_selection_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.check_values_selection_field" title="Link to this definition"></a></dt>
 <dd><blockquote>
 <div><p>check if the field selection ‘field_name’ of the table ‘table_name’
 has only the values ‘allowed_values’.
@@ -273,7 +273,7 @@ If yes, return True.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.chunked">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.chunked" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">chunked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.chunked" title="Link to this definition"></a></dt>
 <dd><p>Memory and performance friendly method to iterate over a potentially
 large number of records. Yields either a whole chunk or a single record
 at the time. Don’t nest calls to this method.</p>
@@ -281,13 +281,13 @@ at the time. Don’t nest calls to this method.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.column_exists">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">column_exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.column_exists" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">column_exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.column_exists" title="Link to this definition"></a></dt>
 <dd><p>Check whether a certain column exists</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.convert_field_to_html">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">convert_field_to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">html_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.convert_field_to_html" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">convert_field_to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">html_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.convert_field_to_html" title="Link to this definition"></a></dt>
 <dd><p>Convert field value to HTML value.</p>
 <div class="versionadded">
 <p><span class="versionmodified added">New in version 7.0.</span></p>
@@ -296,7 +296,7 @@ at the time. Don’t nest calls to this method.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.convert_to_company_dependent">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">convert_to_company_dependent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_table_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.convert_to_company_dependent" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">convert_to_company_dependent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_table_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.convert_to_company_dependent" title="Link to this definition"></a></dt>
 <dd><p>For each row in a given table, the value of a given field is
 set in another ‘company dependant’ field of the same table.
 Useful in cases when from one version to another one, some field in a
@@ -322,7 +322,7 @@ registered previously).</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.copy_columns">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">copy_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.copy_columns" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">copy_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.copy_columns" title="Link to this definition"></a></dt>
 <dd><p>Copy table columns. Typically called in the pre script.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -341,7 +341,7 @@ SQL directive. eg. ‘“column”’</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.copy_fields_multilang">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">copy_fields_multilang</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relation_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translations_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.copy_fields_multilang" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">copy_fields_multilang</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relation_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translations_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.copy_fields_multilang" title="Link to this definition"></a></dt>
 <dd><p>Copy field contents including translations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -375,7 +375,7 @@ copy the raw field from <code class="docutils literal notranslate"><span class="
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.cow_templates_mark_if_equal_to_upstream">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">cow_templates_mark_if_equal_to_upstream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mark_colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.cow_templates_mark_if_equal_to_upstream" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">cow_templates_mark_if_equal_to_upstream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mark_colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.cow_templates_mark_if_equal_to_upstream" title="Link to this definition"></a></dt>
 <dd><p>Record which COW’d templates are equal to their upstream equivalents.</p>
 <p>This is meant to be executed in a pre-migration script.</p>
 <p>This only makes sense if:</p>
@@ -389,7 +389,7 @@ end-migration.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.cow_templates_replicate_upstream">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">cow_templates_replicate_upstream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mark_colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.cow_templates_replicate_upstream" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">cow_templates_replicate_upstream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mark_colname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.cow_templates_replicate_upstream" title="Link to this definition"></a></dt>
 <dd><p>Reset COW’d templates to their upstream equivalents.</p>
 <p>This is meant to be executed in an end-migration script.</p>
 <p>This only makes sense if:</p>
@@ -403,7 +403,7 @@ pre-migration.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.date_to_datetime_tz">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">date_to_datetime_tz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">date_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datetime_field_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.date_to_datetime_tz" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">date_to_datetime_tz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">date_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datetime_field_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.date_to_datetime_tz" title="Link to this definition"></a></dt>
 <dd><p>Take the related user’s timezone into account when converting
 date field to datetime in a given table.
 This function must be call in post migration script.</p>
@@ -418,7 +418,7 @@ This function must be call in post migration script.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.deactivate_workflow_transitions">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">deactivate_workflow_transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.deactivate_workflow_transitions" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">deactivate_workflow_transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.deactivate_workflow_transitions" title="Link to this definition"></a></dt>
 <dd><p>Disable workflow transitions for workflows on a given model.
 This can be necessary for automatic workflow transitions when writing
 to an object via the ORM in the post migration step.
@@ -438,7 +438,7 @@ Returns a dictionary to be used on reactivate_workflow_transitions</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.delete_model_workflow">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_model_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_model_workflow" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_model_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_model_workflow" title="Link to this definition"></a></dt>
 <dd><p>Forcefully remove active workflows for obsolete models,
 to prevent foreign key issues when the orm deletes the model.</p>
 <dl class="field-list simple">
@@ -456,7 +456,7 @@ probably.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.delete_record_translations">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_record_translations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_record_translations" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_record_translations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_record_translations" title="Link to this definition"></a></dt>
 <dd><p>Cleanup translations of specific records in a module.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -471,7 +471,7 @@ probably.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.delete_records_safely_by_xml_id">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_records_safely_by_xml_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_childs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_records_safely_by_xml_id" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_records_safely_by_xml_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_childs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_records_safely_by_xml_id" title="Link to this definition"></a></dt>
 <dd><p>This removes in the safest possible way the records whose XML-IDs are
 passed as argument.</p>
 <p>If not possible to be removed, and the record is an updatable one
@@ -490,7 +490,7 @@ be deleted.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.delete_sql_constraint_safely">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_sql_constraint_safely</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_sql_constraint_safely" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_sql_constraint_safely</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_sql_constraint_safely" title="Link to this definition"></a></dt>
 <dd><p>In case of obsolete constraints, run this in pre-migration script.
 Useful from v14 onwards.
 :param module: Module where the sql constraint was declared
@@ -500,7 +500,7 @@ Useful from v14 onwards.
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.disable_invalid_filters">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">disable_invalid_filters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.disable_invalid_filters" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">disable_invalid_filters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.disable_invalid_filters" title="Link to this definition"></a></dt>
 <dd><p>It analyzes all the existing active filters to check if they are still
 correct. If not, they are disabled for avoiding errors when clicking on
 them, or worse, if they are default filters when opening the model/action.</p>
@@ -515,7 +515,7 @@ assured to work on &gt; v8.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.drop_columns">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">drop_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.drop_columns" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">drop_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.drop_columns" title="Link to this definition"></a></dt>
 <dd><p>Drop columns but perform an additional check if a column exists.
 This covers the case of function fields that may or may not be stored.
 Consider that this may not be obvious: an additional module can govern
@@ -529,7 +529,7 @@ a function fields’ store properties.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.float_to_integer">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">float_to_integer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.float_to_integer" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">float_to_integer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.float_to_integer" title="Link to this definition"></a></dt>
 <dd><p>Change column type from float to integer. It will just
 truncate the float value (It won’t round it)</p>
 <dl class="field-list simple">
@@ -547,7 +547,7 @@ truncate the float value (It won’t round it)</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.get_legacy_name">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">get_legacy_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.get_legacy_name" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">get_legacy_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.get_legacy_name" title="Link to this definition"></a></dt>
 <dd><p>Returns a versioned name for legacy tables/columns/etc
 Use this function instead of some custom name to avoid
 collisions with future or past legacy tables/columns/etc</p>
@@ -563,7 +563,7 @@ collisions with future or past legacy tables/columns/etc</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.lift_constraints">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">lift_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.lift_constraints" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">lift_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.lift_constraints" title="Link to this definition"></a></dt>
 <dd><p>Lift all constraints on column in table.
 Typically, you use this in a pre-migrate script where you adapt references
 for many2one fields with changed target objects.
@@ -572,7 +572,7 @@ If everything went right, the constraints will be recreated</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.load_data">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Link to this definition"></a></dt>
 <dd><p>Load an xml, csv or yml data file from your post script. The usual case for
 this is the
 occurrence of newly added essential or useful data in the module that is
@@ -608,7 +608,7 @@ filled which are not contained in the data file.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.logged_query">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">logged_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_no_result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.logged_query" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">logged_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_no_result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.logged_query" title="Link to this definition"></a></dt>
 <dd><p>Logs query and affected rows at level DEBUG.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -625,7 +625,7 @@ if there are affected records.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.logging">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args_details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.logging" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args_details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.logging" title="Link to this definition"></a></dt>
 <dd><p>This is a decorator for any sub functions called in an OpenUpgrade script.
 (pre or post migration script)</p>
 <p>Decorate functions that can take time, or for debug / development purpose.</p>
@@ -661,7 +661,7 @@ is called.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.m2o_to_x2m">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">m2o_to_x2m</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.m2o_to_x2m" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">m2o_to_x2m</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.m2o_to_x2m" title="Link to this definition"></a></dt>
 <dd><p>Transform many2one relations into one2many or many2many.
 Use rename_columns in your pre-migrate script to retain the column’s old
 value, then call m2o_to_x2m in your post-migrate script.</p>
@@ -686,7 +686,7 @@ conversion.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.map_values">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">map_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sql'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.map_values" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">map_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sql'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.map_values" title="Link to this definition"></a></dt>
 <dd><p>Map old values to new values within the same model or table. Old values
 presumably come from a legacy column.
 You will typically want to use it in post-migration scripts.</p>
@@ -712,7 +712,7 @@ Old value True represents “is set”, False “is not set”.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.merge_models">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">merge_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.merge_models" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">merge_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.merge_models" title="Link to this definition"></a></dt>
 <dd><p>Update model references for models that have merged to an existing model.
 :param old_model: old model
 :param new_model: destination model
@@ -724,7 +724,7 @@ tables. You should have to do that previously in the migration scripts.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.message">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.message" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.message" title="Link to this definition"></a></dt>
 <dd><p>Log handler for non-critical notifications about the upgrade.
 To be extended with logging to a table for reporting purposes.</p>
 <dl class="field-list simple">
@@ -743,7 +743,7 @@ To be extended with logging to a table for reporting purposes.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.migrate">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">migrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">no_version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.migrate" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">migrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">no_version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.migrate" title="Link to this definition"></a></dt>
 <dd><p>This is the decorator for the migrate() function
 in migration scripts.</p>
 <p>Set argument <cite>no_version</cite> to True if the method has to be taken into
@@ -764,7 +764,7 @@ logging purposes.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.move_field_m2o">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">move_field_m2o</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2o_field_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry_new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quick_request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary_field</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.move_field_m2o" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">move_field_m2o</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2o_field_old_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry_new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_new_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quick_request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary_field</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.move_field_m2o" title="Link to this definition"></a></dt>
 <dd><p>Use that function in the following case:
 A field moves from a model A to the model B with : A -&gt; m2o -&gt; B.
 (For exemple product_product -&gt; product_template)
@@ -784,7 +784,7 @@ available on post script migration.
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.reactivate_workflow_transitions">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">reactivate_workflow_transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition_conditions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.reactivate_workflow_transitions" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">reactivate_workflow_transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition_conditions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.reactivate_workflow_transitions" title="Link to this definition"></a></dt>
 <dd><p>Reactivate workflow transition previously deactivated by
 deactivate_workflow_transitions.</p>
 <dl class="field-list simple">
@@ -802,7 +802,7 @@ deactivate_workflow_transitions.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.remove_tables_fks">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">remove_tables_fks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.remove_tables_fks" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">remove_tables_fks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.remove_tables_fks" title="Link to this definition"></a></dt>
 <dd><p>Remove foreign keys declared in <code class="docutils literal notranslate"><span class="pre">tables</span></code>.</p>
 <p>This is useful when a table is not going to be used anymore, but you still
 don’t want to delete it.</p>
@@ -825,7 +825,7 @@ removed too. If a table doesn’t exist, it is skipped.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_columns">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_columns" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_columns" title="Link to this definition"></a></dt>
 <dd><p>Rename table columns. Typically called in the pre script.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -836,7 +836,7 @@ removed too. If a table doesn’t exist, it is skipped.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_fields">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_deep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_fields" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_deep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_fields" title="Link to this definition"></a></dt>
 <dd><p>Rename fields. Typically called in the pre script. WARNING: If using
 this on base module, pass the argument <code class="docutils literal notranslate"><span class="pre">no_deep</span></code> with True value for
 avoiding the using of the environment (which is not yet loaded).</p>
@@ -868,7 +868,7 @@ the environment. Not used for now.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_models">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_models" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_models" title="Link to this definition"></a></dt>
 <dd><p>Rename models. Typically called in the pre script.
 :param model_spec: a list of tuples (old model name, new model name).</p>
 <p>Use case: if a model changes name, but still implements equivalent
@@ -880,14 +880,14 @@ you need to call <cite>rename_tables</cite> method.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_property">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_property" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_property" title="Link to this definition"></a></dt>
 <dd><p>Rename property old_name owned by model to new_name. This should happen
 in a pre-migration script.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_tables">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_tables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_tables" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_tables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_tables" title="Link to this definition"></a></dt>
 <dd><p>Rename tables. Typically called in the pre script.
 This function also renames the id sequence if it exists and if it is
 not modified in the same run.</p>
@@ -900,7 +900,7 @@ not modified in the same run.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_xmlids">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_xmlids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xmlids_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_merge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_xmlids" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_xmlids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xmlids_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_merge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_xmlids" title="Link to this definition"></a></dt>
 <dd><p>Rename XML IDs. Typically called in the pre script.
 One usage example is when an ID changes module. In OpenERP 6 for example,
 a number of res_groups IDs moved to module base from other modules (
@@ -924,7 +924,7 @@ to inconsistencies in the database.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.safe_unlink">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">safe_unlink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_raise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.safe_unlink" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">safe_unlink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_raise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.safe_unlink" title="Link to this definition"></a></dt>
 <dd><p>Allow for errors to occur during unlinking of records.</p>
 <p>Prevent broken database transactions, and by default, catch exceptions.</p>
 <dl class="field-list simple">
@@ -941,7 +941,7 @@ be raised.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.set_defaults">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">set_defaults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_orm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.set_defaults" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">set_defaults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_orm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.set_defaults" title="Link to this definition"></a></dt>
 <dd><p>Set default value. Useful for fields that are newly required. Uses orm, so
 call from the post script.</p>
 <dl class="field-list simple">
@@ -958,7 +958,7 @@ call from the post script.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.set_xml_ids_noupdate_value">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">set_xml_ids_noupdate_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.set_xml_ids_noupdate_value" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">set_xml_ids_noupdate_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.set_xml_ids_noupdate_value" title="Link to this definition"></a></dt>
 <dd><p>Set the xml_ids noupdate values in a module.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -973,13 +973,13 @@ call from the post script.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.table_exists">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">table_exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.table_exists" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">table_exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.table_exists" title="Link to this definition"></a></dt>
 <dd><p>Check whether a certain table or view exists</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.update_field_multilang">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_field_multilang</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_field_multilang" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_field_multilang</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_field_multilang" title="Link to this definition"></a></dt>
 <dd><p>Update a field in all available languages in the database.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -996,7 +996,7 @@ call from the post script.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.update_module_moved_fields">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_moved_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">moved_fields</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_moved_fields" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_moved_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">moved_fields</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_moved_fields" title="Link to this definition"></a></dt>
 <dd><p>Update module for field definition in general tables that have been
 moved from one module to another.</p>
 <p>No need to use this method: moving the XMLID is covered in
@@ -1016,7 +1016,7 @@ Odoo and OpenUpgrade natively.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.update_module_moved_models">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_moved_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_moved_models" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_moved_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_moved_models" title="Link to this definition"></a></dt>
 <dd><p>Update module for model definition in general tables that have been
 moved from one module to another.
 :param cr: Database cursor
@@ -1027,7 +1027,7 @@ moved from one module to another.
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.update_module_names">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namespec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_modules</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_names" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_module_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namespec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_modules</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_module_names" title="Link to this definition"></a></dt>
 <dd><p>Deal with changed module names, making all the needed changes on the
 related tables, like XML-IDs, translations, and so on.</p>
 <dl class="field-list simple">
@@ -1043,7 +1043,7 @@ of just a renaming.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.update_workflow_workitems">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_workflow_workitems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_spec_actions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_workflow_workitems" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">update_workflow_workitems</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_spec_actions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.update_workflow_workitems" title="Link to this definition"></a></dt>
 <dd><p>Find all the workflow items from the target state to set them to
 the wanted state.</p>
 <p>When a workflow action is removed, from model, the objects whose states
@@ -1066,7 +1066,7 @@ external ids. The first id is replaced with the second.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.warn_possible_dataloss">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">warn_possible_dataloss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.warn_possible_dataloss" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">warn_possible_dataloss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.warn_possible_dataloss" title="Link to this definition"></a></dt>
 <dd><p>Use that function in the following case:
 if a field of a model was moved from a ‘A’ module to a ‘B’ module.
 (‘B’ depend on ‘A’),
@@ -1091,20 +1091,20 @@ Use orm, so call from the post script.</p>
 
 </section>
 <section id="methods-for-openupgrade-7-0">
-<h2>Methods for OpenUpgrade 7.0<a class="headerlink" href="#methods-for-openupgrade-7-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 7.0<a class="headerlink" href="#methods-for-openupgrade-7-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 7.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_70"></span><dl class="py function">
+<dl class="py function" id="module-openupgradelib.openupgrade_70">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_70.get_partner_id_from_user_id">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_70.</span></span><span class="sig-name descname"><span class="pre">get_partner_id_from_user_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_70.get_partner_id_from_user_id" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_70.</span></span><span class="sig-name descname"><span class="pre">get_partner_id_from_user_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_70.get_partner_id_from_user_id" title="Link to this definition"></a></dt>
 <dd><p>Get the new partner_id from user_id.
 :param user_id : user previously used.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_70.set_partner_id_from_partner_address_id">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_70.</span></span><span class="sig-name descname"><span class="pre">set_partner_id_from_partner_address_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partner_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_70.set_partner_id_from_partner_address_id" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_70.</span></span><span class="sig-name descname"><span class="pre">set_partner_id_from_partner_address_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partner_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_70.set_partner_id_from_partner_address_id" title="Link to this definition"></a></dt>
 <dd><p>Set the new partner_id on any table with migrated contact ids</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1123,13 +1123,13 @@ release.</p>
 
 </section>
 <section id="methods-for-openupgrade-8-0">
-<h2>Methods for OpenUpgrade 8.0<a class="headerlink" href="#methods-for-openupgrade-8-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 8.0<a class="headerlink" href="#methods-for-openupgrade-8-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 8.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_80"></span><dl class="py function">
+<dl class="py function" id="module-openupgradelib.openupgrade_80">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_80.get_last_post_for_model">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">get_last_post_for_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_pool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.get_last_post_for_model" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">get_last_post_for_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_pool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.get_last_post_for_model" title="Link to this definition"></a></dt>
 <dd><p>Given a set of ids and a model pool, return a dict of each object ids with
 their latest message date as a value.
 To be called in post-migration scripts</p>
@@ -1150,7 +1150,7 @@ To be called in post-migration scripts</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_80.set_message_last_post">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">set_message_last_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.set_message_last_post" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">set_message_last_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.set_message_last_post" title="Link to this definition"></a></dt>
 <dd><p>Given a list of models, set their ‘message_last_post’ fields to an
 estimated last post datetime.
 To be called in post-migration scripts</p>
@@ -1171,7 +1171,7 @@ To be called in post-migration scripts</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_80.update_aliases">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">update_aliases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_parent_thread_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alias_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">defaults_id_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.update_aliases" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_80.</span></span><span class="sig-name descname"><span class="pre">update_aliases</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">registry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_parent_thread_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alias_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">defaults_id_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_80.update_aliases" title="Link to this definition"></a></dt>
 <dd><p>Update a model’s aliases according to how they are configured
 in the model’s create() method.</p>
 <dl class="field-list simple">
@@ -1188,15 +1188,15 @@ in the model’s create() method.</p>
 
 </section>
 <section id="methods-for-openupgrade-9-0">
-<h2>Methods for OpenUpgrade 9.0<a class="headerlink" href="#methods-for-openupgrade-9-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 9.0<a class="headerlink" href="#methods-for-openupgrade-9-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 9.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_90"></span><p>This module provides simple tools for OpenUpgrade migration, specific for
+<p id="module-openupgradelib.openupgrade_90">This module provides simple tools for OpenUpgrade migration, specific for
 the 8.0 -&gt; 9.0 migration.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_90.convert_binary_field_to_attachment">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_90.</span></span><span class="sig-name descname"><span class="pre">convert_binary_field_to_attachment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_90.convert_binary_field_to_attachment" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_90.</span></span><span class="sig-name descname"><span class="pre">convert_binary_field_to_attachment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_90.convert_binary_field_to_attachment" title="Link to this definition"></a></dt>
 <dd><p>This method converts the 8.0 binary fields to attachments like Odoo 9.0
 makes with the new attachment=True attribute. It has to be called on
 post-migration script, as there’s a call to get the res_name of the
@@ -1229,7 +1229,7 @@ calling <cite>get_legacy_name</cite> method, which is the typical technique.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_90.replace_account_types">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_90.</span></span><span class="sig-name descname"><span class="pre">replace_account_types</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unlink</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_90.replace_account_types" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_90.</span></span><span class="sig-name descname"><span class="pre">replace_account_types</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unlink</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_90.replace_account_types" title="Link to this definition"></a></dt>
 <dd><p>Replace old account types with their replacements. The old account
 type is allowed not to exist anymore, except when running unit tests.
 :param type_spec: list of tuples (xmlid of old account.account.type, xmlid of new account.account.type)
@@ -1238,11 +1238,11 @@ type is allowed not to exist anymore, except when running unit tests.
 
 </section>
 <section id="methods-for-openupgrade-12-0">
-<h2>Methods for OpenUpgrade 12.0<a class="headerlink" href="#methods-for-openupgrade-12-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 12.0<a class="headerlink" href="#methods-for-openupgrade-12-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 12.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_120"></span><p>Tools specific for migrating Odoo 11.0 to 12.0.</p>
+<p id="module-openupgradelib.openupgrade_120">Tools specific for migrating Odoo 11.0 to 12.0.</p>
 <p>Important changes come from the update from Bootstrap 3 to 4.
 To understand these changes, these sources have been consulted, among others
 specific to some rules that can be consulted in inline comments:</p>
@@ -1255,7 +1255,7 @@ specific to some rules that can be consulted in inline comments:</p>
 <p>Don’t expect perfection. But patches are welcome.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_120.convert_field_bootstrap_3to4">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_120.</span></span><span class="sig-name descname"><span class="pre">convert_field_bootstrap_3to4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'orm'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_120.convert_field_bootstrap_3to4" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_120.</span></span><span class="sig-name descname"><span class="pre">convert_field_bootstrap_3to4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'orm'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_120.convert_field_bootstrap_3to4" title="Link to this definition"></a></dt>
 <dd><p>This converts all the values for the given model and field, being
 able to restrict to a domain of affected records.</p>
 <dl class="field-list simple">
@@ -1274,7 +1274,7 @@ with extra triggers in ORM.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_120.convert_string_bootstrap_3to4">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_120.</span></span><span class="sig-name descname"><span class="pre">convert_string_bootstrap_3to4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_string</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty_print</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_120.convert_string_bootstrap_3to4" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_120.</span></span><span class="sig-name descname"><span class="pre">convert_string_bootstrap_3to4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_string</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pretty_print</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_120.convert_string_bootstrap_3to4" title="Link to this definition"></a></dt>
 <dd><p>Convert an HTML string from Bootstrap 3 to 4.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1291,14 +1291,14 @@ with extra triggers in ORM.</p></li>
 
 </section>
 <section id="methods-for-openupgrade-13-0">
-<h2>Methods for OpenUpgrade 13.0<a class="headerlink" href="#methods-for-openupgrade-13-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 13.0<a class="headerlink" href="#methods-for-openupgrade-13-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 13.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_130"></span><p>Tools specific for migrating from Odoo 12.0 to 13.0.</p>
+<p id="module-openupgradelib.openupgrade_130">Tools specific for migrating from Odoo 12.0 to 13.0.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_130.unlink_invalid_tax_tags_from_repartition_lines">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_130.</span></span><span class="sig-name descname"><span class="pre">unlink_invalid_tax_tags_from_repartition_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_tag_xmlids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_tag_xmlids</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_130.unlink_invalid_tax_tags_from_repartition_lines" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_130.</span></span><span class="sig-name descname"><span class="pre">unlink_invalid_tax_tags_from_repartition_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_tag_xmlids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_tag_xmlids</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_130.unlink_invalid_tax_tags_from_repartition_lines" title="Link to this definition"></a></dt>
 <dd><p>The migration script of the account module assigns all tags of
 the account.tax’s tag_ids field to the tag_ids field of the new
 account.tax.repartition.line. However, because each repartition
@@ -1308,15 +1308,15 @@ tags.</p>
 
 </section>
 <section id="methods-for-openupgrade-16-0">
-<h2>Methods for OpenUpgrade 16.0<a class="headerlink" href="#methods-for-openupgrade-16-0" title="Permalink to this heading"></a></h2>
+<h2>Methods for OpenUpgrade 16.0<a class="headerlink" href="#methods-for-openupgrade-16-0" title="Link to this heading"></a></h2>
 <p>The following specific methods for 16.0 are available. These have been
 developed to cover specific needs as per data model changes in that
 release.</p>
-<span class="target" id="module-openupgradelib.openupgrade_160"></span><p>This module provides simple tools for OpenUpgrade migration, specific for
+<p id="module-openupgradelib.openupgrade_160">This module provides simple tools for OpenUpgrade migration, specific for
 the &gt;=16.0 migration.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_160.migrate_translations_to_jsonb">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_160.</span></span><span class="sig-name descname"><span class="pre">migrate_translations_to_jsonb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_160.migrate_translations_to_jsonb" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_160.</span></span><span class="sig-name descname"><span class="pre">migrate_translations_to_jsonb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_160.migrate_translations_to_jsonb" title="Link to this definition"></a></dt>
 <dd><p>In Odoo 16, translated fields no longer use the model ir.translation.
 Instead they store all their values into jsonb columns
 in the model’s table.
