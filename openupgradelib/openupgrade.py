@@ -2692,9 +2692,7 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
             )
             cr.execute(query, (record_id,))
             checks = cr.fetchall()[0]
-            for i, (column, check) in enumerate(zip(list_columns, checks)):
-                if not check:
-                    list_columns.pop(i)
+            list_columns = [c for c, check in zip(list_columns, checks) if check]
             if not list_columns:
                 continue
             columns = ", ".join(list_columns)
