@@ -2004,7 +2004,7 @@ def m2m_to_o2m_dataloss_warn(
     cr, source_relation_table, relation_source_field, relation_comodel_field
 ):
     """Warn user about data loss when migrating data from many2many to
-    many2one.
+    one2many.
 
     :param source_relation_table: The many2many relation table
         of the model that will be on the 'one' side of the relation
