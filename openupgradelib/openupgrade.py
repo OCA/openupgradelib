@@ -171,6 +171,8 @@ __all__ = [
     "get_legacy_name",
     "get_model2table",
     "m2o_to_x2m",
+    "m2m_to_o2m",
+    "m2m_to_o2m_dataloss_warn",
     "float_to_integer",
     "message",
     "check_values_selection_field",
@@ -1933,6 +1935,119 @@ def m2o_to_m2m(cr, model, table, field, source_field):
        Use :func:`m2o_to_x2m` instead.
     """
     return m2o_to_x2m(cr, model, table, field, source_field)
+
+
+def m2m_to_o2m(
+    env,
+    model,
+    field,
+    source_relation_table,
+    relation_source_field,
+    relation_comodel_field,
+):
+    """Transform many2many relations into one2many (with possible data
+    loss).
+
+    Use rename_tables() in your pre-migrate script to keep the many2many
+    relation table and give them as 'source_relation_table' argument.
+    And remove foreign keys constraints with remove_tables_fks().
+
+    A full example seems pertinent: hr.plan and hr.plan.activity.type used to
+    have an M2M relationship. Now, hr.plan has an O2M relationship to
+    hr.plan.activity.type. In pre-migrate, execute::
+
+        remove_tables_fks(env.cr, ["hr_plan_hr_plan_activity_type_rel"])
+        rename_tables(env.cr, [("hr_plan_hr_plan_activity_type_rel",
+            get_legacy_name("hr_plan_hr_plan_activity_type_rel"))])
+
+    In post-migrate::
+
+        m2m_to_o2m_dataloss_warn(env.cr,
+            get_legacy_name("hr_plan_hr_plan_activity_type_rel"), "hr_plan_id",
+            "hr_plan_activity_type_id")
+        m2m_to_o2m(env, "hr.plan", "plan_activity_type_ids",
+            get_legacy_name("hr_plan_hr_plan_activity_type_rel"),
+            "hr_plan_id", "hr_plan_activity_type_id")
+
+    :param model: The target registery model
+    :param field: The field that changes from m2m to o2m
+    :param source_relation_table: The (renamed) many2many relation table
+    :param relation_source_field: The column name of the 'model' id
+        in the relation table (the One part of One2Many)
+    :param relation_comodel_field: The column name of the comodel id in
+        the relation table (the Many part of One2Many)
+
+    .. versionadded:: 16.0
+    """
+    columns = env[model]._fields.get(field)
+    target_table = env[columns.comodel_name]._table
+    target_field = columns.inverse_name
+    logged_query(
+        env.cr,
+        """
+        UPDATE %(target_table)s AS target
+        SET %(target_field)s=source.%(relation_source_field)s
+        FROM %(source_relation_table)s AS source
+        WHERE source.%(relation_comodel_field)s=target.id
+        """,
+        {
+            "target_table": AsIs(target_table),
+            "target_field": AsIs(target_field),
+            "source_relation_table": AsIs(source_relation_table),
+            "relation_source_field": AsIs(relation_source_field),
+            "relation_comodel_field": AsIs(relation_comodel_field),
+        },
+    )
+
+
+def m2m_to_o2m_dataloss_warn(
+    cr, source_relation_table, relation_source_field, relation_comodel_field
+):
+    """Warn user about data loss when migrating data from many2many to
+    many2one.
+
+    :param source_relation_table: The many2many relation table
+        of the model that will be on the 'one' side of the relation
+    :param relation_source_field: The name of the column containing the id of
+        the 'one' part of the new relation.
+    :param relation_comodel_field: The name of the column containing ids
+        of the 'many' part of the new relation.
+
+    .. versionadded:: 16.0
+    """
+    result = False
+    logged_query(
+        cr,
+        """
+        SELECT DISTINCT %(relation_comodel_field)s
+        FROM %(source_relation_table)s
+        WHERE %(relation_comodel_field)s IN (
+            SELECT %(relation_comodel_field)s
+            FROM %(source_relation_table)s
+            GROUP BY %(relation_comodel_field)s
+            HAVING COUNT(*) > 1
+        )
+        """,
+        {
+            "source_relation_table": AsIs(source_relation_table),
+            "relation_comodel_field": AsIs(relation_comodel_field),
+        },
+    )
+    for res in cr.fetchall():
+        _logger.error(
+            "%(relation_comodel_field)s record id %(id)s is linked to several"
+            " %(relation_source_field)s records. %(relation_comodel_field)s can"
+            " only be linked to one %(relation_source_field)s record. Fix these"
+            " data before migrating to avoid data loss.",
+            {
+                "id": res[0],
+                "relation_source_field": relation_source_field,
+                "relation_comodel_field": relation_comodel_field,
+            },
+        )
+        result = True
+
+    return result
 
 
 def float_to_integer(cr, table, field):
