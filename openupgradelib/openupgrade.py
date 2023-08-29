@@ -9,6 +9,7 @@ import logging as _logging_module
 import os
 import sys
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from functools import wraps
 
@@ -1945,8 +1946,11 @@ def m2m_to_o2m(
     relation_comodel_field,
     warn_dataloss=True,
 ):
-    """Transform many2many relations into one2many (with possible data
-    loss).
+    """Transform many2many relations into one2many (with possible data loss).
+    The data loss occurs when two (or more) records are linked to one other
+    record in a way that is no longer possible in the new one2many relationship.
+    In that case, the one2many relationship stays active on the record with the
+    lowest id.
 
     Use rename_tables() in your pre-migrate script to keep the many2many
     relation table and give them as 'source_relation_table' argument.
@@ -1965,6 +1969,10 @@ def m2m_to_o2m(
         m2m_to_o2m(env, "hr.plan", "plan_activity_type_ids",
             get_legacy_name("hr_plan_hr_plan_activity_type_rel"),
             "hr_plan_id", "hr_plan_activity_type_id")
+
+    In the above example, if hr.plan A and hr.plan B both had a relation to
+    hr.plan.activity.type X, then that relationship is removed from one of the
+    hr.plans. The relationship stays active on the hr.plan with the lowest id.
 
     :param model: The target registery model
     :param field: The field that changes from m2m to o2m
@@ -1991,7 +1999,11 @@ def m2m_to_o2m(
         """
         UPDATE %(target_table)s AS target
         SET %(target_field)s=source.%(relation_source_field)s
-        FROM %(source_relation_table)s AS source
+        FROM (
+            SELECT %(relation_comodel_field)s, MIN(%(relation_source_field)s)
+            FROM %(source_relation_table)s
+            GROUP BY %(relation_comodel_field)s
+        ) AS source
         WHERE source.%(relation_comodel_field)s=target.id
         """,
         {
@@ -2023,7 +2035,7 @@ def _m2m_to_o2m_dataloss_warn(
     logged_query(
         cr,
         """
-        SELECT DISTINCT %(relation_comodel_field)s
+        SELECT %(relation_comodel_field)s, %(relation_source_field)s
         FROM %(source_relation_table)s
         WHERE %(relation_comodel_field)s IN (
             SELECT %(relation_comodel_field)s
@@ -2034,23 +2046,31 @@ def _m2m_to_o2m_dataloss_warn(
         """,
         {
             "source_relation_table": AsIs(source_relation_table),
+            "relation_source_field": AsIs(relation_source_field),
             "relation_comodel_field": AsIs(relation_comodel_field),
         },
     )
+    # comodel_to_source is the m2x relationship from the perspective of the
+    # comodel, which should be m2o after migration.
+    comodel_to_source = defaultdict(list)
     for res in cr.fetchall():
-        _logger.error(
-            "%(relation_comodel_field)s record id %(id)s is linked to several"
-            " %(relation_source_field)s records. %(relation_comodel_field)s can"
-            " only be linked to one %(relation_source_field)s record. Fix these"
-            " data before migrating to avoid data loss.",
-            {
-                "id": res[0],
-                "relation_source_field": relation_source_field,
-                "relation_comodel_field": relation_comodel_field,
-            },
-        )
+        comodel_to_source[res[0]].append(res[1])
+    if comodel_to_source:
         result = True
-
+        for comodel, source_records in comodel_to_source.items():
+            logger.error(
+                "%(relation_comodel_field)s record id %(comodel_id)s is linked"
+                " to several %(relation_source_field)s records: %(source_ids)s."
+                " %(relation_comodel_field)s can only be linked to one"
+                " %(relation_source_field)s record. Fix these data before"
+                " migrating to avoid data loss.",
+                {
+                    "comodel_id": comodel,
+                    "source_ids": repr(source_records),
+                    "relation_source_field": relation_source_field,
+                    "relation_comodel_field": relation_comodel_field,
+                },
+            )
     return result
 
 
