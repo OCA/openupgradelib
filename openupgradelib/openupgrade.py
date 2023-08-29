@@ -1987,9 +1987,9 @@ def m2m_to_o2m(
 
     In the above example, if hr.plan A and hr.plan B both had a relation to
     hr.plan.activity.type X, then that relationship is removed from one of the
-    hr.plans. The relationship stays active on the hr.plan with the lowest id.
-    If the COPY strategy is used, a copy of hr.plan.activity.type X is made and
-    assigned to hr.plan B.
+    hr.plans. The relationship stays active on the hr.plan with the lowest id
+    (hr.plan A). If the COPY strategy is used, a copy of hr.plan.activity.type X
+    is made and assigned to hr.plan B.
 
     :param model: The target registery model
     :param field: The field that changes from m2m to o2m
