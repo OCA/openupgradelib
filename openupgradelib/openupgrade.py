@@ -1956,7 +1956,7 @@ def m2m_to_o2m(
     source_relation_table,
     relation_parent_field,
     relation_child_field,
-    strategy: M2mToO2mStrategy,
+    strategy,
 ):
     """Transform many2many relations into one2many (with possible data loss).
     The data loss occurs when two (or more) parent records are linked to one
@@ -2071,7 +2071,6 @@ def m2m_to_o2m(
             )
             target_id = env[columns.comodel_name].browse(child)
             for parent in parents:
-                parent_id = env[model].browse(parent)
                 logger.warning(
                     "Making a copy of %(child_model)s(%(target_id)s,) and"
                     " assigning %(parent_model)s(%(parent_id)s,) to its"
@@ -2084,6 +2083,7 @@ def m2m_to_o2m(
                         "target_field": target_field,
                     },
                 )
+                parent_id = env[model].browse(parent)
                 target_copy = target_id.copy()
                 setattr(target_copy, target_field, parent_id)
 
