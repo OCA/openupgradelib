@@ -2000,7 +2000,8 @@ def m2m_to_o2m(
         UPDATE %(target_table)s AS target
         SET %(target_field)s=source.%(relation_source_field)s
         FROM (
-            SELECT %(relation_comodel_field)s, MIN(%(relation_source_field)s)
+            SELECT %(relation_comodel_field)s,
+                   MIN(%(relation_source_field)s) AS %(relation_source_field)s
             FROM %(source_relation_table)s
             GROUP BY %(relation_comodel_field)s
         ) AS source
@@ -2063,10 +2064,13 @@ def _m2m_to_o2m_dataloss_warn(
                 " to several %(relation_source_field)s records: %(source_ids)s."
                 " %(relation_comodel_field)s can only be linked to one"
                 " %(relation_source_field)s record. Fix these data before"
-                " migrating to avoid data loss.",
+                " migrating to avoid data loss. If you do not, only"
+                " %(relation_source_field)s %(lowest_source_id)s will remain"
+                " linked.",
                 {
                     "comodel_id": comodel,
                     "source_ids": repr(source_records),
+                    "lowest_source_id": sorted(source_records)[0],
                     "relation_source_field": relation_source_field,
                     "relation_comodel_field": relation_comodel_field,
                 },
