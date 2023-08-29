@@ -172,7 +172,6 @@ __all__ = [
     "get_model2table",
     "m2o_to_x2m",
     "m2m_to_o2m",
-    "m2m_to_o2m_dataloss_warn",
     "float_to_integer",
     "message",
     "check_values_selection_field",
@@ -1944,6 +1943,7 @@ def m2m_to_o2m(
     source_relation_table,
     relation_source_field,
     relation_comodel_field,
+    warn_dataloss=True,
 ):
     """Transform many2many relations into one2many (with possible data
     loss).
@@ -1952,8 +1952,8 @@ def m2m_to_o2m(
     relation table and give them as 'source_relation_table' argument.
     And remove foreign keys constraints with remove_tables_fks().
 
-    A full example seems pertinent: hr.plan and hr.plan.activity.type used to
-    have an M2M relationship. Now, hr.plan has an O2M relationship to
+    A concrete example seems pertinent: hr.plan and hr.plan.activity.type used
+    to have an M2M relationship. Now, hr.plan has an O2M relationship to
     hr.plan.activity.type. In pre-migrate, execute::
 
         remove_tables_fks(env.cr, ["hr_plan_hr_plan_activity_type_rel"])
@@ -1962,9 +1962,6 @@ def m2m_to_o2m(
 
     In post-migrate::
 
-        m2m_to_o2m_dataloss_warn(env.cr,
-            get_legacy_name("hr_plan_hr_plan_activity_type_rel"), "hr_plan_id",
-            "hr_plan_activity_type_id")
         m2m_to_o2m(env, "hr.plan", "plan_activity_type_ids",
             get_legacy_name("hr_plan_hr_plan_activity_type_rel"),
             "hr_plan_id", "hr_plan_activity_type_id")
@@ -1979,6 +1976,13 @@ def m2m_to_o2m(
 
     .. versionadded:: 16.0
     """
+    if warn_dataloss:
+        _m2m_to_o2m_dataloss_warn(
+            env.cr,
+            source_relation_table,
+            relation_source_field,
+            relation_comodel_field,
+        )
     columns = env[model]._fields.get(field)
     target_table = env[columns.comodel_name]._table
     target_field = columns.inverse_name
@@ -2000,7 +2004,7 @@ def m2m_to_o2m(
     )
 
 
-def m2m_to_o2m_dataloss_warn(
+def _m2m_to_o2m_dataloss_warn(
     cr, source_relation_table, relation_source_field, relation_comodel_field
 ):
     """Warn user about data loss when migrating data from many2many to
