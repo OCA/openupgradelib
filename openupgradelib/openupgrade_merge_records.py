@@ -439,6 +439,10 @@ def apply_operations_by_field_type(
             vals[column] = max(field_vals)
         elif operation == "min":
             vals[column] = min(field_vals)
+        elif operation == "first_not_null":
+            field_vals = [x for x in field_vals if x]
+            if field_vals:
+                vals[column] = field_vals[0]
     elif field_type == "boolean":
         if operation:
             field_vals = [False if x is None else x for x in field_vals]
@@ -455,6 +459,10 @@ def apply_operations_by_field_type(
             vals[column] = max(field_vals)
         elif operation == "min":
             vals[column] = min(field_vals)
+        elif operation == "first_not_null":
+            field_vals = [x for x in field_vals if x]
+            if field_vals:
+                vals[column] = field_vals[0]
     elif field_type == "many2many" and method == "orm":
         operation = operation or "merge"
         if operation == "merge":
@@ -492,6 +500,11 @@ def apply_operations_by_field_type(
             if first_value and zip_list:
                 vals[column] = zip_list[0][0]
                 vals[field.model_field] = zip_list[0][1]
+    elif field_type == "selection":
+        if operation == "first_not_null":
+            field_vals = [x for x in field_vals if x]
+            if field_vals:
+                vals[column] = field_vals[0]
     if method == "orm":
         return vals, o2m_changes
     else:
@@ -524,6 +537,7 @@ def _adjust_merged_values_orm(
         - 'avg': Perform the arithmetic average of the values of the records.
         - 'max': Put the maximum of all the values.
         - 'min': Put the minimum of all the values.
+        - 'first_not_null': Put first non-zero value.
         - other value (default for Integer): content on target record
           is preserved
       * Binary field:
@@ -537,6 +551,7 @@ def _adjust_merged_values_orm(
       * Date and Datetime fields:
         - 'max': Put the maximum of all the values.
         - 'min': Put the minimum of all the values.
+        - 'first_not_null': Put first defined Date(time) value.
         - other value (default): content on target record is preserved
       * Many2one fields:
         - 'merge' (default): apply first not null value of the records if
@@ -560,6 +575,7 @@ def _adjust_merged_values_orm(
         - other value: content on target record is preserved
       * Selection fields:
         - any value: content on target record is preserved
+        - 'first_not_null': Put first not null value.
       * Serialized fields:
         - 'first_not_null' (default): For each found key, put first not null value.
         - other value: content on target record is preserved
@@ -1018,7 +1034,10 @@ def merge_records(
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
-        env[model_name].recompute()
+        if version_info[0] > 15:
+            env[model_name].flush_model()
+        else:
+            env[model_name].recompute()
         if delete:
             _delete_records_orm(env, model_name, record_ids, target_record_id)
     else:
