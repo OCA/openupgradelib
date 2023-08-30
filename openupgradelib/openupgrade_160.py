@@ -9,8 +9,9 @@ import logging
 from itertools import product
 
 from psycopg2.extensions import AsIs
+from psycopg2.extras import Json
 
-from odoo.tools.translate import _get_translation_upgrade_queries
+import odoo
 
 from .openupgrade import logged_query, table_exists, update_field_multilang
 from .openupgrade_tools import (
@@ -22,6 +23,99 @@ from .openupgrade_tools import (
 
 logger = logging.getLogger("OpenUpgrade")
 logger.setLevel(logging.DEBUG)
+
+
+def _get_translation_upgrade_queries(cr, field):
+    """Return a pair of lists ``migrate_queries, cleanup_queries``
+    of SQL queries. The queries in
+    ``migrate_queries`` do migrate the data from table ``_ir_translation`` to the corresponding
+    field's column, while the queries in ``cleanup_queries`` remove the corresponding data from
+    table ``_ir_translation``.
+    """
+    Model = odoo.registry(cr.dbname)[field.model_name]
+    translation_name = f"{field.model_name},{field.name}"
+    migrate_queries = []
+    cleanup_queries = []
+
+    if field.translate is True:
+        query = f"""
+            WITH t AS (
+                SELECT it.res_id as res_id, jsonb_object_agg(it.lang, it.value)
+                AS value, bool_or(imd.noupdate) AS noupdate
+                  FROM ir_translation it
+             LEFT JOIN ir_model_data imd
+                    ON imd.model = %s AND imd.res_id = it.res_id
+                 WHERE it.type = 'model' AND it.name = %s AND it.state = 'translated'
+              GROUP BY it.res_id
+            )
+            UPDATE {Model._table} m
+               SET "{field.name}" = CASE
+               WHEN t.noupdate
+               THEN m."{field.name}" || t.value ELSE t.value || m."{field.name}" END
+            FROM t
+            WHERE t.res_id = m.id
+        """
+        migrate_queries.append(
+            cr.mogrify(query, [Model._name, translation_name]).decode()
+        )
+
+        query = "DELETE FROM ir_translation WHERE type = 'model' AND name = %s"
+        cleanup_queries.append(cr.mogrify(query, [translation_name]).decode())
+
+    # upgrade model_terms translation: one update per field per record
+    if callable(field.translate):
+        cr.execute(
+            f"""
+            WITH t0 AS (
+                -- aggregate translations by source term --
+                SELECT res_id, lang, jsonb_object_agg(src, value) AS value
+                  FROM ir_translation
+                 WHERE type = 'model_terms' AND name = %s AND state = 'translated'
+              GROUP BY res_id, lang
+            ),
+            t AS (
+                -- aggregate translations by lang --
+                SELECT t0.res_id AS res_id,
+                jsonb_object_agg(t0.lang, t0.value) AS value,
+                bool_or(imd.noupdate) AS noupdate
+                  FROM t0
+             LEFT JOIN ir_model_data imd
+                    ON imd.model = %s AND imd.res_id = t0.res_id
+              GROUP BY t0.res_id
+            )
+            SELECT t.res_id, m."{field.name}", t.value, t.noupdate
+              FROM t
+              JOIN "{Model._table}" m ON t.res_id = m.id
+        """,
+            [translation_name, Model._name],
+        )
+        for id_, new_translations, translations, noupdate in cr.fetchall():
+            if not new_translations:
+                continue
+            # new_translations contains translations updated from the latest po files
+            src_value = new_translations.pop("en_US")
+            src_terms = field.get_trans_terms(src_value)
+            for lang, dst_value in new_translations.items():
+                terms_mapping = translations.setdefault(lang, {})
+                dst_terms = field.get_trans_terms(dst_value)
+                for src_term, dst_term in zip(src_terms, dst_terms):
+                    if src_term == dst_term or noupdate:
+                        terms_mapping.setdefault(src_term, dst_term)
+                    else:
+                        terms_mapping[src_term] = dst_term
+            new_values = {
+                lang: field.translate(terms_mapping.get, src_value)
+                for lang, terms_mapping in translations.items()
+            }
+            if "en_US" not in new_values:
+                new_values["en_US"] = field.translate(lambda v: None, src_value)
+            query = f'UPDATE "{Model._table}" SET "{field.name}" = %s WHERE id = %s'
+            migrate_queries.append(cr.mogrify(query, [Json(new_values), id_]).decode())
+
+        query = "DELETE FROM ir_translation WHERE type = 'model_terms' AND name = %s"
+        cleanup_queries.append(cr.mogrify(query, [translation_name]).decode())
+
+    return migrate_queries, cleanup_queries
 
 
 def migrate_translations_to_jsonb(env, fields_spec):
