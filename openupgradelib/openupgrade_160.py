@@ -159,7 +159,7 @@ _BS5_REPLACEMENTS = (
         class_rm="input-group-prepend",
     ),
     _r(class_rm="form-row", class_add="row"),
-    _r(selector=".form-inline", class_rm="form-inline"),
+    _r(class_rm="form-inline", class_add="d-flex"),
     # Badges
     *(
         _r(class_rm="badge-%s" % badge_context, class_add="bg-%s" % badge_context)
