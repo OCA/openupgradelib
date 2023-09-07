@@ -230,6 +230,11 @@ _BS5_REPLACEMENTS = (
         )
     ),
     # Forms
+    _r(
+        selector=".custom-checkbox .custom-control",
+        class_rm="custom-checkbox custom-control",
+        class_add="form-check",
+    ),
     _r("custom-control", "form-control"),
     _r("custom-checkbox", "form-check"),
     _r("custom-control-input", "form-check-input"),
