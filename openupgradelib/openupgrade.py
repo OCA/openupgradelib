@@ -1144,6 +1144,12 @@ def rename_models(cr, model_spec):
                     "UPDATE mail_activity SET res_model=%s where res_model=%s",
                     (new, old),
                 )
+        if table_exists(cr, "rating_rating"):
+            logged_query(
+                cr,
+                "UPDATE rating_rating SET parent_res_model=%s where parent_res_model=%s",
+                (new, old),
+            )
 
     # TODO: signal where the model occurs in references to ir_model
 
