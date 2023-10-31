@@ -75,10 +75,22 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         Converted XML string.
     """
     try:
-        fragment = fromstring(html_string)
+        # When the fragment has no common node, lxml wraps the code under a common one.
+        # For example: `<p><p/><p><p/>` is parsed as `<div><p><p/><p><p/></div>`
+        # So we force a custom wrapper tag on every parsed string so every xml receives
+        # the same treatment and we can extract it later with no harm
+        fragment = fromstring(
+            "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
+        )
     except Exception:
         logging.error("Failure converting string to DOM:\n%s", html_string)
         raise
+    # We don't want to update any fragment which has no changes after all the
+    # replacements are checked but the lxml parser and pretty print could make some
+    # reformatting on the original code.
+    parsed_html_string = tostring(
+        fragment, pretty_print=pretty_print, encoding="unicode"
+    )
     for spec in replacements:
         instructions = spec.copy()
         # Find matching nodes
@@ -90,8 +102,14 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         # Apply node conversions as instructed
         for node in nodes:
             convert_xml_node(node, **instructions)
-    # Return new XML string
-    return tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    # So if there were no replacement we just return the original string as it was
+    new_html_string = tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    if new_html_string == parsed_html_string:
+        return html_string
+    new_html_string = new_html_string.replace("<fragment_wrapper>", "").replace(
+        "</fragment_wrapper>", ""
+    )
+    return new_html_string
 
 
 # flake8: noqa: C901
