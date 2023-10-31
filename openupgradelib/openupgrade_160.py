@@ -401,3 +401,76 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
                 new_content,
                 id_,
             )
+
+
+def fill_analytic_distribution(
+    env,
+    table,
+    m2m_rel,
+    m2m_column1,
+    m2m_column2="account_analytic_tag_id",
+    column="analytic_distribution",
+):
+    """Convert v15 analytic tags with distributions to v16 analytic distributions.
+
+    :param table: Name of the main table (eg. sale_order_line...).
+    :param m2m_rel: Name of the table for the m2m field that stores v15 analytic tags
+        (eg. account_analytic_tag_sale_order_line_rel)
+    :param m2m_column1: Name of the column in the m2m table storing the ID of the
+        record of the main table (eg. sale_order_line_id).
+    :param m2m_column2: (Optional) Name of the column in the m2m table storing the ID of
+        the record of the analytic tag. By default, it's "account_analytic_tag_id".
+    :param column: (Optional) Name of the column in the main table for storing the new
+        analytic distribution. By default, it's "analytic_distribution".
+    """
+    logged_query(
+        env.cr,
+        f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} jsonb",
+    )
+    logged_query(
+        env.cr,
+        f"""
+        WITH distribution_data AS (
+            WITH sub AS (
+                SELECT
+                    all_line_data.line_id,
+                    all_line_data.analytic_account_id,
+                    SUM(all_line_data.percentage) AS percentage
+                FROM (
+                    SELECT
+                        line.id AS line_id,
+                        account.id AS analytic_account_id,
+                        100 AS percentage
+                    FROM {table} line
+                    JOIN account_analytic_account account
+                        ON account.id = line.analytic_account_id
+                    WHERE line.analytic_account_id IS NOT NULL
+
+                    UNION ALL
+
+                    SELECT
+                        line.id AS line_id,
+                        dist.account_id AS analytic_account_id,
+                        dist.percentage AS percentage
+                    FROM {table} line
+                    JOIN {m2m_rel} tag_rel
+                        ON tag_rel.{m2m_column1} = line.id
+                    JOIN account_analytic_distribution dist
+                        ON dist.tag_id = tag_rel.{m2m_column2}
+                    JOIN account_analytic_tag aat
+                            ON aat.id = tag_rel.{m2m_column2}
+                    WHERE aat.active_analytic_distribution = true
+                ) AS all_line_data
+                GROUP BY all_line_data.line_id, all_line_data.analytic_account_id
+            )
+            SELECT sub.line_id,
+            jsonb_object_agg(sub.analytic_account_id::text, sub.percentage)
+                AS analytic_distribution
+            FROM sub
+            GROUP BY sub.line_id
+        )
+        UPDATE {table} line
+        SET {column} = dist.analytic_distribution
+        FROM distribution_data dist WHERE line.id = dist.line_id
+        """,
+    )
