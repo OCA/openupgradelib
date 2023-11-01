@@ -191,6 +191,7 @@ __all__ = [
     "convert_to_company_dependent",
     "cow_templates_mark_if_equal_to_upstream",
     "cow_templates_replicate_upstream",
+    "logged_multiple_insert",
 ]
 
 
@@ -3489,3 +3490,75 @@ def cow_templates_replicate_upstream(cr, mark_colname=None):
         """
         ).format(mark_identifier),
     )
+
+
+def logged_multiple_insert(
+    cr, target_table, target_columns, vals_sequence, return_columns=None
+):
+    """Insert multiple rows at once with logging.
+    Note that only vals_sequence param gets sanitized, as
+    other params are expected to be provided more or less manually.
+
+    :param target_table: name of the table to insert into.
+    :param target_columns: list or tuple of column names to insert into.
+    :param vals_sequence: a list or tuple of tuples with vals to be inserted.
+    :param return_columns: columns to be returned after cr.fetchall() run.
+
+    Example:
+    columns = ('body', 'employee_id', 'create_uid', 'create_date')
+    log_note_vals_list = [
+        ('<h1>example</h1>', 129, 38, datetime(2021, 9, 16, 13, 55, 19)),
+        ('<h1>example 2</h1>', 29, 3, datetime(2021, 1, 5, 10, 05, 17)),
+    ]
+    logged_multiple_insert(
+        env.cr,
+        'hr_log_note',
+        columns,
+        log_note_vals_list,
+        ('id', 'create_date')
+    )
+    """
+    if not table_exists(cr, target_table):
+        raise ValueError("Table %s does not exist." % (target_table))
+    if not all(column_exists(cr, target_table, col) for col in target_columns):
+        raise ValueError(
+            "Make sure all target columns exist in table %s: %s"
+            % (target_table, target_columns)
+        )
+    if not (
+        (isinstance(vals_sequence, list) or isinstance(vals_sequence, tuple))
+        and isinstance(vals_sequence[0], tuple)
+    ):
+        raise TypeError("vals_sequence is expected to be a sequence of tuples")
+
+    num_args = len(target_columns)
+    is_num_of_args_consistent = all(
+        len(args_tuple) == num_args for args_tuple in vals_sequence
+    )
+    if not is_num_of_args_consistent:
+        raise ValueError(
+            """
+            Values tuples' length is inconsistent. Make sure
+            all tuples are the same length as number of target columns.
+        """
+        )
+
+    values_placeholder = "(" + ("%s," * num_args).rstrip(",") + ")"
+    vals_to_insert = ",".join(
+        cr.mogrify(values_placeholder, args_tuple).decode("utf-8")
+        for args_tuple in vals_sequence
+    )
+    columns = ", ".join(target_columns)
+    returning_statement = (
+        " RETURNING " + ", ".join(return_columns) if return_columns else ""
+    )
+    multi_insert_query = (
+        "INSERT INTO "
+        + target_table
+        + " ("
+        + columns
+        + ") VALUES "
+        + vals_to_insert
+        + returning_statement
+    )
+    return logged_query(cr, multi_insert_query)
