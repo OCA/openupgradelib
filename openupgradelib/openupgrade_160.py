@@ -389,7 +389,7 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
     params = ()
     if ids:
         sql += "WHERE id IN %s"
-        params = (ids,)
+        params = (tuple(ids),)
     cr.execute(sql, params)
     for id_, old_content in cr.fetchall():
         new_content = convert_string_bootstrap_4to5(old_content)
