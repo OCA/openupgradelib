@@ -79,9 +79,13 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         # For example: `<p><p/><p><p/>` is parsed as `<div><p><p/><p><p/></div>`
         # So we force a custom wrapper tag on every parsed string so every xml receives
         # the same treatment and we can extract it later with no harm
-        fragment = fromstring(
-            "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
-        )
+        if "<?xml " in html_string:
+            # XML compliant string - no need to wrap it.
+            fragment = fromstring(html_string)
+        else:
+            fragment = fromstring(
+                "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
+            )
     except Exception:
         logging.error("Failure converting string to DOM:\n%s", html_string)
         raise
