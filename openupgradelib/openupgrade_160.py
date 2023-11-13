@@ -8,7 +8,7 @@ import itertools
 import logging
 from itertools import product
 
-from psycopg2.extensions import AsIs
+from psycopg2 import sql
 
 from odoo.tools.translate import _get_translation_upgrade_queries
 
@@ -385,21 +385,24 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
     :param list ids:
         List of IDs, to restrict operation to them.
     """
-    sql = "SELECT id, %s FROM %s " % (field, table)
+    query = "SELECT id, {field} FROM {table}"
+    format_query_args = {"field": sql.Identifier(field), "table": sql.Identifier(table)}
     params = ()
     if ids:
-        sql += "WHERE id IN %s"
+        query = f"{query} WHERE id IN %s"
         params = (tuple(ids),)
-    cr.execute(sql, params)
+    cr.execute(sql.SQL(query).format(**format_query_args), params)
     for id_, old_content in cr.fetchall():
         new_content = convert_string_bootstrap_4to5(old_content)
         if old_content != new_content:
             cr.execute(
-                "UPDATE %s SET %s = %s WHERE id = %s",
-                AsIs(table),
-                AsIs(field),
-                new_content,
-                id_,
+                sql.SQL("UPDATE {table} SET {field} = %s WHERE id = %s").format(
+                    **format_query_args
+                ),
+                (
+                    new_content,
+                    id_,
+                ),
             )
 
 
