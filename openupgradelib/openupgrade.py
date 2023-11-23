@@ -658,7 +658,9 @@ def rename_fields(env, field_spec, no_deep=False):
     :param no_deep: If True, avoids to perform any operation that involves
       the environment. Not used for now.
     """
-    cr = env.cr
+    # This method has never implemented Environment usage apart cursor.
+    # To keep backward compatibility, check if env == Environment
+    cr = env.cr if isinstance(env, core.api.Environment) else env
     for model, table, old_field, new_field in field_spec:
         if column_exists(cr, table, old_field):
             rename_columns(cr, {table: [(old_field, new_field)]})
@@ -776,7 +778,7 @@ def rename_fields(env, field_spec, no_deep=False):
             (model,),
         )
         # TODO: Rename when the field in ir_ui_view_custom
-        if table_exists(env.cr, "mail_alias"):
+        if table_exists(cr, "mail_alias"):
             # Rename appearances on mail alias
             cr.execute(
                 """
