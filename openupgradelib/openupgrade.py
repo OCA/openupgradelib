@@ -632,9 +632,16 @@ def rename_columns(cr, column_spec):
 
 
 def rename_fields(env, field_spec, no_deep=False):
-    """Rename fields. Typically called in the pre script. WARNING: If using
-    this on base module, pass the argument ``no_deep`` with True value for
-    avoiding the using of the environment (which is not yet loaded).
+    """Rename fields. See rename_fields_cr for details.
+
+    :param no_deep: If True, avoids to perform any operation that involves
+      the environment. Not used for now.
+    """
+    return rename_fields_cr(env.cr, field_spec)
+
+
+def rename_fields_cr(cr, field_spec):
+    """Rename fields. Typically called in the pre script.
 
     This, in contrast of ``rename_columns``, performs all the steps for
     completely rename a field from one name to another. This is needed for
@@ -647,20 +654,12 @@ def rename_fields(env, field_spec, no_deep=False):
     This method performs also the SQL column renaming, so only one call is
     needed.
 
-    :param env: Environment/pool variable. The database cursor is the only
-      thing needed, but added in prevision of TODO tasks for not breaking
-      API later.
     :param field_spec: a list of tuples with the following elements:
       * Model name. The name of the Odoo model
       * Table name. The name of the SQL table for the model.
       * Old field name. The name of the old field.
       * New field name. The name of the new field.
-    :param no_deep: If True, avoids to perform any operation that involves
-      the environment. Not used for now.
     """
-    # This method has never implemented Environment usage apart cursor.
-    # To keep backward compatibility, check if env == Environment
-    cr = env.cr if isinstance(env, core.api.Environment) else env
     for model, table, old_field, new_field in field_spec:
         if column_exists(cr, table, old_field):
             rename_columns(cr, {table: [(old_field, new_field)]})
