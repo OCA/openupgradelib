@@ -385,6 +385,18 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
     :param list ids:
         List of IDs, to restrict operation to them.
     """
+    cr.execute(
+        "SELECT udt_name FROM information_schema.columns "
+        "WHERE table_name = %s AND column_name = %s",
+        (table, field),
+    )
+    # Consider jsonb translated fields
+    column_type, *_ = cr.fetchone()
+    cr.execute("SELECT code FROM res_lang WHERE active = true")
+    [code for code, *_ in cr.fetchall()]
+    # if column_type == "jsonb":
+    #     for lang in installed_languages:
+    #         query = "SELECT id, {field}->>%s FROM {table}"
     query = "SELECT id, {field} FROM {table}"
     format_query_args = {"field": sql.Identifier(field), "table": sql.Identifier(table)}
     params = ()
@@ -392,6 +404,8 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
         query = f"{query} WHERE id IN %s"
         params = (tuple(ids),)
     cr.execute(sql.SQL(query).format(**format_query_args), params)
+    # Extract this part so we can iterate over it. Although with jsonb the update
+    # changes as well
     for id_, old_content in cr.fetchall():
         new_content = convert_string_bootstrap_4to5(old_content)
         if old_content != new_content:
