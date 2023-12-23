@@ -9,6 +9,7 @@ import logging
 from itertools import product
 
 from psycopg2 import sql
+from psycopg2.extras import Json
 
 from odoo.tools.translate import _get_translation_upgrade_queries
 
@@ -393,7 +394,15 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
         params = (tuple(ids),)
     cr.execute(sql.SQL(query).format(**format_query_args), params)
     for id_, old_content in cr.fetchall():
-        new_content = convert_string_bootstrap_4to5(old_content)
+        if type(old_content) == dict:
+            new_content = Json(
+                {
+                    key: convert_string_bootstrap_4to5(value)
+                    for key, value in old_content.items()
+                }
+            )
+        else:
+            new_content = convert_string_bootstrap_4to5(old_content)
         if old_content != new_content:
             cr.execute(
                 sql.SQL("UPDATE {table} SET {field} = %s WHERE id = %s").format(
