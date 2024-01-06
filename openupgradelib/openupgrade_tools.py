@@ -22,9 +22,13 @@
 # A collection of functions split off from openupgrade.py
 # with no or only minimal dependencies
 import logging
+import sys
 
 from lxml.etree import tostring
 from lxml.html import fromstring
+
+if sys.version_info[0] == 3:
+    unicode = str
 
 
 def table_exists(cr, table):
@@ -84,7 +88,7 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
             fragment = fromstring(html_string)
         else:
             fragment = fromstring(
-                "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
+                unicode("<fragment_wrapper>{}</fragment_wrapper>").format(html_string)
             )
     except Exception:
         logging.error("Failure converting string to DOM:\n%s", html_string)
