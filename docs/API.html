@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g3c97a5a documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g6cc596c documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=cf1ec6a9"></script>
+        <script src="_static/documentation_options.js?v=be2d82bc"></script>
         <script src="_static/doctools.js?v=888ff710"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -37,7 +37,7 @@
             OpenUpgrade Library
           </a>
               <div class="version">
-                0.1.dev1+g3c97a5a
+                0.1.dev1+g6cc596c
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -1357,7 +1357,7 @@ with extra triggers in ORM.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade_160.fill_analytic_distribution">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_160.</span></span><span class="sig-name descname"><span class="pre">fill_analytic_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_rel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'account_analytic_tag_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'analytic_distribution'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_160.fill_analytic_distribution" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_160.</span></span><span class="sig-name descname"><span class="pre">fill_analytic_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_rel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'account_analytic_tag_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'analytic_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">analytic_account_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'analytic_account_id'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_160.fill_analytic_distribution" title="Link to this definition"></a></dt>
 <dd><p>Convert v15 analytic tags with distributions to v16 analytic distributions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1371,6 +1371,8 @@ record of the main table (eg. sale_order_line_id).</p></li>
 the record of the analytic tag. By default, it’s “account_analytic_tag_id”.</p></li>
 <li><p><strong>column</strong> – (Optional) Name of the column in the main table for storing the new
 analytic distribution. By default, it’s “analytic_distribution”.</p></li>
+<li><p><strong>analytic_account_column</strong> – (Optional) Name of the column in the main table for
+storing the old analytic account. By default, it’s analytic_account_id.</p></li>
 </ul>
 </dd>
 </dl>
