@@ -422,6 +422,7 @@ def fill_analytic_distribution(
     m2m_column1,
     m2m_column2="account_analytic_tag_id",
     column="analytic_distribution",
+    analytic_account_column="analytic_account_id",
 ):
     """Convert v15 analytic tags with distributions to v16 analytic distributions.
 
@@ -434,6 +435,8 @@ def fill_analytic_distribution(
         the record of the analytic tag. By default, it's "account_analytic_tag_id".
     :param column: (Optional) Name of the column in the main table for storing the new
         analytic distribution. By default, it's "analytic_distribution".
+    :param analytic_account_column: (Optional) Name of the column in the main table for
+        storing the old analytic account. By default, it's analytic_account_id.
     """
     logged_query(
         env.cr,
@@ -455,8 +458,8 @@ def fill_analytic_distribution(
                         100 AS percentage
                     FROM {table} line
                     JOIN account_analytic_account account
-                        ON account.id = line.analytic_account_id
-                    WHERE line.analytic_account_id IS NOT NULL
+                        ON account.id = line.{analytic_account_column}
+                    WHERE line.{analytic_account_column} IS NOT NULL
 
                     UNION ALL
 
