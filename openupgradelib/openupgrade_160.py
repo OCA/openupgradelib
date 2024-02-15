@@ -11,6 +11,7 @@ from itertools import product
 from psycopg2 import sql
 from psycopg2.extras import Json
 
+from odoo.tools.mail import plaintext2html
 from odoo.tools.translate import _get_translation_upgrade_queries
 
 from .openupgrade import logged_query, table_exists, update_field_multilang
@@ -413,6 +414,28 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
                     id_,
                 ),
             )
+
+
+def convert_translatable_field_to_html(cr, table, field_name, html_field_name, verbose=True):
+    """
+    Convert translate=True field value to HTML value.
+    """
+    cr.execute(  # pylint: disable=E8103
+        "SELECT id, %(field)s FROM %(table)s WHERE %(field)s IS NOT NULL"
+        % {
+            "field": field_name,
+            "table": table,
+        }
+    )
+    for row in cr.fetchall():
+        query = "UPDATE %(table)s SET %(field)s = jsonb_build_object('en_US', %%s) WHERE id = %%s" % {
+            "field": html_field_name,
+            "table": table,
+        }
+        if verbose:
+            logged_query(cr, query, (str(plaintext2html(row[1]['en_US'])), row[0]))
+        else:
+            cr.execute(query, (str(plaintext2html(row[1]['en_US'])), row[0]))
 
 
 def fill_analytic_distribution(
