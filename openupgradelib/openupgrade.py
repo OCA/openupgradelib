@@ -9,7 +9,9 @@ import logging as _logging_module
 import os
 import sys
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from enum import Enum, auto
 from functools import wraps
 
 try:
@@ -174,6 +176,8 @@ __all__ = [
     "get_legacy_name",
     "get_model2table",
     "m2o_to_x2m",
+    "M2mToO2mStrategy",
+    "m2m_to_o2m",
     "float_to_integer",
     "message",
     "check_values_selection_field",
@@ -1942,6 +1946,189 @@ def m2o_to_m2m(cr, model, table, field, source_field):
        Use :func:`m2o_to_x2m` instead.
     """
     return m2o_to_x2m(cr, model, table, field, source_field)
+
+
+class M2mToO2mStrategy(Enum):
+    """An Enum that flags the strategy for dealing with m2m-to-o2m migrations."""
+
+    #: Log data loss.
+    LOG = auto()
+    #: (Try to) prevent data loss by copying child records that would link to
+    #: only one parent record henceforth.
+    COPY = auto()
+
+
+def m2m_to_o2m(
+    env,
+    model,
+    field,
+    source_relation_table,
+    relation_parent_field,
+    relation_child_field,
+    strategy,
+):
+    """Transform many2many relations into one2many (with possible data loss).
+    The data loss occurs when two (or more) parent records are linked to one
+    other child record in a way that is no longer possible in the new one2many
+    relationship. In that case, the one2many relationship stays active on the
+    parent record with the lowest id.
+
+    If the COPY strategy is used, the child records are instead copied and
+    assigned to the remaining parent records.
+
+    Use rename_tables() in your pre-migrate script to keep the many2many
+    relation table and give them as 'source_relation_table' argument.
+    And remove foreign keys constraints with remove_tables_fks().
+
+    A concrete example seems pertinent: hr.plan and hr.plan.activity.type used
+    to have an M2M relationship. Now, hr.plan (parent) has an O2M relationship
+    to hr.plan.activity.type (child). In pre-migrate, execute::
+
+        remove_tables_fks(env.cr, ["hr_plan_hr_plan_activity_type_rel"])
+        rename_tables(env.cr, [("hr_plan_hr_plan_activity_type_rel",
+            get_legacy_name("hr_plan_hr_plan_activity_type_rel"))])
+
+    In post-migrate::
+
+        m2m_to_o2m(env, "hr.plan", "plan_activity_type_ids",
+            get_legacy_name("hr_plan_hr_plan_activity_type_rel"),
+            "hr_plan_id", "hr_plan_activity_type_id", M2mToO2mStrategy.LOG)
+
+    In the above example, if hr.plan A and hr.plan B both had a relation to
+    hr.plan.activity.type X, then that relationship is removed from one of the
+    hr.plans. The relationship stays active on the hr.plan with the lowest id
+    (hr.plan A). If the COPY strategy is used, a copy of hr.plan.activity.type X
+    is made and assigned to hr.plan B.
+
+    :param model: The target registery model
+    :param field: The field that changes from m2m to o2m
+    :param source_relation_table: The (renamed) many2many relation table
+    :param relation_parent_field: The column name of the model id
+        in the relation table (the One part of One2Many)
+    :param relation_child_field: The column name of the comodel id in
+        the relation table (the Many part of One2Many)
+    :param strategy: The strategy of resolving the conversion.
+
+    .. versionadded:: 16.0
+    """
+    child_to_parent = _get_child_to_parent_mapping(
+        env.cr,
+        source_relation_table,
+        relation_parent_field,
+        relation_child_field,
+    )
+    if strategy == M2mToO2mStrategy.LOG:
+        for child, parents in child_to_parent.items():
+            logger.error(
+                "%(relation_child_field)s record id %(child_id)s is linked"
+                " to several %(relation_parent_field)s records: %(parent_ids)s."
+                " %(relation_child_field)s can only be linked to one"
+                " %(relation_parent_field)s record. Fix these data before"
+                " migrating to avoid data loss. If you do not, only"
+                " %(relation_parent_field)s %(lowest_parent_id)s will remain"
+                " linked.",
+                {
+                    "child_id": child,
+                    "parent_ids": repr(parents),
+                    "lowest_parent_id": sorted(parents)[0],
+                    "relation_parent_field": relation_parent_field,
+                    "relation_child_field": relation_child_field,
+                },
+            )
+    columns = env[model]._fields.get(field)
+    target_table = env[columns.comodel_name]._table
+    target_field = columns.inverse_name
+    logged_query(
+        env.cr,
+        """
+        UPDATE %(target_table)s AS target
+        SET %(target_field)s=source.%(relation_parent_field)s
+        FROM (
+            SELECT %(relation_child_field)s,
+                   MIN(%(relation_parent_field)s) AS %(relation_parent_field)s
+            FROM %(source_relation_table)s
+            GROUP BY %(relation_child_field)s
+        ) AS source
+        WHERE source.%(relation_child_field)s=target.id
+        """,
+        {
+            "target_table": AsIs(target_table),
+            "target_field": AsIs(target_field),
+            "source_relation_table": AsIs(source_relation_table),
+            "relation_parent_field": AsIs(relation_parent_field),
+            "relation_child_field": AsIs(relation_child_field),
+        },
+    )
+    if strategy == M2mToO2mStrategy.COPY:
+        for child, parents in child_to_parent.items():
+            # Remove the lowest, which should now have the target field
+            # populated.
+            parents.sort()
+            skip = parents.pop(0)
+            logger.warning(
+                "Retaining %(child_model)s(%(child_id)s,), having just assigned"
+                " its %(target_field)s field to"
+                " %(parent_model)s(%(parent_id)s,). Copies will be made of"
+                " this record to assign to other %(parent_model)s records.",
+                {
+                    "child_model": columns.comodel_name,
+                    "child_id": child,
+                    "parent_model": model,
+                    "parent_id": skip,
+                    "target_field": target_field,
+                },
+            )
+            target_id = env[columns.comodel_name].browse(child)
+            for parent in parents:
+                logger.warning(
+                    "Making a copy of %(child_model)s(%(target_id)s,) and"
+                    " assigning %(parent_model)s(%(parent_id)s,) to its"
+                    " %(target_field)s field.",
+                    {
+                        "child_model": columns.comodel_name,
+                        "target_id": child,
+                        "parent_model": model,
+                        "parent_id": parent,
+                        "target_field": target_field,
+                    },
+                )
+                parent_id = env[model].browse(parent)
+                target_copy = target_id.copy()
+                setattr(target_copy, target_field, parent_id)
+
+
+def _get_child_to_parent_mapping(
+    cr, source_relation_table, relation_parent_field, relation_child_field
+):
+    """From a many2many table, get a child-to-parent mapping, where the child
+    has multiple parents (which will be impossible in the new o2m/m2o
+    relationship). The key is the child's id, and the value is a list of parent
+    ids.
+
+    .. versionadded:: 16.0
+    """
+    logged_query(
+        cr,
+        """
+        SELECT %(relation_child_field)s, %(relation_parent_field)s
+        FROM %(source_relation_table)s
+        WHERE %(relation_child_field)s IN (
+            SELECT %(relation_child_field)s
+            FROM %(source_relation_table)s
+            GROUP BY %(relation_child_field)s
+            HAVING COUNT(*) > 1
+        )
+        """,
+        {
+            "source_relation_table": AsIs(source_relation_table),
+            "relation_parent_field": AsIs(relation_parent_field),
+            "relation_child_field": AsIs(relation_child_field),
+        },
+    )
+    child_to_parent = defaultdict(list)
+    for res in cr.fetchall():
+        child_to_parent[res[0]].append(res[1])
+    return child_to_parent
 
 
 def float_to_integer(cr, table, field):
