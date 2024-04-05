@@ -194,6 +194,7 @@ __all__ = [
     "convert_to_company_dependent",
     "cow_templates_mark_if_equal_to_upstream",
     "cow_templates_replicate_upstream",
+    "clean_transient_models",
 ]
 
 
@@ -3492,3 +3493,32 @@ def cow_templates_replicate_upstream(cr, mark_colname=None):
         """
         ).format(mark_identifier),
     )
+
+
+def clean_transient_models(cr):
+    """Clean transient models to prevent possible issues due to
+    chained data.
+
+    To be run at the base pre-migration script for having a general scope.
+    Only works on > v8.
+
+    :param cr: Database cursor.
+    """
+    if version_info[0] < 9:
+        raise Exception("Not supported Odoo version for this method.")
+    cr.execute("SELECT model FROM ir_model WHERE transient")
+    table_names = [get_model2table(x[0]) for x in cr.fetchall()]
+    for table_name in table_names:
+        if not table_exists(cr, table_name):
+            continue
+        try:
+            with cr.savepoint():
+                table = sql.Identifier(table_name)
+                query = sql.SQL(
+                    """DELETE FROM {} WHERE
+                    COALESCE(write_date, create_date, (now() at time zone 'UTC'))::timestamp
+                    < ((now() at time zone 'UTC') - interval '1 seconds')"""
+                ).format(table)
+                cr.execute(query)
+        except Exception as e:
+            logger.warning("Failed to clean transient table %s\n%s", table_name, str(e))
