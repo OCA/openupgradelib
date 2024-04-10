@@ -26,6 +26,8 @@ import logging
 from lxml.etree import tostring
 from lxml.html import fromstring
 
+logger = logging.getLogger(__name__)
+
 
 def table_exists(cr, table):
     """Check whether a certain table or view exists"""
@@ -348,3 +350,42 @@ def replace_html_replacement_attr_shortcut(attr_rp="", **kwargs):
         }
     )
     return kwargs
+
+
+def invalidate_cache(env, flush=True):
+    """Version-independent cache invalidation.
+
+    :param flush: whether pending updates should be flushed before invalidation.
+        It is ``True`` by default, which ensures cache consistency.
+        Do not use this parameter unless you know what you are doing.
+    """
+
+    # It needs to be loaded after odoo is imported
+    from .openupgrade import version_info
+
+    version = version_info[0]
+
+    # Warning on possibly untested versions where chunked might not work as expected
+    if version > 17:  # unreleased version at this time
+        logger.warning(
+            f"openupgradelib.invalidate_cache hasn't been tested on Odoo {version}. "
+            "Please report any issue you may find and consider bumping this warning "
+            "to the next version otherwise."
+        )
+
+    # 16.0: invalidate_all is re-introduced (with flush_all)
+    if version >= 16:
+        env.invalidate_all(flush=flush)
+    # 13.0: the write cache and flush is introduced
+    elif version >= 13:
+        if flush:
+            env["base"].flush()
+        env.cache.invalidate()
+    # 11.0: the invalidate_all method is deprecated
+    elif version >= 11:
+        env.cache.invalidate()
+    # 8.0: new api
+    elif version >= 8:
+        env.invalidate_all()
+    else:
+        raise Exception("Not supported Odoo version for this method.")
