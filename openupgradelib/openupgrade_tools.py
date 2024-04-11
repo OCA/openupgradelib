@@ -368,9 +368,9 @@ def invalidate_cache(env, flush=True):
     # Warning on possibly untested versions where chunked might not work as expected
     if version > 17:  # unreleased version at this time
         logger.warning(
-            f"openupgradelib.invalidate_cache hasn't been tested on Odoo {version}. "
+            "openupgradelib.invalidate_cache hasn't been tested on Odoo {}. "
             "Please report any issue you may find and consider bumping this warning "
-            "to the next version otherwise."
+            "to the next version otherwise.".format(version)
         )
 
     # 16.0: invalidate_all is re-introduced (with flush_all)
