@@ -3262,17 +3262,11 @@ def chunked(records, single=True):
     """Memory and performance friendly method to iterate over a potentially
     large number of records. Yields either a whole chunk or a single record
     at the time. Don't nest calls to this method."""
-    if version_info[0] > 10:
-        invalidate = records.env.cache.invalidate
-    elif version_info[0] > 7:
-        invalidate = records.env.invalidate_all
-    else:
-        raise Exception("Not supported Odoo version for this method.")
     size = core.models.PREFETCH_MAX
     model = records._name
     ids = records.with_context(prefetch_fields=False).ids
     for i in range(0, len(ids), size):
-        invalidate()
+        openupgrade_tools.invalidate_cache(records.env, flush=True)
         chunk = records.env[model].browse(ids[i : i + size])
         if single:
             for record in chunk:
