@@ -1,19 +1,21 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gcefe8da documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gb7c0114 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=23e32a96"></script>
+        <script src="_static/documentation_options.js?v=6c3b8e75"></script>
         <script src="_static/doctools.js?v=888ff710"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -35,7 +37,7 @@
             OpenUpgrade Library
           </a>
               <div class="version">
-                0.1.dev1+gcefe8da
+                0.1.dev1+gb7c0114
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -56,6 +58,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.add_xmlid"><code class="docutils literal notranslate"><span class="pre">add_xmlid()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.check_values_selection_field"><code class="docutils literal notranslate"><span class="pre">check_values_selection_field()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.chunked"><code class="docutils literal notranslate"><span class="pre">chunked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.clean_transient_models"><code class="docutils literal notranslate"><span class="pre">clean_transient_models()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.column_exists"><code class="docutils literal notranslate"><span class="pre">column_exists()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.convert_field_to_html"><code class="docutils literal notranslate"><span class="pre">convert_field_to_html()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.convert_to_company_dependent"><code class="docutils literal notranslate"><span class="pre">convert_to_company_dependent()</span></code></a></li>
@@ -131,6 +134,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#methods-for-openupgrade-16-0">Methods for OpenUpgrade 16.0</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade_160.convert_field_bootstrap_4to5"><code class="docutils literal notranslate"><span class="pre">convert_field_bootstrap_4to5()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade_160.convert_string_bootstrap_4to5"><code class="docutils literal notranslate"><span class="pre">convert_string_bootstrap_4to5()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade_160.fill_analytic_distribution"><code class="docutils literal notranslate"><span class="pre">fill_analytic_distribution()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade_160.migrate_translations_to_jsonb"><code class="docutils literal notranslate"><span class="pre">migrate_translations_to_jsonb()</span></code></a></li>
 </ul>
 </li>
@@ -279,6 +283,20 @@ If yes, return True.</p>
 <dd><p>Memory and performance friendly method to iterate over a potentially
 large number of records. Yields either a whole chunk or a single record
 at the time. Don’t nest calls to this method.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="openupgradelib.openupgrade.clean_transient_models">
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">clean_transient_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.clean_transient_models" title="Link to this definition"></a></dt>
+<dd><p>Clean transient models to prevent possible issues due to
+chained data.</p>
+<p>To be run at the base pre-migration script for having a general scope.
+Only works on &gt; v8.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cr</strong> – Database cursor.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1348,6 +1366,29 @@ with extra triggers in ORM.</p></li>
 </dd>
 <dt class="field-even">Return str<span class="colon">:</span></dt>
 <dd class="field-even"><p>Raw HTML fragment converted.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="openupgradelib.openupgrade_160.fill_analytic_distribution">
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade_160.</span></span><span class="sig-name descname"><span class="pre">fill_analytic_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_rel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2m_column2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'account_analytic_tag_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'analytic_distribution'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">analytic_account_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'analytic_account_id'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade_160.fill_analytic_distribution" title="Link to this definition"></a></dt>
+<dd><p>Convert v15 analytic tags with distributions to v16 analytic distributions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>table</strong> – Name of the main table (eg. sale_order_line…).</p></li>
+<li><p><strong>m2m_rel</strong> – Name of the table for the m2m field that stores v15 analytic tags
+(eg. account_analytic_tag_sale_order_line_rel)</p></li>
+<li><p><strong>m2m_column1</strong> – Name of the column in the m2m table storing the ID of the
+record of the main table (eg. sale_order_line_id).</p></li>
+<li><p><strong>m2m_column2</strong> – (Optional) Name of the column in the m2m table storing the ID of
+the record of the analytic tag. By default, it’s “account_analytic_tag_id”.</p></li>
+<li><p><strong>column</strong> – (Optional) Name of the column in the main table for storing the new
+analytic distribution. By default, it’s “analytic_distribution”.</p></li>
+<li><p><strong>analytic_account_column</strong> – (Optional) Name of the column in the main table for
+storing the old analytic account. By default, it’s analytic_account_id.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

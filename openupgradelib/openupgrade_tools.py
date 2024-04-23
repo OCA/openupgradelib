@@ -26,6 +26,8 @@ import logging
 from lxml.etree import tostring
 from lxml.html import fromstring
 
+logger = logging.getLogger(__name__)
+
 
 def table_exists(cr, table):
     """Check whether a certain table or view exists"""
@@ -75,10 +77,26 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         Converted XML string.
     """
     try:
-        fragment = fromstring(html_string)
+        # When the fragment has no common node, lxml wraps the code under a common one.
+        # For example: `<p><p/><p><p/>` is parsed as `<div><p><p/><p><p/></div>`
+        # So we force a custom wrapper tag on every parsed string so every xml receives
+        # the same treatment and we can extract it later with no harm
+        if "<?xml " in html_string:
+            # XML compliant string - no need to wrap it.
+            fragment = fromstring(html_string)
+        else:
+            fragment = fromstring(
+                "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
+            )
     except Exception:
         logging.error("Failure converting string to DOM:\n%s", html_string)
         raise
+    # We don't want to update any fragment which has no changes after all the
+    # replacements are checked but the lxml parser and pretty print could make some
+    # reformatting on the original code.
+    parsed_html_string = tostring(
+        fragment, pretty_print=pretty_print, encoding="unicode"
+    )
     for spec in replacements:
         instructions = spec.copy()
         # Find matching nodes
@@ -90,8 +108,14 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         # Apply node conversions as instructed
         for node in nodes:
             convert_xml_node(node, **instructions)
-    # Return new XML string
-    return tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    # So if there were no replacement we just return the original string as it was
+    new_html_string = tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    if new_html_string == parsed_html_string:
+        return html_string
+    new_html_string = new_html_string.replace("<fragment_wrapper>", "").replace(
+        "</fragment_wrapper>", ""
+    )
+    return new_html_string
 
 
 # flake8: noqa: C901
@@ -326,3 +350,42 @@ def replace_html_replacement_attr_shortcut(attr_rp="", **kwargs):
         }
     )
     return kwargs
+
+
+def invalidate_cache(env, flush=True):
+    """Version-independent cache invalidation.
+
+    :param flush: whether pending updates should be flushed before invalidation.
+        It is ``True`` by default, which ensures cache consistency.
+        Do not use this parameter unless you know what you are doing.
+    """
+
+    # It needs to be loaded after odoo is imported
+    from .openupgrade import version_info
+
+    version = version_info[0]
+
+    # Warning on possibly untested versions where chunked might not work as expected
+    if version > 17:  # unreleased version at this time
+        logger.warning(
+            "openupgradelib.invalidate_cache hasn't been tested on Odoo {}. "
+            "Please report any issue you may find and consider bumping this warning "
+            "to the next version otherwise.".format(version)
+        )
+
+    # 16.0: invalidate_all is re-introduced (with flush_all)
+    if version >= 16:
+        env.invalidate_all(flush=flush)
+    # 13.0: the write cache and flush is introduced
+    elif version >= 13:
+        if flush:
+            env["base"].flush()
+        env.cache.invalidate()
+    # 11.0: the invalidate_all method is deprecated
+    elif version >= 11:
+        env.cache.invalidate()
+    # 8.0: new api
+    elif version >= 8:
+        env.invalidate_all()
+    else:
+        raise Exception("Not supported Odoo version for this method.")
