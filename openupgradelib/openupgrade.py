@@ -87,7 +87,10 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
         many2many = core.osv.fields.many2many
         one2many = core.osv.fields.one2many
 
-    WarningError = core.exceptions.Warning
+    if version_info[0] >= 17:
+        WarningError = core.exceptions.UserError
+    else:
+        WarningError = core.exceptions.Warning
     if version_info[0] >= 7:
         plaintext2html = tools.mail.plaintext2html
     if version_info[0] >= 8:
@@ -192,6 +195,7 @@ __all__ = [
     "convert_to_company_dependent",
     "cow_templates_mark_if_equal_to_upstream",
     "cow_templates_replicate_upstream",
+    "clean_transient_models",
 ]
 
 
@@ -1144,7 +1148,7 @@ def rename_models(cr, model_spec):
                     "UPDATE mail_activity SET res_model=%s where res_model=%s",
                     (new, old),
                 )
-        if table_exists(cr, "rating_rating"):
+        if column_exists(cr, "rating_rating", "parent_res_model"):
             logged_query(
                 cr,
                 "UPDATE rating_rating SET parent_res_model=%s where parent_res_model=%s",
@@ -3323,17 +3327,11 @@ def chunked(records, single=True):
     """Memory and performance friendly method to iterate over a potentially
     large number of records. Yields either a whole chunk or a single record
     at the time. Don't nest calls to this method."""
-    if version_info[0] > 10:
-        invalidate = records.env.cache.invalidate
-    elif version_info[0] > 7:
-        invalidate = records.env.invalidate_all
-    else:
-        raise Exception("Not supported Odoo version for this method.")
     size = core.models.PREFETCH_MAX
     model = records._name
     ids = records.with_context(prefetch_fields=False).ids
     for i in range(0, len(ids), size):
-        invalidate()
+        openupgrade_tools.invalidate_cache(records.env, flush=True)
         chunk = records.env[model].browse(ids[i : i + size])
         if single:
             for record in chunk:
@@ -3554,3 +3552,32 @@ def cow_templates_replicate_upstream(cr, mark_colname=None):
         """
         ).format(mark_identifier),
     )
+
+
+def clean_transient_models(cr):
+    """Clean transient models to prevent possible issues due to
+    chained data.
+
+    To be run at the base pre-migration script for having a general scope.
+    Only works on > v8.
+
+    :param cr: Database cursor.
+    """
+    if version_info[0] < 9:
+        raise Exception("Not supported Odoo version for this method.")
+    cr.execute("SELECT model FROM ir_model WHERE transient")
+    table_names = [get_model2table(x[0]) for x in cr.fetchall()]
+    for table_name in table_names:
+        if not table_exists(cr, table_name):
+            continue
+        try:
+            with cr.savepoint():
+                table = sql.Identifier(table_name)
+                query = sql.SQL(
+                    """DELETE FROM {} WHERE
+                    COALESCE(write_date, create_date, (now() at time zone 'UTC'))::timestamp
+                    < ((now() at time zone 'UTC') - interval '1 seconds')"""
+                ).format(table)
+                cr.execute(query)
+        except Exception as e:
+            logger.warning("Failed to clean transient table %s\n%s", table_name, str(e))

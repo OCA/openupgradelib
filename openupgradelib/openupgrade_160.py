@@ -8,7 +8,7 @@ import itertools
 import logging
 from itertools import product
 
-from psycopg2.extensions import AsIs
+from psycopg2 import sql
 from psycopg2.extras import Json
 
 import odoo
@@ -116,42 +116,6 @@ def _get_translation_upgrade_queries(cr, field):
         cleanup_queries.append(cr.mogrify(query, [translation_name]).decode())
 
     return migrate_queries, cleanup_queries
-
-
-def migrate_translations_to_jsonb(env, fields_spec):
-    """
-    In Odoo 16, translated fields no longer use the model ir.translation.
-    Instead they store all their values into jsonb columns
-    in the model's table.
-    See https://github.com/odoo/odoo/pull/97692 for more details.
-
-    Odoo provides a method _get_translation_upgrade_queries returning queries
-    to execute to migrate all the translations of a particular field.
-
-    The present openupgrade method executes the provided queries
-    on table _ir_translation if exists (when ir_translation table was renamed
-    by Odoo's migration scripts) or on table ir_translation (if module was
-    migrated by OCA).
-
-    This should be called in a post-migration script of the module
-    that contains the definition of the translatable field.
-
-    :param fields_spec: list of tuples of (model name, field name)
-    """
-    initial_translation_tables = None
-    if table_exists(env.cr, "_ir_translation"):
-        initial_translation_tables = "_ir_translation"
-    elif table_exists(env.cr, "ir_translation"):
-        initial_translation_tables = "ir_translation"
-    if initial_translation_tables:
-        for model, field_name in fields_spec:
-            field = env[model]._fields[field_name]
-            for query in itertools.chain.from_iterable(
-                _get_translation_upgrade_queries(env.cr, field)
-            ):
-                if initial_translation_tables == "ir_translation":
-                    query = query.replace("_ir_translation", "ir_translation")
-                logged_query(env.cr, query)
 
 
 _BADGE_CONTEXTS = (
@@ -484,19 +448,106 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
     :param list ids:
         List of IDs, to restrict operation to them.
     """
-    sql = "SELECT id, %s FROM %s " % (field, table)
+    query = "SELECT id, {field} FROM {table}"
+    format_query_args = {"field": sql.Identifier(field), "table": sql.Identifier(table)}
     params = ()
     if ids:
-        sql += "WHERE id IN %s"
-        params = (ids,)
-    cr.execute(sql, params)
+        query = f"{query} WHERE id IN %s"
+        params = (tuple(ids),)
+    cr.execute(sql.SQL(query).format(**format_query_args), params)
     for id_, old_content in cr.fetchall():
-        new_content = convert_string_bootstrap_4to5(old_content)
+        if type(old_content) == dict:
+            new_content = Json(
+                {
+                    key: convert_string_bootstrap_4to5(value)
+                    for key, value in old_content.items()
+                }
+            )
+        else:
+            new_content = convert_string_bootstrap_4to5(old_content)
         if old_content != new_content:
             cr.execute(
-                "UPDATE %s SET %s = %s WHERE id = %s",
-                AsIs(table),
-                AsIs(field),
-                new_content,
-                id_,
+                sql.SQL("UPDATE {table} SET {field} = %s WHERE id = %s").format(
+                    **format_query_args
+                ),
+                (
+                    new_content,
+                    id_,
+                ),
             )
+
+
+def fill_analytic_distribution(
+    env,
+    table,
+    m2m_rel,
+    m2m_column1,
+    m2m_column2="account_analytic_tag_id",
+    column="analytic_distribution",
+    analytic_account_column="analytic_account_id",
+):
+    """Convert v15 analytic tags with distributions to v16 analytic distributions.
+
+    :param table: Name of the main table (eg. sale_order_line...).
+    :param m2m_rel: Name of the table for the m2m field that stores v15 analytic tags
+        (eg. account_analytic_tag_sale_order_line_rel)
+    :param m2m_column1: Name of the column in the m2m table storing the ID of the
+        record of the main table (eg. sale_order_line_id).
+    :param m2m_column2: (Optional) Name of the column in the m2m table storing the ID of
+        the record of the analytic tag. By default, it's "account_analytic_tag_id".
+    :param column: (Optional) Name of the column in the main table for storing the new
+        analytic distribution. By default, it's "analytic_distribution".
+    :param analytic_account_column: (Optional) Name of the column in the main table for
+        storing the old analytic account. By default, it's analytic_account_id.
+    """
+    logged_query(
+        env.cr,
+        f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} jsonb",
+    )
+    logged_query(
+        env.cr,
+        f"""
+        WITH distribution_data AS (
+            WITH sub AS (
+                SELECT
+                    all_line_data.line_id,
+                    all_line_data.analytic_account_id,
+                    SUM(all_line_data.percentage) AS percentage
+                FROM (
+                    SELECT
+                        line.id AS line_id,
+                        account.id AS analytic_account_id,
+                        100 AS percentage
+                    FROM {table} line
+                    JOIN account_analytic_account account
+                        ON account.id = line.{analytic_account_column}
+                    WHERE line.{analytic_account_column} IS NOT NULL
+
+                    UNION ALL
+
+                    SELECT
+                        line.id AS line_id,
+                        dist.account_id AS analytic_account_id,
+                        dist.percentage AS percentage
+                    FROM {table} line
+                    JOIN {m2m_rel} tag_rel
+                        ON tag_rel.{m2m_column1} = line.id
+                    JOIN account_analytic_distribution dist
+                        ON dist.tag_id = tag_rel.{m2m_column2}
+                    JOIN account_analytic_tag aat
+                            ON aat.id = tag_rel.{m2m_column2}
+                    WHERE aat.active_analytic_distribution = true
+                ) AS all_line_data
+                GROUP BY all_line_data.line_id, all_line_data.analytic_account_id
+            )
+            SELECT sub.line_id,
+            jsonb_object_agg(sub.analytic_account_id::text, sub.percentage)
+                AS analytic_distribution
+            FROM sub
+            GROUP BY sub.line_id
+        )
+        UPDATE {table} line
+        SET {column} = dist.analytic_distribution
+        FROM distribution_data dist WHERE line.id = dist.line_id
+        """,
+    )
