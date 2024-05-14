@@ -271,7 +271,7 @@ def check_values_selection_field(cr, table_name, field_name, allowed_values):
     return res
 
 
-def load_data(cr, module_name, filename, idref=None, mode="init"):
+def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
     """
     Load an xml, csv or yml data file from your post script. The usual case for
     this is the
@@ -287,6 +287,8 @@ def load_data(cr, module_name, filename, idref=None, mode="init"):
     Leave it to the user to actually delete existing resources that are
     marked with 'noupdate' (other named items will be deleted
     automatically).
+
+    Notes: Argument "env_or_cr" is an cr until 16 and is an env is required since 17.
 
 
     :param module_name: the name of the module
@@ -305,6 +307,15 @@ def load_data(cr, module_name, filename, idref=None, mode="init"):
         filled which are not contained in the data file.
     """
 
+    cr = env_or_cr
+    if version_info[0] >= 17:
+        if not isinstance(env_or_cr, core.api.Environment):
+            logger.error(
+                "Pass argument 'env_or_cr' as Environment parameter since 17.0"
+            )
+        cr = env_or_cr.cr
+    elif not isinstance(env_or_cr, core.sql_db.Cursor):
+        logger.error("Pass argument 'env_or_cr' as Cursor parameter until 16.0")
     if idref is None:
         idref = {}
     logger.info("%s: loading %s" % (module_name, filename))
@@ -329,21 +340,21 @@ def load_data(cr, module_name, filename, idref=None, mode="init"):
         if ext == ".csv":
             noupdate = True
             tools.convert_csv_import(
-                cr, module_name, pathname, fp.read(), idref, mode, noupdate
+                env_or_cr, module_name, pathname, fp.read(), idref, mode, noupdate
             )
         elif ext == ".yml":
             yaml_import(cr, module_name, fp, None, idref=idref, mode=mode)
         elif mode == "init_no_create":
             for fp2 in _get_existing_records(cr, fp, module_name):
                 tools.convert_xml_import(
-                    cr,
+                    env_or_cr,
                     module_name,
                     fp2,
                     idref,
                     mode="init",
                 )
         else:
-            tools.convert_xml_import(cr, module_name, fp, idref, mode=mode)
+            tools.convert_xml_import(env_or_cr, module_name, fp, idref, mode=mode)
     finally:
         fp.close()
 
