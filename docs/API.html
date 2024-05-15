@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gb7c0114 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gdfad8f2 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
 
@@ -15,8 +15,8 @@
   
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=6c3b8e75"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/documentation_options.js?v=c21573c7"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -37,7 +37,7 @@
             OpenUpgrade Library
           </a>
               <div class="version">
-                0.1.dev1+gb7c0114
+                0.1.dev1+gdfad8f2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -273,7 +273,7 @@ If not return False and log an error.
 If yes, return True.</p>
 </div></blockquote>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -310,7 +310,7 @@ Only works on &gt; v8.</p>
 <span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">convert_field_to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">html_field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.convert_field_to_html" title="Link to this definition"></a></dt>
 <dd><p>Convert field value to HTML value.</p>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 </dd></dl>
 
@@ -355,7 +355,7 @@ SQL directive. eg. ‘“column”’</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -389,7 +389,7 @@ copy the raw field from <code class="docutils literal notranslate"><span class="
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 12.0.</span></p>
+<p><span class="versionmodified added">Added in version 12.0.</span></p>
 </div>
 </dd></dl>
 
@@ -432,7 +432,7 @@ This function must be call in post migration script.</p>
 :param date_field_name : The name of the old date field;     (Typically a legacy name, set in pre-migration script)
 :param datetime_field_name : The name of the new date field;</p>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -452,7 +452,7 @@ Returns a dictionary to be used on reactivate_workflow_transitions</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 </dd></dl>
 
@@ -561,7 +561,7 @@ truncate the float value (It won’t round it)</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -592,7 +592,7 @@ If everything went right, the constraints will be recreated</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.load_data">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_or_cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Link to this definition"></a></dt>
 <dd><p>Load an xml, csv or yml data file from your post script. The usual case for
 this is the
 occurrence of newly added essential or useful data in the module that is
@@ -606,6 +606,7 @@ in your migrations directory and load that file.
 Leave it to the user to actually delete existing resources that are
 marked with ‘noupdate’ (other named items will be deleted
 automatically).</p>
+<p>Notes: Argument “env_or_cr” is an cr until 16 and is an env is required since 17.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -700,7 +701,7 @@ conversion.</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -726,7 +727,7 @@ Old value True represents “is set”, False “is not set”.</p></li>
 </dl>
 <p>This method does not support mapping m2m, o2m or property fields.     For o2m you can migrate the inverse field’s column instead.</p>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -757,7 +758,7 @@ To be extended with logging to a table for reporting purposes.</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 </dd></dl>
 
@@ -798,7 +799,7 @@ available on post script migration.
 :param quick_request: Set to False, if you want to use write function to     update value; Otherwise, the function will use UPDATE SQL request;
 :param compute_func: This a function that receives 4 parameters:     cr, pool: common args;    id: id of the instance of Model B    vals:  list of different values.    This function must return a unique value that will be set to the    instance of Model B which id is ‘id’ param;    If compute_func is not set, the algorithm will take the value that    is the most present in vals.    :binary_field: Set to True if the migrated field is a binary field</p>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 8.0.</span></p>
+<p><span class="versionmodified added">Added in version 8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -813,7 +814,7 @@ deactivate_workflow_transitions.</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 11.0: </span>Workflows were removed from Odoo as of version 11.0</p>
@@ -1080,7 +1081,7 @@ external ids. The first id is replaced with the second.</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 </dd></dl>
 
@@ -1105,7 +1106,7 @@ Use orm, so call from the post script.</p>
 </dd>
 </dl>
 <div class="versionadded">
-<p><span class="versionmodified added">New in version 7.0.</span></p>
+<p><span class="versionmodified added">Added in version 7.0.</span></p>
 </div>
 </dd></dl>
 
