@@ -17,6 +17,7 @@ from .openupgrade import logged_query, table_exists, update_field_multilang
 from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
+    not_html_empty_where_clause,
     replace_html_replacement_attr_shortcut as _attr_replace,
     replace_html_replacement_class_rp_by_inline_shortcut as _class_rp_by_inline,
 )
@@ -344,10 +345,9 @@ def convert_field_bootstrap_4to5(
             field_name,
             domain,
         )
-    records = env[model_name].search(domain or [])
     return _convert_field_bootstrap_4to5_sql(
         env.cr,
-        records._table,
+        env[model_name]._table,
         field_name,
     )
 
@@ -360,8 +360,10 @@ def _convert_field_bootstrap_4to5_orm(env, model_name, field_name, domain=None):
     :param str field_name: Field to convert in that model.
     :param domain list: Domain to restrict conversion.
     """
-    domain = domain or [(field_name, "!=", False), (field_name, "!=", "<p><br></p>")]
-    records = env[model_name].search(domain)
+    domain = domain or []
+    query = env[model_name]._search(domain)
+    query.add_where(not_html_empty_where_clause(field_name))
+    records = env[model_name].browse(query)
     update_field_multilang(
         records,
         field_name,

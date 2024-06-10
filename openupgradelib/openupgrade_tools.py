@@ -389,3 +389,27 @@ def invalidate_cache(env, flush=True):
         env.invalidate_all()
     else:
         raise Exception("Not supported Odoo version for this method.")
+
+
+def not_html_empty_where_clause(column):
+    """Add this where clause to your query to optimize when to deal with an html record
+    value or not. Follows the same rules as odoo.tools.is_html_empty
+
+    :param string column:
+
+    :return string:
+        The where clause for the html column ready to select only values with content.
+    """
+    return f"""
+    NOT (
+        {column} IS NULL
+        OR {column} = ''
+        OR NOT (
+            regexp_replace(
+                {column},
+                '\\<\\s*\\/?(?:p|div|span|br|b|i|font)(?:(?=\\s+\\w*)[^/>]*|\\s*)/?\\s*\\>',
+                '',
+                'g'
+            ) ~ '\\S'
+        )
+    )"""
