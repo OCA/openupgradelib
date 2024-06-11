@@ -400,7 +400,7 @@ def not_html_empty_where_clause(column):
     :return string:
         The where clause for the html column ready to select only values with content.
     """
-    return f"""
+    return """
     NOT (
         {column} IS NULL
         OR {column} = ''
@@ -412,4 +412,6 @@ def not_html_empty_where_clause(column):
                 'g'
             ) ~ '\\S'
         )
-    )"""
+    )""".format(
+        column=column
+    )
