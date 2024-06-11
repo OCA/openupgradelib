@@ -11,13 +11,13 @@ from itertools import product
 from psycopg2 import sql
 from psycopg2.extras import Json
 
+from odoo.osv import expression
 from odoo.tools.translate import _get_translation_upgrade_queries
 
 from .openupgrade import logged_query, table_exists, update_field_multilang
 from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
-    not_html_empty_where_clause,
     replace_html_replacement_attr_shortcut as _attr_replace,
     replace_html_replacement_class_rp_by_inline_shortcut as _class_rp_by_inline,
 )
@@ -360,10 +360,9 @@ def _convert_field_bootstrap_4to5_orm(env, model_name, field_name, domain=None):
     :param str field_name: Field to convert in that model.
     :param domain list: Domain to restrict conversion.
     """
-    domain = domain or []
-    query = env[model_name]._search(domain)
-    query.add_where(not_html_empty_where_clause(field_name))
-    records = env[model_name].browse(query)
+    # No class attribute will imply that no bootstrap conversion is needed at all
+    domain = expression.AND([domain or [], [(field_name, "ilike", "class=")]])
+    records = env[model_name].search(domain)
     update_field_multilang(
         records,
         field_name,
