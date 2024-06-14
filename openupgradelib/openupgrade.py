@@ -2743,7 +2743,7 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
 
 
 # flake8: noqa: C901
-def disable_invalid_filters(env):
+def disable_invalid_filters(env, verbose=True):
     """It analyzes all the existing active filters to check if they are still
     correct. If not, they are disabled for avoiding errors when clicking on
     them, or worse, if they are default filters when opening the model/action.
@@ -2785,6 +2785,13 @@ def disable_invalid_filters(env):
         if f.model_id not in env:
             continue  # Obsolete or invalid model
         model = env[f.model_id]
+        if verbose:
+            logger.info(
+                "Checking filter '%s' on model %s with domain %s",
+                f.name,
+                model._name,
+                f.domain,
+            )
         try:
             columns = model._fields
         except AttributeError:
