@@ -2467,6 +2467,14 @@ def convert_field_to_html(cr, table, field_name, html_field_name, verbose=True):
             "You cannot use this method in an OpenUpgrade version prior to 7.0."
         )
         return
+    # Pre-clean empty values
+    cr.execute(  # pylint: disable=E8103
+        "UPDATE %(table)s SET %(field)s = NULL WHERE %(field)s = ''"
+        % {
+            "field": field_name,
+            "table": table,
+        }
+    )
     cr.execute(  # pylint: disable=E8103
         "SELECT id, %(field)s FROM %(table)s WHERE %(field)s IS NOT NULL"
         % {
