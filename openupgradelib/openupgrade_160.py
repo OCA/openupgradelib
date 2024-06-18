@@ -10,10 +10,16 @@ from itertools import product
 from psycopg2 import sql
 from psycopg2.extras import Json
 
+from odoo import tools
 from odoo.osv import expression
 from odoo.tools.translate import _get_translation_upgrade_queries
 
-from .openupgrade import logged_query, table_exists, update_field_multilang
+from .openupgrade import (
+    get_model2table,
+    logged_query,
+    table_exists,
+    update_field_multilang,
+)
 from .openupgrade_tools import (
     convert_html_fragment,
     convert_html_replacement_class_shortcut as _r,
@@ -52,6 +58,19 @@ def migrate_translations_to_jsonb(env, fields_spec):
         logged_query(env.cr, "ALTER TABLE ir_translation RENAME TO _ir_translation")
     if table_exists(env.cr, "_ir_translation"):
         for model, field_name in fields_spec:
+            table = get_model2table(model)
+            if not table_exists(env.cr, table):
+                logger.warning(
+                    "Couldn't find table for model %s - not updating translations",
+                    model,
+                )
+                continue
+            # Convert columns if needed
+            columns = tools.sql.table_columns(env.cr, table)
+            if columns.get(field_name, {}).get("udt_name", "") in ["varchar", "text"]:
+                tools.sql.convert_column_translatable(
+                    env.cr, table, field_name, "jsonb"
+                )
             field = env[model]._fields[field_name]
             # Ignore cleanup queries as we want to keep the original ir_translation
             # table records in order to be able to fix possible inconsistencies once
