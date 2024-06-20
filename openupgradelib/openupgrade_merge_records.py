@@ -485,7 +485,10 @@ def apply_operations_by_field_type(
             if method != "orm":
                 field_vals = [x for x in field_vals if x]
             if not first_value and field_vals:
-                vals[column] = field_vals[0]
+                if method == "orm":
+                    vals[column] = field_vals[0].id
+                else:
+                    vals[column] = field_vals[0]
     elif (
         field_type == "many2one_reference"
         and method == "orm"
