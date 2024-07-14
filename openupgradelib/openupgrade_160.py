@@ -79,7 +79,7 @@ def migrate_translations_to_jsonb(env, fields_spec):
                 env.cr, field
             )
             for query in migrate_queries:
-                logged_query(env.cr, query)
+                env.cr.execute(query)
     # Just leave it as it was if we renamed it
     if rename_translation_table:
         logged_query(env.cr, "ALTER TABLE _ir_translation RENAME TO ir_translation")
