@@ -335,7 +335,7 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
                     pass
             else:
                 raise OSError(
-                    "Couldn't find file %s in upgrade path (%s)"
+                    "Couldn't find file %s in the upgrade paths (%s)"
                     % (filename, tools.config["upgrade_path"])
                 )
         else:
