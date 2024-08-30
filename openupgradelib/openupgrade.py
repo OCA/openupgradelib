@@ -333,6 +333,11 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
                     break
                 except OSError:  # pylint: disable=W7938
                     pass
+            else:
+                raise OSError(
+                    "Couldn't find file %s in upgrade path (%s)"
+                    % (filename, tools.config["upgrade_path"])
+                )
         else:
             raise
 
