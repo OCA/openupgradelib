@@ -1904,8 +1904,11 @@ def m2o_to_x2m(cr, model, table, field, source_field):
             SELECT id, %s
             FROM %s
             WHERE %s is not null
+            EXCEPT
+            SELECT %s, %s
+            FROM %s
             """
-            % (rel, id1, id2, source_field, table, source_field),
+            % (rel, id1, id2, source_field, table, source_field, id1, id2, rel),
         )
     elif isinstance(columns[field], tuple(o2m_types)):
         if isinstance(columns[field], One2many):  # >= 8.0
