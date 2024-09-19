@@ -33,7 +33,8 @@ setup(
     include_package_data=True,
     setup_requires=[
         "setuptools_scm<6.0.0; python_version <= '3.6'",
-        "setuptools_scm; python_version > '3.6'",
+        "setuptools_scm<8; python_version < '3.8'",
+        "setuptools_scm; python_version >= '3.8'",
     ],
     install_requires=[
         "lxml",
