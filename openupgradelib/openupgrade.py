@@ -195,6 +195,7 @@ __all__ = [
     "cow_templates_mark_if_equal_to_upstream",
     "cow_templates_replicate_upstream",
     "clean_transient_models",
+    "validate_fk_constraints",
 ]
 
 
@@ -3547,3 +3548,50 @@ def clean_transient_models(cr):
                 cr.execute(query)
         except Exception as e:
             logger.warning("Failed to clean transient table %s\n%s", table_name, str(e))
+
+
+VALIDATE_FK_QUERY = """
+SELECT
+    tc.table_schema,
+    tc.table_name,
+    tc.constraint_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu
+    ON tc.constraint_name = kcu.constraint_name
+    AND tc.table_schema = kcu.table_schema
+JOIN information_schema.constraint_column_usage AS ccu
+    ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+    AND ccu.table_schema='public'
+    AND ccu.table_name=%(table)s
+    AND ccu.column_name=%(column)s;
+"""
+
+
+def validate_fk_constraints(cr, table, column):
+    """
+    Validate all FK constraints to a column in table.
+
+    This is useful in cases where you need to delete a lot of records,
+    and you speed the deletion up by disabling FK triggers,
+    but you want to validate integrity after deletion.
+
+    Can only be run as superuser.
+
+    :param cr: Database cursor.
+    """
+    cr.execute(
+        VALIDATE_FK_QUERY,
+        {
+            "table": table,
+            "column": column,
+        },
+    )
+    for schema, table, constraint in cr.fetchall():
+        cr.execute(
+            "update pg_constraint set convalidated = false where conname = %s",
+            (constraint,),
+        )
+        cr.execute(
+            "alter table %s validate constraint %s", (AsIs(table), AsIs(constraint))
+        )
