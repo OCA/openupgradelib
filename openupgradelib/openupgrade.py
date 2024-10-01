@@ -2467,10 +2467,8 @@ def convert_field_to_html(
 ):
     """
     Convert field value to HTML value.
-
     .. versionadded:: 7.0
     """
-
     # For translated fields
     if translate:
         if version_info[0] < 16:
@@ -2484,9 +2482,8 @@ def convert_field_to_html(
             if verbose:
                 logged_query(cr, query, (json.dumps(translations), record_id))
             else:
-                cr.execute(query, translations, record_id)
+                cr.execute(query, (json.dumps(translations), record_id))
         return
-
     if version_info[0] < 7:
         logger.error(
             "You cannot use this method in an OpenUpgrade version prior to 7.0."
