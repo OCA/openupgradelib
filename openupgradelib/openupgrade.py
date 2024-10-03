@@ -5,6 +5,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import inspect
+import json
 import logging as _logging_module
 import os
 import sys
@@ -2461,12 +2462,28 @@ def move_field_m2o(
             )
 
 
-def convert_field_to_html(cr, table, field_name, html_field_name, verbose=True):
+def convert_field_to_html(
+    cr, table, field_name, html_field_name, verbose=True, translate=False
+):
     """
     Convert field value to HTML value.
-
     .. versionadded:: 7.0
     """
+    # For translated fields
+    if translate:
+        if version_info[0] < 16:
+            do_raise("Translatable fields are only managed in version 16.0 or higher")
+        cr.execute(f"SELECT id, {field_name} FROM {table};")  # pylint: disable=E8103
+        for row in cr.fetchall():
+            record_id, translations = row
+            for lang in translations:
+                translations[lang] = plaintext2html(translations[lang])
+            query = f"update {table} set {html_field_name} = %s::jsonb where id = %s"
+            if verbose:
+                logged_query(cr, query, (json.dumps(translations), record_id))
+            else:
+                cr.execute(query, (json.dumps(translations), record_id))
+        return
     if version_info[0] < 7:
         logger.error(
             "You cannot use this method in an OpenUpgrade version prior to 7.0."
