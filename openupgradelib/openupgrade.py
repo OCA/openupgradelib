@@ -127,6 +127,11 @@ if version_info[0] > 7:
 else:
     api = False
 
+if version_info[0] < 18:
+    decode = tools.ustr
+else:
+    decode = lambda s: s.decode("utf-8", errors="strict")
+
 # Setting the target version as an environment variable allows OpenUpgrade
 # to skip methods that are called in every version but really only need to
 # run in the target version. Make the target version available to OpenUpgrade
@@ -1721,9 +1726,9 @@ def logged_query(cr, query, args=None, skip_no_result=False):
         duration = datetime.now() - start
         if log_msg:
             try:
-                full_query = tools.ustr(cr._obj.query)
+                full_query = decode(cr._obj.query)
             except AttributeError:
-                full_query = tools.ustr(cr.mogrify(query, args))
+                full_query = decode(cr.mogrify(query, args))
             logger.log(
                 log_level,
                 log_msg,
