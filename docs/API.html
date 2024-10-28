@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g23da9c3 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g3e7bf59 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=35020add"></script>
+      <script src="_static/documentation_options.js?v=b33ad121"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -677,8 +677,9 @@ is called.</p>
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.m2o_to_x2m">
 <span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">m2o_to_x2m</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.m2o_to_x2m" title="Link to this definition"></a></dt>
 <dd><p>Transform many2one relations into one2many or many2many.
-Use rename_columns in your pre-migrate script to retain the column’s old
-value, then call m2o_to_x2m in your post-migrate script.</p>
+For openupgrade &lt; 14.0, use rename_columns in your pre-migrate script
+to retain the column’s old value, then call m2o_to_x2m in your
+post-migrate script.</p>
 <p>WARNING: If converting to one2many, there can be data loss, because only
 one inverse record can be mapped in a one2many, but you can have multiple
 many2one pointing to the same target. Use it when the use case allows this
