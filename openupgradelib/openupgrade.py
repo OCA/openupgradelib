@@ -64,6 +64,13 @@ if hasattr(core, "release"):
 else:
     import release
 
+ir_property_TYPE2FIELD = {}
+try:
+    from odoo.addons.base.models.ir_property import TYPE2FIELD as ir_property_TYPE2FIELD
+except ImportError:  # pylint: disable=except-pass
+    # don't fail for very old Odoos
+    pass
+
 Many2many = False
 One2many = False
 one2many = False
@@ -198,6 +205,7 @@ __all__ = [
     "delete_sql_constraint_safely",
     "set_xml_ids_noupdate_value",
     "convert_to_company_dependent",
+    "convert_from_company_dependent",
     "cow_templates_mark_if_equal_to_upstream",
     "cow_templates_replicate_upstream",
     "clean_transient_models",
@@ -3370,7 +3378,7 @@ def convert_to_company_dependent(
     model_table_name=None,
 ):
     """For each row in a given table, the value of a given field is
-    set in another 'company dependant' field of the same table.
+    set in another 'company dependent' field of the same table.
     Useful in cases when from one version to another one, some field in a
     model becomes a 'company dependent' field.
 
@@ -3456,6 +3464,75 @@ def convert_to_company_dependent(
             ),
             args,
         )
+
+
+def convert_from_company_dependent(
+    env,
+    model_name,
+    origin_field_name,
+    destination_field_name,
+    model_table_name=None,
+):
+    """
+    Move a company-dependent field back to the model table.
+
+    The usual setting is: A model didn't have a company_id field in version
+    (n-1), but got company-aware in version (n). Then company-dependent fields
+    don't make sense, and are replaced with plain database columns.
+
+    You're responsible for duplicating records for all companies in whatever way
+    makes sense for the model before calling this function.
+
+    Either call in post-migration or create destination_field_name manually.
+
+    :param model_name: Name of the model.
+    :param origin_field_name: Name of the company-dependent field
+    :param destination_field_name: Name of plain field
+    :param model_table_name: Name of the table. Optional. If not provided
+      the table name is taken from the model (so the model must be
+      registered previously).
+    """
+    table_name = model_table_name or env[model_name]._table
+
+    env.cr.execute(
+        "SELECT id, ttype FROM ir_model_fields "
+        f"WHERE model='{model_name}' AND name='{origin_field_name}'"
+    )
+    if not env.cr.rowcount:
+        logger.warning(
+            "Company-dependent field %s does not exist on model %s",
+            origin_field_name,
+            model_name,
+        )
+        return
+
+    field_id, field_type = env.cr.fetchone()
+
+    value_expression = ir_property_TYPE2FIELD.get(field_type)
+    if value_expression == "value_reference":
+        value_expression = "SPLIT_PART(ip.value_reference, ',', 2)::integer"
+
+    return logged_query(
+        env.cr,
+        f"""
+        UPDATE {table_name}
+        SET {destination_field_name} = (
+            SELECT {value_expression}
+            FROM ir_property ip
+            WHERE ip.fields_id={field_id} --- {origin_field_name}
+            AND (
+                ip.res_id = '{model_name}.' || {table_name}.id
+                OR ip.res_id IS NULL
+            )
+            AND (
+                ip.company_id = {table_name}.company_id
+                OR ip.company_id IS NULL
+            )
+            ORDER BY ip.company_id NULLS LAST, ip.res_id NULLS LAST
+            LIMIT 1
+        )
+        """,
+    )
 
 
 def cow_templates_mark_if_equal_to_upstream(cr, mark_colname=None):
