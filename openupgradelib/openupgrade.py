@@ -1867,8 +1867,9 @@ def get_model2table(model):
 def m2o_to_x2m(cr, model, table, field, source_field):
     """
     Transform many2one relations into one2many or many2many.
-    Use rename_columns in your pre-migrate script to retain the column's old
-    value, then call m2o_to_x2m in your post-migrate script.
+    For openupgrade < 14.0, use rename_columns in your pre-migrate script
+    to retain the column's old value, then call m2o_to_x2m in your
+    post-migrate script.
 
     WARNING: If converting to one2many, there can be data loss, because only
     one inverse record can be mapped in a one2many, but you can have multiple
