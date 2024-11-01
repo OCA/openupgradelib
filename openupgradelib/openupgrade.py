@@ -2898,6 +2898,13 @@ def disable_invalid_filters(env, verbose=True):
                     )
                     f.active = False
                     break
+        # ACTION_ID
+        if f.action_id and not f.action_id.exists():
+            logger.warning(
+                format_message(f) + "as it contains an invalid action_id %s.",
+                f.action_id,
+            )
+            f.active = False
 
 
 def add_fields(env, field_spec):
