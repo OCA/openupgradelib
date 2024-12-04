@@ -444,7 +444,8 @@ def copy_columns(cr, column_spec):
                 """
                 ALTER TABLE %(table_name)s
                 ADD COLUMN %(new)s %(field_type)s;
-                UPDATE %(table_name)s SET %(new)s=%(old)s;
+                UPDATE %(table_name)s SET %(new)s=%(old)s
+                WHERE %(old)s IS NOT NULL;
                 """
                 % {
                     "table_name": table_name,
