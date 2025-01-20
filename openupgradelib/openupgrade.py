@@ -65,6 +65,8 @@ else:
     import release
 
 try:
+    # since 18.0, Odoo checks for the signature of migration functions
+    # and raises if the parameter names are not contained here
     from odoo.modules.migration import VALID_MIGRATE_PARAMS
 
     # allow (env, version) signatures in migration methods
