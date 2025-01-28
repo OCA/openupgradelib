@@ -986,48 +986,49 @@ def rename_models(cr, model_spec):
                 old,
             ),
         )
-        logged_query(
-            cr,
-            """
-            UPDATE ir_property
-            SET res_id = replace(res_id, %(old_string)s, %(new_string)s)
-            WHERE res_id like %(old_pattern)s""",
-            {
-                "old_pattern": "%s,%%" % old,
-                "old_string": "%s," % old,
-                "new_string": "%s," % new,
-            },
-        )
-        # Handle properties that reference to this model
-        logged_query(
-            cr,
-            "SELECT id FROM ir_model_fields "
-            "WHERE relation = %s AND ttype = 'many2one'",
-            (old,),
-        )
-        field_ids = [x[0] for x in cr.fetchall()]
-        logged_query(
-            cr,
-            "UPDATE ir_model_fields SET relation = %s WHERE relation = %s",
-            (
-                new,
-                old,
-            ),
-        )
-        if field_ids:
+        if version_info[0] < 18 and table_exists(cr, "ir_property"):
             logged_query(
                 cr,
                 """
                 UPDATE ir_property
-                SET value_reference = replace(
-                    value_reference, %(old_string)s, %(new_string)s)
-                WHERE value_reference like %(old_pattern)s""",
+                SET res_id = replace(res_id, %(old_string)s, %(new_string)s)
+                WHERE res_id like %(old_pattern)s""",
                 {
                     "old_pattern": "%s,%%" % old,
                     "old_string": "%s," % old,
                     "new_string": "%s," % new,
                 },
             )
+            # Handle properties that reference to this model
+            logged_query(
+                cr,
+                "SELECT id FROM ir_model_fields "
+                "WHERE relation = %s AND ttype = 'many2one'",
+                (old,),
+            )
+            field_ids = [x[0] for x in cr.fetchall()]
+            logged_query(
+                cr,
+                "UPDATE ir_model_fields SET relation = %s WHERE relation = %s",
+                (
+                    new,
+                    old,
+                ),
+            )
+            if field_ids:
+                logged_query(
+                    cr,
+                    """
+                    UPDATE ir_property
+                    SET value_reference = replace(
+                        value_reference, %(old_string)s, %(new_string)s)
+                    WHERE value_reference like %(old_pattern)s""",
+                    {
+                        "old_pattern": "%s,%%" % old,
+                        "old_string": "%s," % old,
+                        "new_string": "%s," % new,
+                    },
+                )
         # Handle models that reference to this model using reference fields
         cr.execute(
             """
