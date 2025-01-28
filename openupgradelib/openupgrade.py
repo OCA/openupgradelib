@@ -64,6 +64,17 @@ if hasattr(core, "release"):
 else:
     import release
 
+try:
+    # since 18.0, Odoo checks for the signature of migration functions
+    # and raises if the parameter names are not contained here
+    from odoo.modules.migration import VALID_MIGRATE_PARAMS
+
+    # allow (env, version) signatures in migration methods
+    if ("env", "version") not in VALID_MIGRATE_PARAMS:
+        VALID_MIGRATE_PARAMS.append(("env", "version"))
+except ImportError:  # pylint: disable=except-pass
+    pass
+
 Many2many = False
 One2many = False
 one2many = False
