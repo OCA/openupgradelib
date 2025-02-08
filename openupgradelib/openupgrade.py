@@ -988,19 +988,6 @@ def rename_models(cr, model_spec):
         )
         logged_query(
             cr,
-            """
-            UPDATE ir_property
-            SET res_id = replace(res_id, %(old_string)s, %(new_string)s)
-            WHERE res_id like %(old_pattern)s""",
-            {
-                "old_pattern": "%s,%%" % old,
-                "old_string": "%s," % old,
-                "new_string": "%s," % new,
-            },
-        )
-        # Handle properties that reference to this model
-        logged_query(
-            cr,
             "SELECT id FROM ir_model_fields "
             "WHERE relation = %s AND ttype = 'many2one'",
             (old,),
@@ -1014,20 +1001,34 @@ def rename_models(cr, model_spec):
                 old,
             ),
         )
-        if field_ids:
+        if version_info[0] < 18:
             logged_query(
                 cr,
                 """
                 UPDATE ir_property
-                SET value_reference = replace(
-                    value_reference, %(old_string)s, %(new_string)s)
-                WHERE value_reference like %(old_pattern)s""",
+                SET res_id = replace(res_id, %(old_string)s, %(new_string)s)
+                WHERE res_id like %(old_pattern)s""",
                 {
                     "old_pattern": "%s,%%" % old,
                     "old_string": "%s," % old,
                     "new_string": "%s," % new,
                 },
             )
+            # Handle properties that reference to this model
+            if field_ids:
+                logged_query(
+                    cr,
+                    """
+                    UPDATE ir_property
+                    SET value_reference = replace(
+                        value_reference, %(old_string)s, %(new_string)s)
+                    WHERE value_reference like %(old_pattern)s""",
+                    {
+                        "old_pattern": "%s,%%" % old,
+                        "old_string": "%s," % old,
+                        "new_string": "%s," % new,
+                    },
+                )
         # Handle models that reference to this model using reference fields
         cr.execute(
             """
