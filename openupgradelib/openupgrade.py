@@ -4,6 +4,7 @@
 # Copyright Odoo Community Association (OCA)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+import ast
 import inspect
 import json
 import logging as _logging_module
@@ -12,6 +13,11 @@ import sys
 import uuid
 from datetime import datetime
 from functools import wraps
+
+if sys.version_info >= (3, 9):
+    from ast import unparse
+else:
+    from astunparse import unparse
 
 try:
     from StringIO import StringIO
@@ -167,6 +173,7 @@ __all__ = [
     "copy_columns",
     "copy_fields_multilang",
     "remove_tables_fks",
+    "update_domain_str",
     "rename_columns",
     "rename_fields",
     "rename_tables",
@@ -669,7 +676,264 @@ def rename_columns(cr, column_spec):
                 )
 
 
-def rename_fields(env, field_spec, no_deep=False):
+def _update_chained_field_name(
+    env, chained_field_name, first_model_name, model, new_field, old_field, separator
+):
+    """Rename a field name in a string. The string can represent
+    a chained fields name separated by a specific character.
+    Example: 'x_id/old_field/name'.
+
+    :param (Environment) env: Odoo environment.
+    :param (str) chained_field_name: String that may contain
+        the old field name.
+    :param (str) first_model_name: Model corresponding to the
+        first field of 'chained field name'.
+    :param (str) model: Model name of the field to rename.
+    :param (str) new_field: New field name.
+    :param (str) old_field: Old field name.
+    :param (str) separator: Separator of the 'chained field name'.
+        Example: in 'x_id/old_field/name' the separator is the character '/'.
+
+    :return: The updated 'chained field name' string if the field was
+        successfully renamed, False otherwise.
+
+    """
+    current_model_name = first_model_name
+    field_name_list = chained_field_name.split(separator)
+    for index in range(len(field_name_list) - 1):
+        current_field_name = field_name_list[index]
+        if current_field_name == old_field and current_model_name == model:
+            field_name_list[index] = new_field
+            return separator.join(field_name_list)
+        env.cr.execute(
+            """SELECT
+                im.model
+            FROM
+                ir_model_fields imf
+                INNER JOIN ir_model im ON im.model = imf.relation
+            WHERE
+                imf.name = %s AND imf.model = %s""",
+            (current_field_name, current_model_name),
+        )
+        res = env.cr.fetchone()
+        if not res:
+            return False
+        current_model_name = res[0]
+    if field_name_list[-1] == old_field and current_model_name == model:
+        field_name_list[-1] = new_field
+        return separator.join(field_name_list)
+    return False
+
+
+def update_ir_exports_line(env, model, new_field, old_field):
+    """Rename a field name in 'name' column in the 'ir_exports_line'
+    table. The field name in this column can be a chained
+    fields name separated by the character '/'.
+
+
+    :param (Environment) env: Odoo environment.
+    :param (str) model: Model name of the field to rename.
+    :param (str) new_field: New field name.
+    :param (str) old_field: Old field name.
+    """
+    env.cr.execute(
+        """SELECT
+            iel.id, iel.name, ie.resource
+        FROM
+            ir_exports_line iel
+            INNER JOIN ir_exports ie ON ie.id = iel.export_id""",
+    )
+    exports_lines = env.cr.fetchall()
+    for line_data in exports_lines:
+        line_id, chained_field_name, first_model_name = line_data
+        # Check if the old field name is present as a substring before
+        # calling chained_field_name, as it may involve database queries.
+        if old_field not in chained_field_name:
+            continue
+        new_chained_field_name = _update_chained_field_name(
+            env,
+            chained_field_name=chained_field_name,
+            first_model_name=first_model_name,
+            model=model,
+            new_field=new_field,
+            old_field=old_field,
+            separator="/",
+        )
+        if new_chained_field_name:
+            logged_query(
+                env.cr,
+                """UPDATE ir_exports_line
+                SET name = %s
+                WHERE id = %s
+                """,
+                (new_chained_field_name, line_id),
+            )
+
+
+def update_domain_str(env, domain_str, first_model_name, model, new_field, old_field):
+    """Rename a field that is part of a domain ('domain' column) in the
+    'ir_filters' table even if it is part of a dotted name.
+
+    Example:
+    If the domain string is "[('x_id.old_field.name', '=', 'value')]" and
+    'new_field' corresponds to 'model', then the domain string will be
+    updated to "[('x_id.new_field.name', '=', 'value')]".
+
+    :param (Environment) env: Odoo environment.
+    :param (str) domain_str: Domain string that may contain
+        the old field name.
+    :param (str) model: Model name of the field to rename.
+    :param (str) new_field: New field name.
+    :param (str) old_field: Old field name.
+
+    :return: The updated domain string if the field
+        was successfully renamed, False otherwise.
+    """
+    domain_exp = ast.parse(domain_str, mode="eval")
+    domain_exp_list = domain_exp.body.elts
+    new_domain_exp_list = []
+    transformed = False
+    for elem in domain_exp_list:
+        new_elem = elem
+        if isinstance(elem, ast.Tuple) or isinstance(elem, ast.List):
+            field_name_node = elem.elts[0]
+            new_chained_field_name = _update_chained_field_name(
+                env,
+                chained_field_name=field_name_node.s,
+                first_model_name=first_model_name,
+                model=model,
+                new_field=new_field,
+                old_field=old_field,
+                separator=".",
+            )
+            if new_chained_field_name:
+                if sys.version_info < (3, 8):
+                    new_field_name_node = ast.Str(s=new_chained_field_name)
+                else:
+                    new_field_name_node = ast.Constant(
+                        value=new_chained_field_name,
+                        kind=field_name_node.kind,
+                    )
+                new_elem = type(elem)(
+                    elts=[new_field_name_node] + elem.elts[1:], ctx=elem.ctx
+                )
+                transformed = True
+        new_domain_exp_list.append(new_elem)
+    if transformed:
+        new_domain_expr = ast.Expression(
+            ast.List(elts=new_domain_exp_list, ctx=ast.Load())
+        )
+        return unparse(new_domain_expr).strip()
+    return False
+
+
+def _check_domain_field_data(cr, spec_table, spec_domain_field, spec_model_field):
+    if not table_exists(cr, spec_table):
+        logger.warning(
+            "Table '{}' doesn't exist. "
+            "Please check the list of domain fields in "
+            "'openupgrade_framework.domain_fields'.".format(spec_table)
+        )
+        return False
+    if not column_exists(cr, spec_table, spec_domain_field):
+        logger.warning(
+            "Field '{}' doesn't exist in {} table. "
+            "Please check the list of domain fields in "
+            "'openupgrade_framework.domain_fields'.".format(
+                spec_domain_field, spec_table
+            )
+        )
+        return False
+    if spec_model_field and not column_exists(cr, spec_table, spec_model_field):
+        logger.warning(
+            "Field '{}' doesn't exist in {} table. "
+            "Please check the list of domain fields in "
+            "'openupgrade_framework.domain_fields'.".format(
+                spec_model_field, spec_table
+            )
+        )
+        return False
+    return True
+
+
+def update_domain_fields(env, model, new_field, old_field):
+    """Update all 'domain' fields, replacing references to 'old_field' with
+    'new_field' corresponding to the model 'model' passed as a parameter.
+
+    This includes, for example:
+        - the 'domain' field of 'ir.filter' that store users favorite searches.
+        - The 'mailing_domain' field of 'mailing.mailing'.
+    The complete list of domain fields is in odoo.addons.openupgrade_framework.domain_fields
+
+    :param (Environment) env: Odoo environment.
+    :param (str) model: Model name of the field to rename.
+    :param (str) new_field: New field name.
+    :param (str) old_field: Old field name.
+    """
+    try:
+        from odoo.addons.openupgrade_framework.domain_fields import domain_fields
+    except ImportError:
+        logger.exception(
+            "Cannot import domain_fields "
+            "from odoo.addons.openupgrade_framework.domain_fields"
+        )
+        domain_fields = []
+    # get all installed module names
+    env.cr.execute(
+        "SELECT name FROM ir_module_module "
+        "WHERE state IN ('installed', 'to upgrade')"
+    )
+    installed_modules = [m[0] for m in env.cr.fetchall()]
+    # iterate over installed modules only
+    for (
+        spec_modelule,
+        spec_table,
+        spec_domain_field,
+        spec_model_field,
+        spec_static_model,
+    ) in filter(lambda d: d[0] in installed_modules, domain_fields):
+        if not _check_domain_field_data(
+            env.cr, spec_table, spec_domain_field, spec_model_field
+        ):
+            continue
+        env.cr.execute(
+            sql.SQL(
+                """
+                SELECT id, {spec_domain_field}, {spec_model_field}
+                FROM {spec_table}
+                WHERE {spec_domain_field} <> '[]'
+            """
+            ).format(
+                spec_domain_field=sql.Identifier(spec_domain_field),
+                spec_model_field=(
+                    spec_model_field
+                    and sql.Identifier(spec_model_field)
+                    or sql.Literal(spec_static_model)
+                ),
+                spec_table=sql.Identifier(spec_table),
+            )
+        )
+        for spec_table_id, domain_str, first_model_name in env.cr.fetchall():
+            # Check if the old field name is present as a substring before
+            # calling update_domain_str, as it may involve complex string
+            # operations and/or database queries.
+            if old_field not in domain_str:
+                continue
+            new_domain_str = update_domain_str(
+                env, domain_str, first_model_name, model, new_field, old_field
+            )
+            if new_domain_str:
+                logged_query(
+                    env.cr,
+                    sql.SQL("UPDATE {} SET {} = %s WHERE id = %s").format(
+                        sql.Identifier(spec_table),
+                        sql.Identifier(spec_domain_field),
+                    ),
+                    (new_domain_str, spec_table_id),
+                )
+
+
+def rename_fields(env, field_spec, no_deep=False, dry=False):
     """Rename fields. Typically called in the pre script. WARNING: If using
     this on base module, pass the argument ``no_deep`` with True value for
     avoiding the using of the environment (which is not yet loaded).
@@ -695,35 +959,40 @@ def rename_fields(env, field_spec, no_deep=False):
       * New field name. The name of the new field.
     :param no_deep: If True, avoids to perform any operation that involves
       the environment. Not used for now.
+    :param dry: If True, only the occurrences of the field within the content
+      of other fields (e.g., content of domain fields defined in different models)
+      will be updated, while no modifications will be made to Table ir_model_fields
+      or Table ir_translation.
     """
     cr = env.cr
     for model, table, old_field, new_field in field_spec:
-        if column_exists(cr, table, old_field):
-            rename_columns(cr, {table: [(old_field, new_field)]})
-        # Rename corresponding field entry
-        cr.execute(
-            """
-            UPDATE ir_model_fields
-            SET name = %s
-            WHERE name = %s
-                AND model = %s
-            """,
-            (new_field, old_field, model),
-        )
-        # Rename translations
-        if version_info[0] < 16:
+        if not dry:
+            if column_exists(cr, table, old_field):
+                rename_columns(cr, {table: [(old_field, new_field)]})
+            # Rename corresponding field entry
             cr.execute(
                 """
-                UPDATE ir_translation
+                UPDATE ir_model_fields
                 SET name = %s
                 WHERE name = %s
-                    AND type = 'model'
+                    AND model = %s
                 """,
-                (
-                    "%s,%s" % (model, new_field),
-                    "%s,%s" % (model, old_field),
-                ),
+                (new_field, old_field, model),
             )
+            # Rename translations
+            if version_info[0] < 16:
+                cr.execute(
+                    """
+                    UPDATE ir_translation
+                    SET name = %s
+                    WHERE name = %s
+                        AND type = 'model'
+                    """,
+                    (
+                        "%s,%s" % (model, new_field),
+                        "%s,%s" % (model, old_field),
+                    ),
+                )
         # Rename possible attachments (if field is Binary with attachment=True)
         if column_exists(cr, "ir_attachment", "res_field"):
             cr.execute(
@@ -735,37 +1004,17 @@ def rename_fields(env, field_spec, no_deep=False):
                 """,
                 (new_field, model, old_field),
             )
-        # Rename appearances on export profiles
-        # TODO: Rename when the field is part of a submodel (ex. m2one.field)
-        cr.execute(
-            """
-            UPDATE ir_exports_line iel
-            SET name = %s
-            FROM ir_exports ie
-            WHERE iel.name = %s
-                AND ie.id = iel.export_id
-                AND ie.resource = %s
-            """,
-            (new_field, old_field, model),
-        )
-        # Rename appearances on filters
-        # Example of replaced domain: [['field', '=', self], ...]
-        # TODO: Rename when the field is part of a submodel (ex. m2one.field)
-        cr.execute(
-            """
-            UPDATE ir_filters
-            SET domain = regexp_replace(
-                domain, %(old_pattern)s, %(new_pattern)s, 'g'
-            )
-            WHERE model_id = %%s
-                AND domain ~ %(old_pattern)s
-            """
-            % {
-                "old_pattern": r"""$$('|")%s('|")$$""" % old_field,
-                "new_pattern": r"$$\1%s\2$$" % new_field,
-            },
-            (model,),
-        )
+        # # Rename appearances on export profiles
+        # Covered the renaming when the field is part of a submodel
+        # Example: 'field_x.old_field.name'  ->  'field_x.new_field.name'
+        update_ir_exports_line(env, model, new_field, old_field)
+
+        # # Rename appearances on domain fields (like domain field in ir.filters model)
+        # Covered the renaming when the field is part of a submodel
+        # Example:
+        # [('field_x.old_field.name', '=' name)] -> [('field_x.new_field.name', '=' name)]
+        update_domain_fields(env, model, new_field, old_field)
+
         # Examples of replaced contexts:
         # {'group_by': ['field', 'other_field'], 'other_key':value}
         # {'group_by': ['date_field:month']}
@@ -1961,6 +2210,15 @@ def m2o_to_x2m(cr, model, table, field, source_field):
         do_raise(
             "m2o_to_x2m: field %s of model %s is not a "
             "many2many/one2many one" % (field, model._name)
+        )
+    if field != source_field and not field.startswith(
+        "openupgrade_legacy_%s_" % "_".join(map(str, version_info[0:2]))
+    ):
+        rename_fields(
+            env=model.env,
+            field_spec=[(model._name, model._table, source_field, field)],
+            no_deep=False,
+            dry=True,
         )
 
 
