@@ -392,10 +392,17 @@ def apply_operations_by_field_type(
     if method == "orm":
         model = env[model_name]
         all_records = model.browse((target_record_id,) + tuple(record_ids))
-        target_record = model.browse(target_record_id)
+        if operation == "first_from_origin":
+            operation = "first_not_null"
+            target_record = model.browse(record_ids[0])
+        else:
+            target_record = model.browse(target_record_id)
         first_value = getattr(target_record, column)
         field = model._fields[column]
     else:
+        if operation == "first_from_origin":
+            operation = "first_not_null"
+            field_vals.reverse()
         first_value = field_vals[0]
     if field_type in ("char", "text", "html"):
         if not operation:
@@ -472,7 +479,7 @@ def apply_operations_by_field_type(
         operation = operation or "merge"
         if operation == "merge":
             o2m_changes += 1
-            field_vals.write({field.inverse_name: target_record_id})
+            field_vals.write({field.inverse_name: target_record.id})
     elif field_type == "binary":
         operation = operation or "merge"
         if operation == "merge":
@@ -533,6 +540,7 @@ def _adjust_merged_values_orm(
         - 'merge' (default for Text and Html): content is concatenated
           with an ' | ' as separator
         - 'first_not_null': Put first not null value.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value (default for Char): content on target record is preserved
       * Integer, Float and Monetary fields:
         - 'sum' (default for Float and Monetary): Sum all the values of
@@ -541,49 +549,61 @@ def _adjust_merged_values_orm(
         - 'max': Put the maximum of all the values.
         - 'min': Put the minimum of all the values.
         - 'first_not_null': Put first non-zero value.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value (default for Integer): content on target record
           is preserved
       * Binary field:
         - 'merge' (default): apply first not null value of the records if
         value of target record is null, preserve target value otherwise.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Boolean field:
         - 'and': Perform a logical AND over all values.
         - 'or': Perform a logical OR over all values.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value (default): content on target record is preserved
       * Date and Datetime fields:
         - 'max': Put the maximum of all the values.
         - 'min': Put the minimum of all the values.
         - 'first_not_null': Put first defined Date(time) value.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value (default): content on target record is preserved
       * Many2one fields:
         - 'merge' (default): apply first not null value of the records if
         value of target record is null, preserve target value otherwise.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Many2many fields:
         - 'merge' (default): combine all the values
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * One2many fields:
         - 'merge' (default): combine all the values
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Many2manyReference fields:
         - 'merge' (default): if its model_field is in field_spec,
         delete it from there. Apply first positive (on field and
         corresponding model_field) of the records if value of target record
         is not positive, preserve target value otherwise.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Reference fields:
         - 'merge' (default): apply first not null value of the records if
         value of target record is null, preserve target value otherwise.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Selection fields:
         - any value: content on target record is preserved
+        - 'first_from_origin': content from the first origin record is preserved.
         - 'first_not_null': Put first not null value.
       * Serialized fields:
         - 'first_not_null' (default): For each found key, put first not null value.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
       * Translatable (in v16 or greater) fields as 'Jsonb' columns:
         - 'first_not_null' (default): For each found key, put first not null value.
+        - 'first_from_origin': content from the first origin record is preserved.
         - other value: content on target record is preserved
     """
     model = env[model_name]
