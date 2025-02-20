@@ -672,6 +672,9 @@ def _adjust_merged_values_sql(
       operation will be performed.
       Note: If you pass 'openupgrade_other_fields': 'preserve' in the dict,
       the fields that are not specified in the dict will not be adjusted.
+      Note 2: If you pass 'openupgradelib_delete_before_update' in the dict,
+      the origin records will be deleted before updating the target one so unique key
+      constraints are not violated.
 
       Possible operations by field types same as _adjust_merged_values_orm.
     """
@@ -746,6 +749,10 @@ def _adjust_merged_values_sql(
         if vals[column] != record_vals[0]:
             new_vals[column] = vals[column]
     if new_vals:
+        if field_spec.get("openupgradelib_delete_before_update"):
+            _delete_records_sql(
+                env, model_name, record_ids, target_record_id, model_table=model_table
+            )
         ident_dict = {x: sql.Identifier(x) for x in new_vals.keys()}
         query = sql.SQL(
             "UPDATE {table} SET {set_value} WHERE {id} = %(target_record_id)s"
@@ -1090,7 +1097,8 @@ def merge_records(
         if field_spec is not None:
             args4 = args0 + (model_table,) + (field_spec,)
             _adjust_merged_values_sql(*args4)
-        if delete:
+        # When openupgradelib_delete_before_update origin records are already deleted
+        if delete and not field_spec.get("openupgradelib_delete_before_update"):
             _delete_records_sql(
                 env, model_name, record_ids, target_record_id, model_table=model_table
             )
