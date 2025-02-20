@@ -522,7 +522,7 @@ def apply_operations_by_field_type(
 
 
 def _adjust_merged_values_orm(
-    env, model_name, record_ids, target_record_id, field_spec
+    env, model_name, record_ids, target_record_id, field_spec, delete=True
 ):
     """This method deals with the values on the records to be merged +
     the target record, performing operations that make sense on the meaning
@@ -650,6 +650,8 @@ def _adjust_merged_values_orm(
         else:
             if [x[1] for x in vals[f]] not in getattr(target_record, f).ids:
                 new_vals[f] = vals[f]
+    if delete:
+        _delete_records_orm(env, model_name, record_ids, target_record_id)
     if new_vals:
         target_record.write(new_vals)
         logger.debug(
@@ -661,7 +663,7 @@ def _adjust_merged_values_orm(
 
 
 def _adjust_merged_values_sql(
-    env, model_name, record_ids, target_record_id, model_table, field_spec
+    env, model_name, record_ids, target_record_id, model_table, field_spec, delete=True
 ):
     """This method deals with the values on the records to be merged +
     the target record, performing operations that make sense on the meaning
@@ -746,6 +748,10 @@ def _adjust_merged_values_sql(
         if vals[column] != record_vals[0]:
             new_vals[column] = vals[column]
     if new_vals:
+        if delete:
+            _delete_records_sql(
+                env, model_name, record_ids, target_record_id, model_table=model_table
+            )
         ident_dict = {x: sql.Identifier(x) for x in new_vals.keys()}
         query = sql.SQL(
             "UPDATE {table} SET {set_value} WHERE {id} = %(target_record_id)s"
@@ -1053,7 +1059,7 @@ def merge_records(
         _change_many2many_refs_orm(*args)
         _change_reference_refs_orm(*args)
         _change_translations_orm(*args)
-        args2 = args0 + (field_spec,)
+        args2 = args0 + (field_spec,) + (delete,)
         # TODO: serialized fields
         with env.norecompute():
             _adjust_merged_values_orm(*args2)
@@ -1061,8 +1067,6 @@ def merge_records(
             env[model_name].flush_model()
         else:
             env[model_name].recompute()
-        if delete:
-            _delete_records_orm(env, model_name, record_ids, target_record_id)
     else:
         # Check which records to be merged exist
         if not model_table:
@@ -1088,9 +1092,10 @@ def merge_records(
         _change_reference_refs_sql(*args)
         _change_translations_sql(*args)
         if field_spec is not None:
-            args4 = args0 + (model_table,) + (field_spec,)
+            args4 = args0 + (model_table,) + (field_spec,) + (delete,)
             _adjust_merged_values_sql(*args4)
-        if delete:
+        # Ensure that we delete the origin records
+        elif delete:
             _delete_records_sql(
                 env, model_name, record_ids, target_record_id, model_table=model_table
             )
