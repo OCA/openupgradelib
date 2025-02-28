@@ -917,8 +917,8 @@ def rename_models(cr, model_spec):
     """
     for (old, new) in model_spec:
         logger.info("model %s: renaming to %s", old, new)
-        _old = get_model2table(old)
-        _new = get_model2table(new)
+        _old = old.replace(".", "_")
+        _new = new.replace(".", "_")
         logged_query(
             cr,
             "UPDATE ir_model SET model = %s WHERE model = %s",
@@ -1876,6 +1876,8 @@ def get_model2table(model):
         "ir.actions.client": "ir_act_client",
         "ir.actions.report.xml": "ir_act_report_xml",  # model < v11
         "ir.actions.report": "ir_act_report_xml",  # model >= v11
+        "mailing.contact.subscription": "mailing_contact_list_rel",  # v13 < model < v17
+        "mail.mass_mailing.list_contact_rel": "mail_mass_mailing_contact_list_rel",  # model = v12
     }
     return model2table.get(model, model.replace(".", "_"))
 
