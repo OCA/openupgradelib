@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 ##############################################################################
 #
 # OpenERP, Open Source Management Solution
@@ -23,11 +23,12 @@
 # This module provides simple tools for openupgrade migration, specific for
 # the 6.1 -> 7.0 migration. It is kept in later editions to keep all the API
 # docs in the latest release.
-import openupgrade
+from . import openupgrade
 
 
 def set_partner_id_from_partner_address_id(
-        cr, pool, model_name, partner_field, address_field, table=None):
+    cr, pool, model_name, partner_field, address_field, table=None
+):
     """
     Set the new partner_id on any table with migrated contact ids
 
@@ -48,18 +49,25 @@ def set_partner_id_from_partner_address_id(
         SET %(partner_field)s=address.openupgrade_7_migrated_to_partner_id
         FROM res_partner_address address
         WHERE %(table)s.%(address_field)s=address.id
-        """ % {'table': table,
-               'partner_field': partner_field,
-               'address_field': address_field})
+        """
+        % {
+            "table": table,
+            "partner_field": partner_field,
+            "address_field": address_field,
+        },
+    )
 
 
 def get_partner_id_from_user_id(cr, user_id):
     """
-        Get the new partner_id from user_id.
-        :param user_id : user previously used.
+    Get the new partner_id from user_id.
+    :param user_id : user previously used.
     """
-    cr.execute("""
+    cr.execute(
+        """
         SELECT partner_id
         FROM res_users
-        WHERE id=%s""", (user_id,))
+        WHERE id=%s""",
+        (user_id,),
+    )
     return cr.fetchone()[0]

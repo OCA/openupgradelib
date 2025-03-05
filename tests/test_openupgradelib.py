@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 test_openupgradelib
@@ -9,6 +8,7 @@ Tests for `openupgradelib` module.
 """
 import sys
 import unittest
+
 import mock
 
 # Store original __import__
@@ -16,21 +16,22 @@ orig_import = __import__
 # This will be the openerp module
 openerp_mock = mock.Mock()
 openerp_mock.release = mock.Mock()
-openerp_mock.release.version_info = (8, 0, 0, 'final', 0)
+openerp_mock.release.version_info = (8, 0, 0, "final", 0)
 
 
 def import_mock(name, *args):
-    names = name.split('.')
-    if names[0] in ['openerp', 'psycopg2']:
+    names = name.split(".")
+    if names[0] in ["openerp", "psycopg2"]:
         return openerp_mock
     return orig_import(name, *args)
 
 
 if sys.version_info[0] == 3:
     import builtins  # noqa: F401
-    import_str = 'builtins.__import__'
+
+    import_str = "builtins.__import__"
 else:
-    import_str = '__builtin__.__import__'
+    import_str = "__builtin__.__import__"
 
 
 def mock_contextmanager():
@@ -41,14 +42,15 @@ def mock_contextmanager():
 
 
 with mock.patch(import_str, side_effect=import_mock):
-    from openupgradelib import openupgrade
     from openerp import api
+
+    from openupgradelib import openupgrade
+
     api.Environment.manage = mock_contextmanager
 
 
 class TestOpenupgradelib(unittest.TestCase):
-
-    def setUp(self):
+    def setUp(self):  # pylint: disable=W8106
         self.cr = mock.Mock()
         self.cr.savepoint = mock_contextmanager
 
@@ -61,12 +63,12 @@ class TestOpenupgradelib(unittest.TestCase):
         def migrate_with_env(env, version):
             self.assertTrue(isinstance(env.cr, mock.Mock))
 
-        migrate_with_cr(self.cr, 'irrelevant.version')
-        migrate_with_env(self.cr, 'irrelevant.version')
+        migrate_with_cr(self.cr, "irrelevant.version")
+        migrate_with_env(self.cr, "irrelevant.version")
 
-    def tearDown(self):
+    def tearDown(self):  # pylint: disable=W8106
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

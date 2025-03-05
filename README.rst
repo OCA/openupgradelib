@@ -25,7 +25,8 @@ OpenUpgrade Library
 A library with support functions to be called from Odoo migration scripts.
 For information on how to develop and contribute
 
-* Contributor Documentation: https://openupgradelib.readthedocs.org.
+* Free software: AGPL-3 license
+* Documentation: https://oca.github.io/openupgradelib
 
 Install
 -------

@@ -1,0 +1,30 @@
+# On each Pull request against master branch,
+# build documentation and check that the sphinx build works
+
+name: OpenUpgradelib documentation
+
+on:
+  pull_request:
+
+jobs:
+  documentation:
+    runs-on: ubuntu-22.04
+    container: ghcr.io/oca/oca-ci/py3.10-odoo16.0:latest
+    steps:
+
+      - uses: actions/checkout@v4
+
+      # See: https://github.com/OCA/openupgradelib/pull/324#issuecomment-1556255121
+      - name: configure Git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Requirements Installation
+        run: |
+          pip install -e .
+          pip install -r ./doc_requirements.txt
+
+      - name: OpenUpgradelib Docs
+        run: |
+          # try to build the documentation
+          python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs

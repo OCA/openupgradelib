@@ -1,0 +1,40 @@
+# On each push in 'master' branch,
+# build documentation and commit the changes
+# so that the changes are visible on the website
+# https://oca.github.io/openupgradelib/
+
+name: Build and commit documentation
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  documentation-commit:
+    runs-on: ubuntu-22.04
+    container: ghcr.io/oca/oca-ci/py3.10-odoo16.0:latest
+    steps:
+
+      - uses: actions/checkout@v4
+
+      # See: https://github.com/OCA/openupgradelib/pull/324#issuecomment-1556255121
+      - name: configure Git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Requirements Installation
+        run: |
+          pip install -e .
+          pip install -r ./doc_requirements.txt
+
+      - name: OpenUpgradelib Docs
+        run: |
+          # try to build the documentation
+          python3 -m sphinx -W -d ./docs/.doctrees ./docsource ./docs
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "docs"
+          default_author: github_actions
+          message: "[UPD] HTML documentation"

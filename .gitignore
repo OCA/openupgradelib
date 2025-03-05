@@ -8,6 +8,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+src/
+.eggs/
 bin/
 build/
 develop-eggs/
@@ -39,6 +41,9 @@ coverage.xml
 
 # Pycharm
 .idea
+
+# VSCode
+.vscode
 
 # Mr Developer
 .mr.developer.cfg

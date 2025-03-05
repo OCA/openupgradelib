@@ -4,16 +4,17 @@
    contain the root `toctree` directive.
 
 Welcome to OpenUpgrade Library's documentation!
-======================================
+===============================================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    readme
    installation
    usage
+   API
    contributing
    authors
    history
@@ -24,4 +25,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

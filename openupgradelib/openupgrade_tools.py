@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- # pylint: disable=C8202
 ##############################################################################
 #
 #    OpenERP, Open Source Management Solution
@@ -26,21 +26,24 @@ import logging
 from lxml.etree import tostring
 from lxml.html import fromstring
 
+logger = logging.getLogger(__name__)
+
 
 def table_exists(cr, table):
-    """ Check whether a certain table or view exists """
-    cr.execute('SELECT 1 FROM pg_class WHERE relname = %s', (table,))
+    """Check whether a certain table or view exists"""
+    cr.execute("SELECT 1 FROM pg_class WHERE relname = %s", (table,))
     return cr.fetchone()
 
 
 def column_exists(cr, table, column):
-    """ Check whether a certain column exists """
+    """Check whether a certain column exists"""
     cr.execute(
-        'SELECT count(attname) FROM pg_attribute '
-        'WHERE attrelid = '
-        '( SELECT oid FROM pg_class WHERE relname = %s ) '
-        'AND attname = %s',
-        (table, column))
+        "SELECT count(attname) FROM pg_attribute "
+        "WHERE attrelid = "
+        "( SELECT oid FROM pg_class WHERE relname = %s ) "
+        "AND attname = %s",
+        (table, column),
+    )
     return cr.fetchone()[0] == 1
 
 
@@ -74,10 +77,26 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         Converted XML string.
     """
     try:
-        fragment = fromstring(html_string)
+        # When the fragment has no common node, lxml wraps the code under a common one.
+        # For example: `<p><p/><p><p/>` is parsed as `<div><p><p/><p><p/></div>`
+        # So we force a custom wrapper tag on every parsed string so every xml receives
+        # the same treatment and we can extract it later with no harm
+        if "<?xml " in html_string:
+            # XML compliant string - no need to wrap it.
+            fragment = fromstring(html_string)
+        else:
+            fragment = fromstring(
+                "<fragment_wrapper>{}</fragment_wrapper>".format(html_string)
+            )
     except Exception:
         logging.error("Failure converting string to DOM:\n%s", html_string)
         raise
+    # We don't want to update any fragment which has no changes after all the
+    # replacements are checked but the lxml parser and pretty print could make some
+    # reformatting on the original code.
+    parsed_html_string = tostring(
+        fragment, pretty_print=pretty_print, encoding="unicode"
+    )
     for spec in replacements:
         instructions = spec.copy()
         # Find matching nodes
@@ -89,19 +108,30 @@ def convert_html_fragment(html_string, replacements, pretty_print=True):
         # Apply node conversions as instructed
         for node in nodes:
             convert_xml_node(node, **instructions)
-    # Return new XML string
-    return tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    # So if there were no replacement we just return the original string as it was
+    new_html_string = tostring(fragment, pretty_print=pretty_print, encoding="unicode")
+    if new_html_string == parsed_html_string:
+        return html_string
+    new_html_string = new_html_string.replace("<fragment_wrapper>", "").replace(
+        "</fragment_wrapper>", ""
+    )
+    return new_html_string
 
 
-def convert_xml_node(node,
-                     attr_add=None,
-                     attr_rm=frozenset(),
-                     class_add="",
-                     class_rm="",
-                     style_add=None,
-                     style_rm=frozenset(),
-                     tag="",
-                     wrap=""):
+# flake8: noqa: C901
+def convert_xml_node(
+    node,
+    attr_add=None,
+    attr_rm=frozenset(),
+    class_add="",
+    class_rm="",
+    style_add=None,
+    style_rm=frozenset(),
+    tag="",
+    wrap="",
+    attr_rp=None,
+    class_rp_by_inline=None,
+):
     """Apply conversions to an XML node.
 
     All parameters except :param:`node` can be a callable that return the
@@ -154,17 +184,30 @@ def convert_xml_node(node,
 
     :param str wrap:
         XML element that will wrap the :param:`node`.
+
+    :param dict attr_rp:
+        Specify a dict of attribute to replace from old to the new one
+        Ex: {"data-toggle": "data-bs-togle"} (typical case when convert BS4 to BS5 in odoo 16)
+
+    :param dict class_rp_by_inline:
+        Specify a dict of class to replace with inline css
+        Ex: {"text-justify": ["text-align: justify", "anothor_inline"]}
+        (BS5 has removed text-justify class)
     """
     # Fix params
     attr_add = attr_add or {}
+    attr_rp = attr_rp or {}
+    class_rp_by_inline = class_rp_by_inline or {}
     class_add = set(class_add.split())
     class_rm = set(class_rm.split())
     style_add = style_add or {}
     # Obtain attributes, classes and styles
     classes = set(node.attrib.get("class", "").split())
     styles = node.attrib.get("style", "").split(";")
-    styles = {key.strip(): val.strip() for key, val in
-              (style.split(":", 1) for style in styles if ":" in style)}
+    styles = {
+        key.strip(): val.strip()
+        for key, val in (style.split(":", 1) for style in styles if ":" in style)
+    }
     # Convert incoming callable arguments into values
     originals = {
         "attrs": dict(node.attrib.items()),
@@ -175,6 +218,8 @@ def convert_xml_node(node,
     _call = lambda v: v(**originals) if callable(v) else v  # noqa: E731
     attr_add = _call(attr_add)
     attr_rm = _call(attr_rm)
+    attr_rp = _call(attr_rp)
+    class_rp_by_inline = _call(class_rp_by_inline)
     class_add = _call(class_add)
     class_rm = _call(class_rm)
     style_add = _call(style_add)
@@ -182,12 +227,25 @@ def convert_xml_node(node,
     tag = _call(tag)
     wrap = _call(wrap)
     # Patch node attributes
-    if attr_add or attr_rm:
-        for key in attr_rm:
-            node.attrib.pop(key, None)
-        for key, value in attr_add.items():
-            if key not in node.attrib:
-                node.attrib[key] = value
+    if attr_add or attr_rm or attr_rp or class_rp_by_inline:
+        if class_rp_by_inline:
+            inline_style = ""
+            for _, value in class_rp_by_inline.items():
+                for inline_css_style in value:
+                    inline_style += inline_css_style + ";"
+            if "style" in node.attrib and node.attrib["style"]:
+                node.attrib["style"] += inline_style
+            else:
+                node.attrib["style"] = inline_style
+        else:
+            for key, value in attr_rp.items():
+                if key in node.attrib:
+                    node.attrib[value] = node.attrib.pop(key, None)
+            for key in attr_rm:
+                node.attrib.pop(key, None)
+            for key, value in attr_add.items():
+                if key not in node.attrib:
+                    node.attrib[key] = value
     # Patch node classes
     if class_add or class_rm:
         classes = (classes | class_add) ^ class_rm
@@ -217,8 +275,7 @@ def convert_xml_node(node,
         wrapper.append(node)
 
 
-def convert_html_replacement_class_shortcut(class_rm="", class_add="",
-                                            **kwargs):
+def convert_html_replacement_class_shortcut(class_rm="", class_add="", **kwargs):
     """Shortcut to create a class replacement spec.
 
     :param str class_rm:
@@ -236,8 +293,125 @@ def convert_html_replacement_class_shortcut(class_rm="", class_add="",
     """
     kwargs.setdefault("selector", ".%s" % ".".join(class_rm.split()))
     assert kwargs["selector"] != "."
-    kwargs.update({
-        "class_rm": class_rm,
-        "class_add": class_add,
-    })
+    kwargs.update(
+        {
+            "class_rm": class_rm,
+            "class_add": class_add,
+        }
+    )
     return kwargs
+
+
+def replace_html_replacement_class_rp_by_inline_shortcut(
+    class_rp_by_inline="", **kwargs
+):
+    """Shortcut to replace an attribute spec.
+
+    :param dict attr_rp:
+        EX: {'data-toggle': 'data-bs-toggle'}
+        Where the 'key' is the attribute will be replaced by the 'value'
+
+    :return dict:
+        Generated spec, to be included in a list of replacements to be
+        passed to :meth:`convert_xml_fragment`.
+    """
+
+    # Disallow selector to be empty
+    assert "selector" in kwargs and kwargs["selector"] != ""
+    # Also to be able to get exact element that have that attribute need selector_mode xpath
+    assert "selector_mode" in kwargs and kwargs["selector_mode"] == "xpath"
+    kwargs.update(
+        {
+            "class_rp_by_inline": class_rp_by_inline,
+        }
+    )
+    return kwargs
+
+
+def replace_html_replacement_attr_shortcut(attr_rp="", **kwargs):
+    """Shortcut to replace an attribute spec.
+
+    :param dict attr_rp:
+        EX: {'data-toggle': 'data-bs-toggle'}
+        Where the 'key' is the attribute will be replaced by the 'value'
+
+    :return dict:
+        Generated spec, to be included in a list of replacements to be
+        passed to :meth:`convert_xml_fragment`.
+    """
+
+    # Disallow selector to be empty
+    assert "selector" in kwargs and kwargs["selector"] != ""
+    # Also to be able to get exact element that have that attribute need selector_mode xpath
+    assert "selector_mode" in kwargs and kwargs["selector_mode"] == "xpath"
+    kwargs.update(
+        {
+            "attr_rp": attr_rp,
+        }
+    )
+    return kwargs
+
+
+def invalidate_cache(env, flush=True):
+    """Version-independent cache invalidation.
+
+    :param flush: whether pending updates should be flushed before invalidation.
+        It is ``True`` by default, which ensures cache consistency.
+        Do not use this parameter unless you know what you are doing.
+    """
+
+    # It needs to be loaded after odoo is imported
+    from .openupgrade import version_info
+
+    version = version_info[0]
+
+    # Warning on possibly untested versions where chunked might not work as expected
+    if version > 17:  # unreleased version at this time
+        logger.warning(
+            "openupgradelib.invalidate_cache hasn't been tested on Odoo {}. "
+            "Please report any issue you may find and consider bumping this warning "
+            "to the next version otherwise.".format(version)
+        )
+
+    # 16.0: invalidate_all is re-introduced (with flush_all)
+    if version >= 16:
+        env.invalidate_all(flush=flush)
+    # 13.0: the write cache and flush is introduced
+    elif version >= 13:
+        if flush:
+            env["base"].flush()
+        env.cache.invalidate()
+    # 11.0: the invalidate_all method is deprecated
+    elif version >= 11:
+        env.cache.invalidate()
+    # 8.0: new api
+    elif version >= 8:
+        env.invalidate_all()
+    else:
+        raise Exception("Not supported Odoo version for this method.")
+
+
+def not_html_empty_where_clause(column):
+    """Add this where clause to your query to optimize when to deal with an html record
+    value or not. Follows the same rules as odoo.tools.is_html_empty
+
+    :param string column:
+
+    :return string:
+        The where clause for the html column ready to select only values with content.
+    """
+    return """
+    NOT (
+        {column} IS NULL
+        OR {column} = ''
+        OR NOT (
+            regexp_replace(
+                {column},
+                '\\<\\s*\\/?(?:p|div|span|br|b|i|font)(?:(?=\\s+\\w*)[^/>]*|\\s*)/?\\s*\\>',
+                '',
+                'g'
+            ) ~ '\\S'
+        )
+    )""".format(
+        column=column
+    )
