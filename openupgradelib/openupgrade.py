@@ -2498,7 +2498,7 @@ def convert_field_to_html(
         if version_info[0] < 16:
             do_raise("Translatable fields are only managed in version 16.0 or higher")
         cr.execute(  # pylint: disable=E8103
-            "SELECT id, {field_name} FROM {table};".format(
+            "SELECT id, {field_name} FROM {table} WHERE {field_name} IS NOT NULL".format(
                 field_name=field_name, table=table
             )
         )
