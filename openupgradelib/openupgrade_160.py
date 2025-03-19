@@ -442,17 +442,18 @@ def _convert_field_bootstrap_4to5_sql(cr, table, field, ids=None):
 def fill_analytic_distribution(
     env,
     table,
-    m2m_rel,
-    m2m_column1,
+    m2m_rel=False,
+    m2m_column1=False,
     m2m_column2="account_analytic_tag_id",
     column="analytic_distribution",
     analytic_account_column="analytic_account_id",
 ):
-    """Convert v15 analytic tags with distributions to v16 analytic distributions.
+    """Convert v15 analytic account + analytic tags with distributions (optional) to v16
+    analytic distributions.
 
     :param table: Name of the main table (eg. sale_order_line...).
     :param m2m_rel: Name of the table for the m2m field that stores v15 analytic tags
-        (eg. account_analytic_tag_sale_order_line_rel)
+        (eg. account_analytic_tag_sale_order_line_rel). If falsy, no tags are evaluated.
     :param m2m_column1: Name of the column in the m2m table storing the ID of the
         record of the main table (eg. sale_order_line_id).
     :param m2m_column2: (Optional) Name of the column in the m2m table storing the ID of
@@ -466,6 +467,24 @@ def fill_analytic_distribution(
         env.cr,
         f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} jsonb",
     )
+    query_union = ""
+    if m2m_rel and m2m_column1:
+        query_union = f"""
+                    UNION ALL
+
+                    SELECT
+                        line.id AS line_id,
+                        dist.account_id AS analytic_account_id,
+                        dist.percentage AS percentage
+                    FROM {table} line
+                    JOIN {m2m_rel} tag_rel
+                        ON tag_rel.{m2m_column1} = line.id
+                    JOIN account_analytic_distribution dist
+                        ON dist.tag_id = tag_rel.{m2m_column2}
+                    JOIN account_analytic_tag aat
+                            ON aat.id = tag_rel.{m2m_column2}
+                    WHERE aat.active_analytic_distribution = true
+        """
     logged_query(
         env.cr,
         f"""
@@ -484,21 +503,7 @@ def fill_analytic_distribution(
                     JOIN account_analytic_account account
                         ON account.id = line.{analytic_account_column}
                     WHERE line.{analytic_account_column} IS NOT NULL
-
-                    UNION ALL
-
-                    SELECT
-                        line.id AS line_id,
-                        dist.account_id AS analytic_account_id,
-                        dist.percentage AS percentage
-                    FROM {table} line
-                    JOIN {m2m_rel} tag_rel
-                        ON tag_rel.{m2m_column1} = line.id
-                    JOIN account_analytic_distribution dist
-                        ON dist.tag_id = tag_rel.{m2m_column2}
-                    JOIN account_analytic_tag aat
-                            ON aat.id = tag_rel.{m2m_column2}
-                    WHERE aat.active_analytic_distribution = true
+                    {query_union}
                 ) AS all_line_data
                 GROUP BY all_line_data.line_id, all_line_data.analytic_account_id
             )
