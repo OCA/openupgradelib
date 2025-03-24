@@ -186,6 +186,7 @@ __all__ = [
     "table_exists",
     "update_module_moved_fields",
     "update_module_moved_models",
+    "update_module_moved_translations",
     "update_module_names",
     "add_ir_model_fields",
     "get_legacy_name",
@@ -1287,6 +1288,10 @@ def rename_xmlids(cr, xmlids_spec, allow_merge=False):
         if not old_row:
             logger.info("XMLID %s not found when renaming to %s", old, new)
             continue
+        if old.split(".")[0] != new.split(".")[0]:
+            update_module_moved_translations(
+                cr, old.split(".")[1], old.split(".")[0], new.split(".")[0]
+            )
         if allow_merge:
             cr.execute(get_data_query, tuple(new.split(".")))
             new_row = cr.fetchone()
@@ -2683,6 +2688,38 @@ def rename_property(cr, model, old_name, new_name):
     cr.execute(
         "update ir_property set name=%s where fields_id in %s", (new_name, field_ids)
     )
+
+
+def update_module_moved_translations(cr, xml_id, old_module, new_module):
+    """Move translations of a specific record from one module to another
+    (usually because a record has been moved from one module to another).
+
+    :param xml_id: a xml record ID
+    :param old_module: previous module of the xml_id
+    :param new_module: new module of the xml_id
+
+    .. deprecated:: 16.0
+       Translations in version 16.0 are in table model, they not depend on module anymore.
+    """
+    if version_info[0] > 15:
+        return
+    cr.execute(
+        """
+        SELECT model, res_id
+        FROM ir_model_data
+        WHERE module = %s AND name = %s
+        """,
+        (old_module, xml_id),
+    )
+    row = cr.fetchone()
+    if not row:
+        return
+    query = """
+        UPDATE ir_translation
+        SET module = %s
+        WHERE module = %s AND name LIKE %s AND res_id = %s;
+    """
+    logged_query(cr, query, (new_module, old_module, row[0] + ",%", row[1]))
 
 
 def delete_record_translations(cr, module, xml_ids, field_list=None):
