@@ -2306,7 +2306,15 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                 try:
                     frame = inspect.getargvalues(inspect.stack()[1][0])
                     stage = frame.locals["stage"]
-                    module = frame.locals["pkg"].name
+                    # After Odoo PR #202014 merge, the 'pkg' is not present
+                    # anymore in locals; because the migration execution is
+                    # moved to a dedicated method that not know about the 'pkg'
+                    # but know about 'addon'
+                    module = (
+                        frame.locals.get("pkg", False)
+                        and frame.locals["pkg"].name
+                        or frame.locals["addon"]
+                    )
                     # Python3: fetch pyfile from locals, not fp
                     filename = frame.locals.get("pyfile") or frame.locals["fp"].name
                 except Exception as exc:
