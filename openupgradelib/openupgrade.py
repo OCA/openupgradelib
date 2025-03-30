@@ -3319,7 +3319,7 @@ def safe_unlink(records, do_raise=False):
         if not record.exists():
             continue
         try:
-            with record.env.cr.savepoint():
+            with record.env.cr.savepoint(), core.tools.mute_logger("odoo.sql_db"):
                 record.unlink()
         except Exception as e:
             if do_raise:
