@@ -163,6 +163,7 @@ __all__ = [
     "migrate",
     "logging",
     "load_data",
+    "add_columns",
     "add_fields",
     "copy_columns",
     "copy_fields_multilang",
@@ -3029,6 +3030,64 @@ def disable_invalid_filters(env, verbose=True):
             f.active = False
 
 
+def add_columns(env, field_spec):
+    """This method adds a new column.
+
+    It's intended for being run in pre-migration scripts for pre-populating
+    columns to avoid the execution of new stored computed fields.
+
+    :param: field_spec: List of tuples with the following expected elements
+      for each tuple:
+
+      * model name
+      * field name
+      * field type: binary, boolean, char, date, datetime, float, html,
+        integer, many2many, many2one, many2one_reference, monetary, one2many,
+        reference, selection, text, serialized. The list can vary depending on
+        Odoo version or custom added field types.
+      * (optional) initialization value: if included in the tuple, it is set
+        in the column for existing records.
+      * (optional) SQL table name
+      * (optional) SQL field type: If the field type is custom or if it's one
+        of the special cases (see get_field2column_type), you need to indicate
+        here the SQL type to use (from the valid PostgreSQL types):
+        https://www.postgresql.org/docs/9.6/static/datatype.html
+    """
+    cr = env.cr
+    for vals in field_spec:
+        model_name = vals[0]
+        field_name = vals[1]
+        field_type = vals[2]
+        init_value = vals[3] if len(vals) > 3 else False
+        table_name = vals[4] if len(vals) > 4 else False
+        sql_type = vals[5] if len(vals) > 5 else False
+        sql_type = sql_type or get_field2column_type(field_type)
+        if not table_name:
+            try:
+                table_name = env[model_name]._table
+            except KeyError:
+                table_name = get_model2table(model_name)
+        if sql_type and not column_exists(cr, table_name, field_name):
+            query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
+                sql.Identifier(table_name),
+                sql.Identifier(field_name),
+                sql.SQL(sql_type),
+            )
+            args = []
+            if init_value:
+                query += sql.SQL(" DEFAULT %s")
+                args.append(init_value)
+            logged_query(cr, query, args)
+            if init_value:
+                logged_query(
+                    cr,
+                    sql.SQL("ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
+                        sql.Identifier(table_name),
+                        sql.Identifier(field_name),
+                    ),
+                )
+
+
 def add_fields(env, field_spec):
     """This method adds all the needed stuff for having a new field populated
     in the DB (SQL column, ir.model.fields entry, ir.model.data entry...).
@@ -3040,7 +3099,7 @@ def add_fields(env, field_spec):
     always add the XML-ID entry:
     https://github.com/odoo/odoo/blob/9201f92a4f29a53a014b462469f27b32dca8fc5a/
     odoo/addons/base/models/ir_model.py#L794-L802, but you can still call
-    this method for consistency and for avoiding to know the internal PG
+    this method for consistency and for avoiding knowing the internal PG
     column type.
 
     :param: field_spec: List of tuples with the following expected elements
@@ -3076,27 +3135,10 @@ def add_fields(env, field_spec):
             except KeyError:
                 table_name = get_model2table(model_name)
         # Add SQL column
-        if not column_exists(env.cr, table_name, field_name):
-            sql_type = sql_type or get_field2column_type(field_type)
-            if sql_type:
-                query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
-                    sql.Identifier(table_name),
-                    sql.Identifier(field_name),
-                    sql.SQL(sql_type),
-                )
-                args = []
-                if init_value:
-                    query += sql.SQL(" DEFAULT %s")
-                    args.append(init_value)
-                logged_query(env.cr, query, args)
-                if init_value:
-                    logged_query(
-                        env.cr,
-                        sql.SQL("ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
-                            sql.Identifier(table_name),
-                            sql.Identifier(field_name),
-                        ),
-                    )
+        add_columns(
+            env,
+            [(model_name, field_name, field_type, init_value, table_name, sql_type)],
+        )
         # Add ir.model.fields entry
         env.cr.execute(
             "SELECT id FROM ir_model WHERE model = %s",
