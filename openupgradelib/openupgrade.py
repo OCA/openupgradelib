@@ -3039,6 +3039,8 @@ def add_columns(env, field_spec):
         of the special cases (see get_field2column_type), you need to indicate
         here the SQL type to use (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
+      * (optional) translatable: From >=v16, if field is translatable then
+        SQL field type is changed to 'jsonb'.
     """
     cr = env.cr
     for vals in field_spec:
@@ -3048,6 +3050,12 @@ def add_columns(env, field_spec):
         init_value = vals.get(3, False)
         table_name = vals.get(4, False)
         sql_type = vals.get(5, False) or get_field2column_type(field_type)
+        translatable = vals.get(6, False)
+        if version_info[0] > 15 and translatable:
+            sql_type = "jsonb"
+            from psycopg2.extras import Json
+
+            init_value = init_value and Json({"en_US": init_value})
         if not table_name:
             try:
                 table_name = env[model_name]._table
@@ -3103,6 +3111,10 @@ def add_fields(env, field_spec):
         cases (see get_field2column_type), you need to indicate here the SQL type
         to use (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
+
+        Note: From >=v16, if field is translatable, SQL field type has to be
+        explicitly stated as 'jsonb'.
+
       * module name: for adding the XML-ID entry.
       * (optional) initialization value: if included in the tuple, it is set
         in the column for existing records.
