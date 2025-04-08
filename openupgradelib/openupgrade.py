@@ -1914,13 +1914,15 @@ def get_model2table(model):
     return model2table.get(model, model.replace(".", "_"))
 
 
-def get_field2column_type(field_type):
+def get_field2column_type(field_type, translatable=False):
     """This method returns SQL type given a field type.
 
     :param: field type: binary, boolean, char, date, datetime, float, html,
         integer, many2many, many2one, many2one_reference, monetary, one2many,
         reference, selection, text, serialized. The list can vary depending on
         Odoo version or custom added field types.
+    :param: (optional) translatable: From >=v16, if field is translatable then
+        SQL field type is changed to 'jsonb'.
     :return: SQL field type: If the field type is custom or if it's one of the special
         cases (see below), you need to indicate here the SQL type to use
         (from the valid PostgreSQL types):
@@ -1944,6 +1946,8 @@ def get_field2column_type(field_type):
         "text": "text",
         "serialized": "text",
     }
+    if version_info[0] > 15 and field_type in ["char", "text", "html"] and translatable:
+        return "jsonb"
     return sql_type_mapping.get(field_type, False)
 
 
@@ -3052,6 +3056,8 @@ def add_columns(env, field_spec):
         of the special cases (see get_field2column_type), you need to indicate
         here the SQL type to use (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
+      * (optional) translatable: From >=v16, if field is translatable then
+        SQL field type is changed to 'jsonb'.
     """
     cr = env.cr
     for vals in field_spec:
@@ -3061,7 +3067,12 @@ def add_columns(env, field_spec):
         init_value = vals[3] if len(vals) > 3 else False
         table_name = vals[4] if len(vals) > 4 else False
         sql_type = vals[5] if len(vals) > 5 else False
-        sql_type = sql_type or get_field2column_type(field_type)
+        translatable = vals[6] if len(vals) > 6 else False
+        sql_type = sql_type or get_field2column_type(field_type, translatable)
+        if version_info[0] > 15 and translatable:
+            from psycopg2.extras import Json
+
+            init_value = init_value and Json({"en_US": init_value})
         if not table_name:
             try:
                 table_name = env[model_name]._table
@@ -3117,6 +3128,10 @@ def add_fields(env, field_spec):
         cases (see get_field2column_type), you need to indicate here the SQL type
         to use (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
+
+        Note: From >=v16, if field is translatable, SQL field type has to be
+        explicitly stated as 'jsonb'.
+
       * module name: for adding the XML-ID entry.
       * (optional) initialization value: if included in the tuple, it is set
         in the column for existing records.
