@@ -1879,14 +1879,23 @@ def get_model2table(model):
         "ir.actions.act_url": "ir_act_url",
         "ir.actions.server": "ir_act_server",
         "ir.actions.client": "ir_act_client",
-        "ir.actions.wizard": "ir_act_wizard",  # model < v8
-        "ir.actions.report.xml": "ir_act_report_xml",  # model < v11
-        "ir.actions.report": "ir_act_report_xml",  # model > v10
-        "mailing.contact.subscription": "mailing_contact_list_rel",  # v12 < model < v17
-        "mail.mass_mailing.list_contact_rel": "mail_mass_mailing_contact_list_rel",  # model = v12
-        "mail.notification": "mail_message_res_partner_needaction_rel",  # v10 < model < v15
-        "project.task.stage.personal": "project_task_user_rel",  # v14 < model
     }
+    if version_info[0] < 8:
+        model2table["ir.actions.wizard"] = "ir_act_wizard"
+    if version_info[0] < 11:
+        model2table["ir.actions.report.xml"] = "ir_act_report_xml"
+    if 10 < version_info[0]:
+        model2table["ir.actions.report"] = "ir_act_report_xml"
+    if 10 < version_info[0] < 15:
+        model2table["mail.notification"] = "mail_message_res_partner_needaction_rel"
+    if version_info[0] == 12:
+        model2table[
+            "mail.mass_mailing.list_contact_rel"
+        ] = "mail_mass_mailing_contact_list_rel"
+    if 12 < version_info[0] < 17:
+        model2table["mailing.contact.subscription"] = "mailing_contact_list_rel"
+    if 14 < version_info[0]:
+        model2table["project.task.stage.personal"] = "project_task_user_rel"
     return model2table.get(model, model.replace(".", "_"))
 
 
