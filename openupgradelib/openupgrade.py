@@ -191,6 +191,7 @@ __all__ = [
     "add_ir_model_fields",
     "get_legacy_name",
     "get_model2table",
+    "get_field2column_type",
     "m2o_to_x2m",
     "float_to_integer",
     "message",
@@ -1912,6 +1913,39 @@ def get_model2table(model):
     return model2table.get(model, model.replace(".", "_"))
 
 
+def get_field2column_type(field_type):
+    """This method returns SQL type given a field type.
+
+    :param: field type: binary, boolean, char, date, datetime, float, html,
+        integer, many2many, many2one, many2one_reference, monetary, one2many,
+        reference, selection, text, serialized. The list can vary depending on
+        Odoo version or custom added field types.
+    :return: SQL field type: If the field type is custom or if it's one of the special
+        cases (see below), you need to indicate here the SQL type to use
+        (from the valid PostgreSQL types):
+        https://www.postgresql.org/docs/9.6/static/datatype.html"""
+    sql_type_mapping = {
+        "binary": "bytea",  # If there's attachment, no SQL. Force it manually
+        "boolean": "bool",
+        "char": "varchar",  # Force it manually if there's size limit
+        "date": "date",
+        "datetime": "timestamp",
+        "float": "numeric",  # Force manually to double precision if no digits
+        "html": "text",
+        "integer": "int4",
+        "many2many": False,  # No need to create SQL column
+        "many2one": "int4",
+        "many2one_reference": "int4",
+        "monetary": "numeric",
+        "one2many": False,  # No need to create SQL column
+        "reference": "varchar",
+        "selection": "varchar",  # Can be sometimes integer. Force it manually
+        "text": "text",
+        "serialized": "text",
+    }
+    return sql_type_mapping.get(field_type, False)
+
+
 def m2o_to_x2m(cr, model, table, field, source_field):
     """
     Transform many2one relations into one2many or many2many.
@@ -3020,33 +3054,14 @@ def add_fields(env, field_spec):
         integer, many2many, many2one, many2one_reference, monetary, one2many,
         reference, selection, text, serialized. The list can vary depending on
         Odoo version or custom added field types.
-      * SQL field type: If the field type is custom or it's one of the special
-        cases (see below), you need to indicate here the SQL type to use
-        (from the valid PostgreSQL types):
+      * SQL field type: If the field type is custom or if it's one of the special
+        cases (see get_field2column_type), you need to indicate here the SQL type
+        to use (from the valid PostgreSQL types):
         https://www.postgresql.org/docs/9.6/static/datatype.html
       * module name: for adding the XML-ID entry.
       * (optional) initialization value: if included in the tuple, it is set
         in the column for existing records.
     """
-    sql_type_mapping = {
-        "binary": "bytea",  # If there's attachment, no SQL. Force it manually
-        "boolean": "bool",
-        "char": "varchar",  # Force it manually if there's size limit
-        "date": "date",
-        "datetime": "timestamp",
-        "float": "numeric",  # Force manually to double precision if no digits
-        "html": "text",
-        "integer": "int4",
-        "many2many": False,  # No need to create SQL column
-        "many2one": "int4",
-        "many2one_reference": "int4",
-        "monetary": "numeric",
-        "one2many": False,  # No need to create SQL column
-        "reference": "varchar",
-        "selection": "varchar",  # Can be sometimes integer. Force it manually
-        "text": "text",
-        "serialized": "text",
-    }
     for vals in field_spec:
         field_name = vals[0]
         model_name = vals[1]
@@ -3055,14 +3070,14 @@ def add_fields(env, field_spec):
         sql_type = vals[4]
         module = vals[5]
         init_value = vals[6] if len(vals) > 6 else False
-        # Add SQL column
         if not table_name:
             try:
                 table_name = env[model_name]._table
             except KeyError:
                 table_name = get_model2table(model_name)
+        # Add SQL column
         if not column_exists(env.cr, table_name, field_name):
-            sql_type = sql_type or sql_type_mapping.get(field_type)
+            sql_type = sql_type or get_field2column_type(field_type)
             if sql_type:
                 query = sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
                     sql.Identifier(table_name),
