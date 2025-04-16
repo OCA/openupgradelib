@@ -1945,6 +1945,7 @@ def get_field2column_type(field_type, translatable=False):
         "selection": "varchar",  # Can be sometimes integer. Force it manually
         "text": "text",
         "serialized": "text",
+        "json": "jsonb",
     }
     if version_info[0] > 15 and field_type in ["char", "text", "html"] and translatable:
         return "jsonb"
