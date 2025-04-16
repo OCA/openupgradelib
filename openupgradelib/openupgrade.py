@@ -725,6 +725,19 @@ def rename_fields(env, field_spec, no_deep=False):
                     "%s,%s" % (model, old_field),
                 ),
             )
+        # Rename properties
+        if version_info[0] < 18:
+            cr.execute(
+                """
+                UPDATE ir_property ip
+                SET name = %s
+                FROM ir_model_fields imf
+                WHERE ip.fields_id = imf.id
+                    AND imf.name = %s AND imf.model = %s
+                    AND ip.name = %s
+                """,
+                (new_field, new_field, model, old_field),
+            )
         # Rename possible attachments (if field is Binary with attachment=True)
         if column_exists(cr, "ir_attachment", "res_field"):
             cr.execute(
