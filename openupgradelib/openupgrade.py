@@ -3050,8 +3050,8 @@ def add_columns(env, field_spec):
         integer, many2many, many2one, many2one_reference, monetary, one2many,
         reference, selection, text, serialized. The list can vary depending on
         Odoo version or custom added field types.
-      * (optional) initialization value: if included in the tuple, it is set
-        in the column for existing records.
+      * (optional) initialization value: if it contains a value different from None,
+        it is set in the column for the existing records.
       * (optional) SQL table name
       * (optional) SQL field type: If the field type is custom or if it's one
         of the special cases (see get_field2column_type), you need to indicate
@@ -3065,7 +3065,7 @@ def add_columns(env, field_spec):
         model_name = vals[0]
         field_name = vals[1]
         field_type = vals[2]
-        init_value = vals[3] if len(vals) > 3 else False
+        init_value = vals[3] if len(vals) > 3 else None
         table_name = vals[4] if len(vals) > 4 else False
         sql_type = vals[5] if len(vals) > 5 else False
         translatable = vals[6] if len(vals) > 6 else False
@@ -3086,7 +3086,7 @@ def add_columns(env, field_spec):
                 sql.SQL(sql_type),
             )
             args = []
-            if init_value:
+            if init_value is not None:
                 query += sql.SQL(" DEFAULT %s")
                 args.append(init_value)
             logged_query(cr, query, args)
