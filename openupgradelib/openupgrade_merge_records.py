@@ -1061,7 +1061,10 @@ def merge_records(
         _change_translations_orm(*args)
         args2 = args0 + (field_spec,) + (delete,)
         # TODO: serialized fields
-        with env.norecompute():
+        if 7 < version_info[0] < 17:
+            with env.norecompute():
+                _adjust_merged_values_orm(*args2)
+        else:
             _adjust_merged_values_orm(*args2)
         if version_info[0] > 15:
             env[model_name].flush_model()
