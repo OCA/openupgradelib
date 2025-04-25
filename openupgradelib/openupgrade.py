@@ -3086,7 +3086,7 @@ def add_columns(env, field_spec):
                 sql.SQL(sql_type),
             )
             args = []
-            if init_value is not None:
+            if init_value or (init_value is not None and field_type == "boolean"):
                 query += sql.SQL(" DEFAULT %s")
                 args.append(init_value)
             logged_query(cr, query, args)
