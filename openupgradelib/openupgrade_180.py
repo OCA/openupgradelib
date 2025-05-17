@@ -50,7 +50,7 @@ def convert_company_dependent(
         FROM (
             SELECT
             SPLIT_PART(res_id, ',', 2)::integer res_id,
-            JSON_OBJECT_AGG(company_id, {value_expression}) value
+            JSON_OBJECT_AGG(company_id, {value_expression}) AS "value"
             FROM ir_property
             WHERE
             fields_id={old_field_id or Field.id} AND res_id IS NOT NULL
