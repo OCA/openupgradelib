@@ -3090,7 +3090,7 @@ def add_columns(env, field_spec):
                 query += sql.SQL(" DEFAULT %s")
                 args.append(init_value)
             logged_query(cr, query, args)
-            if init_value:
+            if init_value or (init_value is not None and field_type == "boolean"):
                 logged_query(
                     cr,
                     sql.SQL("ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT").format(
