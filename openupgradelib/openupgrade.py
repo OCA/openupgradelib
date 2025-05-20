@@ -2383,7 +2383,7 @@ def migrate(no_version=False, use_env=None, uid=None, context=None):
                     # Python3: fetch pyfile from locals, not fp
                     filename = frame.locals.get("pyfile") or frame.locals["fp"].name
                 except Exception as exc:
-                    logger.error(
+                    logger.warning(
                         "'migrate' decorator: failed to inspect the frame above: %s",
                         exc,
                     )
