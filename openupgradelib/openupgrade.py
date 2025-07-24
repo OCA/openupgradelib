@@ -3576,6 +3576,7 @@ def convert_to_company_dependent(
         "date": "value_datetime",
         "datetime": "value_datetime",
         "selection": "value_text",
+        "html": "value_text",
     }
     # Determine field id, field type and the model name of the relation
     # in case of many2one.
