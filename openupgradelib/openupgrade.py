@@ -1919,8 +1919,8 @@ def get_field2column_type(field_type, translatable=False):
 
     :param: field type: binary, boolean, char, date, datetime, float, html,
         integer, many2many, many2one, many2one_reference, monetary, one2many,
-        reference, selection, text, serialized. The list can vary depending on
-        Odoo version or custom added field types.
+        reference, selection, text, serialized, json, properties, properties_definition.
+        The list can vary depending on Odoo version or custom added field types.
     :param: (optional) translatable: From >=v16, if field is translatable then
         SQL field type is changed to 'jsonb'.
     :return: SQL field type: If the field type is custom or if it's one of the special
@@ -1946,6 +1946,8 @@ def get_field2column_type(field_type, translatable=False):
         "text": "text",
         "serialized": "text",
         "json": "jsonb",
+        "properties": "jsonb",
+        "properties_definition": "jsonb",
     }
     if version_info[0] > 15 and field_type in ["char", "text", "html"] and translatable:
         return "jsonb"
@@ -3048,8 +3050,8 @@ def add_columns(env, field_spec):
       * field name
       * field type: binary, boolean, char, date, datetime, float, html,
         integer, many2many, many2one, many2one_reference, monetary, one2many,
-        reference, selection, text, serialized. The list can vary depending on
-        Odoo version or custom added field types.
+        reference, selection, text, serialized, json, properties, properties_definition.
+        The list can vary depending on Odoo version or custom added field types.
       * (optional) initialization value: if it contains a value different from None,
         it is set in the column for the existing records.
       * (optional) SQL table name
@@ -3123,8 +3125,8 @@ def add_fields(env, field_spec):
         registry and thus the SQL table name can be obtained that way.
       * field type: binary, boolean, char, date, datetime, float, html,
         integer, many2many, many2one, many2one_reference, monetary, one2many,
-        reference, selection, text, serialized. The list can vary depending on
-        Odoo version or custom added field types.
+        reference, selection, text, serialized, json, properties, properties_definition.
+        The list can vary depending on Odoo version or custom added field types.
       * SQL field type: If the field type is custom or if it's one of the special
         cases (see get_field2column_type), you need to indicate here the SQL type
         to use (from the valid PostgreSQL types):
