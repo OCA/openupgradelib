@@ -625,6 +625,11 @@ def _adjust_merged_values_orm(
             _list = all_records.mapped(field.name)
         else:
             _list = [x[field.name] for x in all_records if x[field.name]]
+        field_type = (
+            field.type if not (version_info[0] > 15 and field.translate) else "jsonb"
+        )
+        if field.type in ("properties", "properties_definition"):
+            field_type = "jsonb"
         field_vals, field_o2m_changes = apply_operations_by_field_type(
             env,
             model_name,
@@ -632,7 +637,7 @@ def _adjust_merged_values_orm(
             target_record_id,
             field_spec,
             _list,
-            field.type if not (version_info[0] > 15 and field.translate) else "jsonb",
+            field_type,
             field.name,
             op,
             "orm",
