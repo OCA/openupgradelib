@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gd47b412 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gbe98930 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=ca5b17db"></script>
+      <script src="_static/documentation_options.js?v=b62cf337"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -209,8 +209,8 @@ for each tuple:</p>
 <li><p>field name</p></li>
 <li><p>field type: binary, boolean, char, date, datetime, float, html,
 integer, many2many, many2one, many2one_reference, monetary, one2many,
-reference, selection, text, serialized. The list can vary depending on
-Odoo version or custom added field types.</p></li>
+reference, selection, text, serialized, json, properties, properties_definition.
+The list can vary depending on Odoo version or custom added field types.</p></li>
 <li><p>(optional) initialization value: if it contains a value different from None,
 it is set in the column for the existing records.</p></li>
 <li><p>(optional) SQL table name</p></li>
@@ -249,8 +249,8 @@ for each tuple:</p>
 registry and thus the SQL table name can be obtained that way.</p></li>
 <li><p>field type: binary, boolean, char, date, datetime, float, html,
 integer, many2many, many2one, many2one_reference, monetary, one2many,
-reference, selection, text, serialized. The list can vary depending on
-Odoo version or custom added field types.</p></li>
+reference, selection, text, serialized, json, properties, properties_definition.
+The list can vary depending on Odoo version or custom added field types.</p></li>
 <li><p>SQL field type: If the field type is custom or if it’s one of the special
 cases (see get_field2column_type), you need to indicate here the SQL type
 to use (from the valid PostgreSQL types):
@@ -603,8 +603,8 @@ truncate the float value (It won’t round it)</p>
 <dt class="field-odd">Param<span class="colon">:</span></dt>
 <dd class="field-odd"><p>field type: binary, boolean, char, date, datetime, float, html,
 integer, many2many, many2one, many2one_reference, monetary, one2many,
-reference, selection, text, serialized. The list can vary depending on
-Odoo version or custom added field types.</p>
+reference, selection, text, serialized, json, properties, properties_definition.
+The list can vary depending on Odoo version or custom added field types.</p>
 </dd>
 <dt class="field-even">Param<span class="colon">:</span></dt>
 <dd class="field-even"><p>(optional) translatable: From &gt;=v16, if field is translatable then
