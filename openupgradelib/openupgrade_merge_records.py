@@ -654,13 +654,21 @@ def _adjust_merged_values_orm(
         return
     # Curate values that haven't changed
     new_vals = {}
-    for f in vals:
-        if model._fields[f].type != "many2many":
-            if vals[f] != getattr(target_record, f):
-                new_vals[f] = vals[f]
+    for f, new_val in vals.items():
+        field = model._fields[f]
+        current_val = getattr(target_record, f)
+
+        if field.type == "many2many":
+            # Convert to set of IDs to avoid list-in-list comparison issues
+            new_ids = {x[1] for x in new_val}  # new_val is like [(4, id), ...]
+            current_ids = set(current_val.ids)
+            if new_ids != current_ids:
+                new_vals[f] = new_val
         else:
-            if [x[1] for x in vals[f]] not in getattr(target_record, f).ids:
-                new_vals[f] = vals[f]
+            # Safe comparison: convert recordset to ID if applicable
+            current_raw = current_val.id if hasattr(current_val, "id") else current_val
+            if new_val != current_raw:
+                new_vals[f] = new_val
     if delete:
         _delete_records_orm(env, model_name, record_ids, target_record_id)
     if new_vals:
