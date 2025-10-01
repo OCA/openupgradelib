@@ -419,8 +419,14 @@ def apply_operations_by_field_type(
         if operation == "first_not_null":
             field_vals.reverse()
             field_val = {}
+            lang = env.user.lang or "en_US"
             for x in field_vals:
-                field_val |= x or {}
+                if isinstance(x, str) and x.strip():
+                    # Normalize: convert string to dict with default language
+                    field_val[lang] = x
+                elif isinstance(x, dict):
+                    # Serialized field can be a dictionary
+                    field_val.update(x)
             if field_val:
                 if method == "sql":
                     if field_type == "serialized":
@@ -432,7 +438,7 @@ def apply_operations_by_field_type(
 
                         vals[column] = Json(field_val)
                 else:
-                    vals[column] = field_val
+                    vals[column] = field_val.get(lang) or field_val
     elif field_type in ("integer", "float", "monetary"):
         if operation or field_type != "integer":
             field_vals = [0 if not x else x for x in field_vals]
@@ -628,7 +634,7 @@ def _adjust_merged_values_orm(
         field_type = (
             field.type if not (version_info[0] > 15 and field.translate) else "jsonb"
         )
-        if field.type in ("properties", "properties_definition"):
+        if field.type in ("properties", "properties_definition", "serialized"):
             field_type = "jsonb"
         field_vals, field_o2m_changes = apply_operations_by_field_type(
             env,
