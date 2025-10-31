@@ -1,6 +1,7 @@
 # Copyright 2025 Hunki Enterprises BV
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from .openupgrade import logged_query
+from .openupgrade_tools import table_exists
 
 
 def convert_company_dependent(
@@ -19,6 +20,16 @@ def convert_company_dependent(
     :param old_field_id: in case a field has been renamed during the migration,
         pass the field id of the previous field here
     """
+
+    if not table_exists(env.cr, "ir_property"):
+        # If you are migrating using the enterprise service, the table
+        # ir_property is already converted and deleted. Also, the conversion
+        # to company_dependent is done for all the fields in that service too.
+        # So when trying to access the table it raises an exception.
+        # So adding a condition to ensure this table till exists and being
+        # able to do the migration with both services!
+        # Reference: https://github.com/OCA/purchase-workflow/pull/2861
+        return
     Model = env[model_name]
     Field = (
         env["ir.model.fields"]._get(model_name, field_name)
