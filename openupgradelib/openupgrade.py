@@ -349,7 +349,11 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
             fp = tools.file_open(pathname)
     except OSError:
         if tools.config.get("upgrade_path"):
-            for path in tools.config["upgrade_path"].split(","):
+            if version_info[0] >= 19:
+                upgrade_paths = tools.config["upgrade_path"]
+            else:
+                upgrade_paths = tools.config["upgrade_path"].split(",")
+            for path in upgrade_paths:
                 pathname = os.path.join(path, module_name, filename)
                 try:
                     fp = open(pathname)
