@@ -3768,53 +3768,42 @@ def update_domain(domain, update_name_func=None, update_value_func=None):
 
     Example:
 
-    With
+    With::
 
-    ```
-    def rename_company_id(name):
-        if name == 'company_id':
-            return 'company_id2'
-        return name
-    ```
+        def rename_company_id(name):
+            if name == 'company_id':
+                return 'company_id2'
+            return name
 
-    calling
+    calling::
 
-    ```
-    update_domain("[('company_id', '=', 42), ('other_field', '=', value)]", update_name_func=rename_company_id)
-    ```
+        update_domain("[('company_id', '=', 42), ('other_field', '=', value)]", update_name_func=rename_company_id)
 
-    returns
+    returns::
 
-    ```
-    "[('company_id2', '=', 42), ('other_field', '=', value)]"
-    ```
+        "[('company_id2', '=', 42), ('other_field', '=', value)]"
+
     :param update_value_func: function being passed a domain field name as string, and a value as string, int, list or ast.Expression if the right hand side of a domain leaf cannot be parsed as one of the former. Return one of the aformentioned types to replace the right hand side of the domain leaf.
 
     Example:
 
-    With
+    With::
 
-    ```
-    def change_company_id(name, value):
-        if name == 'company_id':
-            if isinstance(value, int) and value == 42:
-                return 43
-            elif isinstance(value, (list, tuple)) and 42 in value:
-                return [val if val != 42 else 43 for val in value]
-        return value
-    ```
+        def change_company_id(name, value):
+            if name == 'company_id':
+                if isinstance(value, int) and value == 42:
+                    return 43
+                elif isinstance(value, (list, tuple)) and 42 in value:
+                    return [val if val != 42 else 43 for val in value]
+            return value
 
-    calling
+    calling::
 
-    ```
-    update_domain("[('company_id', '=', 42), ('company_id', 'in', [41, 42]), ('other_field', '=', value)]", update_value_func=change_company_id)
-    ```
+        update_domain("[('company_id', '=', 42), ('company_id', 'in', [41, 42]), ('other_field', '=', value)]", update_value_func=change_company_id)
 
-    returns
+    returns::
 
-    ```
-    "[('company_id', '=', 43), ('company_id', 'in', (41, 43)), ('other_field', '=', value)]"
-    ```
+        "[('company_id', '=', 43), ('company_id', 'in', (41, 43)), ('other_field', '=', value)]"
     """
 
     class Transformer(ast.NodeTransformer):
