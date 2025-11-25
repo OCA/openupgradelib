@@ -3832,13 +3832,15 @@ def update_domain(domain, update_name_func=None, update_value_func=None):
 
                 if update_name_func:
                     new_left = update_name_func(left.value)
-                    element.elts[0] = self._get_ast_for_value(new_left)
+                    element.elts[0] = self._get_ast_for_value(new_left or left)
 
                 if update_value_func:
                     new_right = update_value_func(
                         left.value, self._get_literal_value_or_ast(element.elts[2])
                     )
-                    element.elts[2] = self._get_ast_for_value(new_right)
+                    element.elts[2] = self._get_ast_for_value(
+                        new_right or element.elts[2]
+                    )
 
             return node
 
@@ -3849,7 +3851,7 @@ def update_domain(domain, update_name_func=None, update_value_func=None):
                 return node
 
         def _get_ast_for_value(self, value):
-            if isinstance(value, (int, str)):
+            if isinstance(value, (int, str, float)):
                 return ast.Constant(value)
             elif isinstance(value, (list, tuple)):
                 return ast.Tuple([self._get_ast_for_value(val) for val in value])
