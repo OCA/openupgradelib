@@ -2123,7 +2123,9 @@ def map_values(
     if source_column == target_column:
         logger.exception(
             "map_values is called with the same value for source and old"
-            " columns : %s",
+            " columns : %s. Please copy this column to preserve existing data,"
+            " and map the values from there (tip: you can use `copy_columns`"
+            " and `get_legacy_name` functions to achieve this).",
             source_column,
         )
     for old, new in mapping:
