@@ -1133,6 +1133,12 @@ def rename_models(cr, model_spec):
                 "UPDATE rating_rating SET parent_res_model=%s where parent_res_model=%s",
                 (new, old),
             )
+        if is_module_installed(cr, "marketing_card"):
+            logged_query(
+                cr,
+                "UPDATE card_campaign SET res_model=%s where res_model=%s",
+                (new, old),
+            )
 
     # TODO: signal where the model occurs in references to ir_model
 
@@ -1160,7 +1166,7 @@ def merge_models(cr, old_model, new_model, ref_field):
         ) in get_many2one_references(cr)
         if model_name not in ("mail.followers", "card.card")
         # mail_followers: special case handled below
-        # TODO: card_card (has a different approach)
+        # card_card: handled below
     ]
     renames += [
         ("ir_filters", "model_id", "", ""),
@@ -1177,6 +1183,11 @@ def merge_models(cr, old_model, new_model, ref_field):
             renames.append(("mail_activity_type", "", "", "res_model_id"))
         else:
             renames.append(("mail_activity_type", "res_model", "", ""))
+    if is_module_installed(cr, "marketing_card"):
+        renames += [
+            ("card_campaign", "res_model", "", ""),
+            ("card_card", "", "res_id", ""),
+        ]
     for (table, model_name_column, res_id_column, model_id_column) in renames:
         if not table_exists(cr, table):
             continue
@@ -1188,6 +1199,11 @@ def merge_models(cr, old_model, new_model, ref_field):
             query_2a = """, {res_id_column} = mt.id
                 FROM {model_table} mt"""
             query_2b = """ AND mt.{ref_field} = t.{res_id_column}"""
+            if not model_name_column and not model_id_column:
+                query_1a, query_1b = "", ""
+                query_2a = """{res_id_column} = mt.id
+                    FROM {model_table} mt"""
+                query_2b = """mt.{ref_field} = t.{res_id_column}"""
         if model_id_column:
             pre_query = """
                 SELECT id
