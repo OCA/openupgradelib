@@ -193,6 +193,7 @@ __all__ = [
     "get_legacy_name",
     "get_model2table",
     "get_field2column_type",
+    "get_many2one_references",
     "m2o_to_x2m",
     "float_to_integer",
     "message",
@@ -935,6 +936,7 @@ def rename_models(cr, model_spec):
     WARNING: This method doesn't rename the associated tables. For that,
     you need to call `rename_tables` method.
     """
+    many2one_references = get_many2one_references(cr)
     for (old, new) in model_spec:
         logger.info("model %s: renaming to %s", old, new)
         _old = old.replace(".", "_")
@@ -947,14 +949,23 @@ def rename_models(cr, model_spec):
                 old,
             ),
         )
-        logged_query(
-            cr,
-            "UPDATE ir_model_data SET model = %s WHERE model = %s",
-            (
-                new,
-                old,
-            ),
-        )
+        for many2one_reference in many2one_references:
+            table = get_model2table(many2one_reference[0])
+            if not column_exists(cr, table, many2one_reference[2]):
+                continue
+            logged_query(
+                cr,
+                sql.SQL(
+                    "UPDATE {table} SET {res_model} = %s WHERE {res_model} = %s"
+                ).format(
+                    table=sql.Identifier(table),
+                    res_model=sql.Identifier(many2one_reference[2]),
+                ),
+                (
+                    new,
+                    old,
+                ),
+            )
         logged_query(
             cr,
             "UPDATE ir_model_data SET name=%s WHERE name=%s AND model = 'ir.model'",
@@ -973,14 +984,6 @@ def rename_models(cr, model_spec):
                 AND imd.name = 'field_' || '%s' || '%s' || imf.name
                 AND imf.model = %s""",
             (AsIs(_new), AsIs(underscore), AsIs(_old), AsIs(underscore), old),
-        )
-        logged_query(
-            cr,
-            "UPDATE ir_attachment SET res_model = %s WHERE res_model = %s",
-            (
-                new,
-                old,
-            ),
         )
         logged_query(
             cr,
@@ -1111,11 +1114,6 @@ def rename_models(cr, model_spec):
                 )
         if is_module_installed(cr, "mail"):
             # fortunately, the data model didn't change up to now
-            logged_query(
-                cr,
-                "UPDATE mail_message SET model=%s where model=%s",
-                (new, old),
-            )
             if table_exists(cr, "mail_message_subtype"):
                 logged_query(
                     cr,
@@ -1129,22 +1127,16 @@ def rename_models(cr, model_spec):
                     "UPDATE mail_template SET model=%s where model=%s",
                     (new, old),
                 )
-            if table_exists(cr, "mail_followers"):
-                logged_query(
-                    cr,
-                    "UPDATE mail_followers SET res_model=%s where res_model=%s",
-                    (new, old),
-                )
-            if table_exists(cr, "mail_activity"):
-                logged_query(
-                    cr,
-                    "UPDATE mail_activity SET res_model=%s where res_model=%s",
-                    (new, old),
-                )
         if column_exists(cr, "rating_rating", "parent_res_model"):
             logged_query(
                 cr,
                 "UPDATE rating_rating SET parent_res_model=%s where parent_res_model=%s",
+                (new, old),
+            )
+        if is_module_installed(cr, "marketing_card"):
+            logged_query(
+                cr,
+                "UPDATE card_campaign SET res_model=%s where res_model=%s",
                 (new, old),
             )
 
@@ -1165,25 +1157,37 @@ def merge_models(cr, old_model, new_model, ref_field):
     logger.info("model %s: merging to %s", old_model, new_model)
     model_table = get_model2table(new_model)
     renames = [
-        ("ir_attachment", "res_model", "res_id", ""),
-        ("ir_model_data", "model", "res_id", ""),
+        (get_model2table(model_name), model_name_column, res_id_column, model_id_column)
+        for (
+            model_name,
+            res_id_column,
+            model_name_column,
+            model_id_column,
+        ) in get_many2one_references(cr)
+        if model_name not in ("mail.followers", "card.card")
+        # mail_followers: special case handled below
+        # card_card: handled below
+    ]
+    renames += [
         ("ir_filters", "model_id", "", ""),
         ("ir_exports", "resource", "", ""),
     ]
     if is_module_installed(cr, "mail"):
         renames += [
-            ("mail_message", "model", "res_id", ""),
             ("mail_message_subtype", "res_model", "", ""),
-            ("mail_activity", "res_model", "res_id", "res_model_id"),
             ("mail_template", "model", "", "model_id"),
             ("mail_alias", "", "", "alias_model_id"),
             ("mail_alias", "", "alias_parent_thread_id", "alias_parent_model_id"),
-            # mail_followers: special case handled below
         ]
         if version_info[0] < 15:
             renames.append(("mail_activity_type", "", "", "res_model_id"))
         else:
             renames.append(("mail_activity_type", "res_model", "", ""))
+    if is_module_installed(cr, "marketing_card"):
+        renames += [
+            ("card_campaign", "res_model", "", ""),
+            ("card_card", "", "res_id", ""),
+        ]
     for (table, model_name_column, res_id_column, model_id_column) in renames:
         if not table_exists(cr, table):
             continue
@@ -1195,6 +1199,11 @@ def merge_models(cr, old_model, new_model, ref_field):
             query_2a = """, {res_id_column} = mt.id
                 FROM {model_table} mt"""
             query_2b = """ AND mt.{ref_field} = t.{res_id_column}"""
+            if not model_name_column and not model_id_column:
+                query_1a, query_1b = "", ""
+                query_2a = """{res_id_column} = mt.id
+                    FROM {model_table} mt"""
+                query_2b = """mt.{ref_field} = t.{res_id_column}"""
         if model_id_column:
             pre_query = """
                 SELECT id
@@ -1956,6 +1965,59 @@ def get_field2column_type(field_type, translatable=False):
     if version_info[0] > 15 and field_type in ["char", "text", "html"] and translatable:
         return "jsonb"
     return sql_type_mapping.get(field_type, False)
+
+
+def get_many2one_references(cr):
+    if version_info[0] > 19:
+        cr.execute(
+            """
+            SELECT sub.model, sub.name, sub.relation_model_field, split_part(imf.related, '.', 1)
+            FROM ir_model_fields imf
+            JOIN (
+                SELECT model, name, relation_model_field
+                FROM ir_model_fields
+                WHERE store AND relation_model_field IS NOT NULL
+            ) as sub ON sub.model = imf.model AND imf.name = sub.relation_model_field
+            """
+        )
+        many2one_reference_relations = cr.fetchall()
+    else:
+        many2one_reference_relations = [
+            ("ir.model.data", "res_id", "model", ""),
+            ("ir.attachment", "res_id", "res_model", ""),
+        ]
+        if is_module_installed(cr, "mail"):
+            many2one_reference_relations += [
+                ("mail.activity", "res_id", "res_model", "res_model_id"),
+                ("mail.followers", "res_id", "res_model", ""),
+                ("mail.message", "res_id", "model", ""),
+                ("mail.scheduled.message", "res_id", "model", ""),
+            ]
+        if is_module_installed(cr, "calendar"):
+            many2one_reference_relations += [
+                ("calendar.event", "res_id", "res_model", "res_model_id"),
+            ]
+        if is_module_installed(cr, "rating"):
+            many2one_reference_relations += [
+                ("rating.rating", "res_id", "res_model", "res_model_id"),
+            ]
+        if is_module_installed(cr, "base_automation"):
+            many2one_reference_relations += [
+                ("base.automation", "trg_field_ref", "trg_field_ref_model_name", ""),
+            ]
+        if is_module_installed(cr, "loyalty"):
+            many2one_reference_relations += [
+                ("loyalty.history", "order_id", "order_model", ""),
+            ]
+        if is_module_installed(cr, "mass_mailing"):
+            many2one_reference_relations += [
+                ("mailing.trace", "res_id", "model", ""),
+            ]
+        if is_module_installed(cr, "marketing_card"):
+            many2one_reference_relations += [
+                ("card.card", "res_id", "res_model", "campaign_id"),
+            ]
+    return many2one_reference_relations
 
 
 def m2o_to_x2m(cr, model, table, field, source_field):

@@ -10,7 +10,12 @@ from psycopg2 import IntegrityError, ProgrammingError, sql
 from psycopg2.errorcodes import UNDEFINED_COLUMN, UNIQUE_VIOLATION
 from psycopg2.extensions import AsIs
 
-from .openupgrade import get_model2table, logged_query, version_info
+from .openupgrade import (
+    get_many2one_references,
+    get_model2table,
+    logged_query,
+    version_info,
+)
 from .openupgrade_tools import column_exists, table_exists
 
 logger = logging.getLogger("OpenUpgrade")
@@ -797,14 +802,15 @@ def _change_generic(
       feature, for example when replacing one model per another (i.e.:
       account.invoice > account.move).
     """
-    for model_to_replace, res_id_column, model_column in [
-        ("calendar.event", "res_id", "res_model"),
-        ("ir.attachment", "res_id", "res_model"),
-        ("mail.activity", "res_id", "res_model"),
-        ("mail.followers", "res_id", "res_model"),
-        ("mail.message", "res_id", "model"),
-        ("rating.rating", "res_id", "res_model"),
-    ]:
+    many2one_reference_relations = [
+        x for x in get_many2one_references(env.cr) if x[0] != "ir.model.data"
+    ]
+    for (
+        model_to_replace,
+        res_id_column,
+        model_column,
+        _related_colum,
+    ) in many2one_reference_relations:
         try:
             model = env[model_to_replace].with_context(active_test=False)
             table = model._table
@@ -918,16 +924,25 @@ def _delete_records_sql(
             model_table = env[model_name]._table
         except KeyError:
             model_table = get_model2table(model_name)
-    logged_query(
-        env.cr,
-        "DELETE FROM ir_model_data WHERE model = %s AND res_id IN %s",
-        (model_name, tuple(record_ids)),
-    )
-    logged_query(
-        env.cr,
-        "DELETE FROM ir_attachment WHERE res_model = %s AND res_id IN %s",
-        (model_name, tuple(record_ids)),
-    )
+    many2one_references = get_many2one_references(env.cr)
+    for many2one_reference in many2one_references:
+        try:
+            table = env[many2one_reference[0]]._table
+        except KeyError:
+            table = get_model2table(many2one_reference[0])
+        if not column_exists(env.cr, table, many2one_reference[2]):
+            continue
+        logged_query(
+            env.cr,
+            sql.SQL(
+                "DELETE FROM {table} WHERE {res_model} = %s AND {res_id} IN %s"
+            ).format(
+                table=sql.Identifier(table),
+                res_model=sql.Identifier(many2one_reference[2]),
+                res_id=sql.Identifier(many2one_reference[1]),
+            ),
+            (model_name, tuple(record_ids)),
+        )
     logged_query(
         env.cr,
         sql.SQL("DELETE FROM {} WHERE id IN %s").format(sql.Identifier(model_table)),
