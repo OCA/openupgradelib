@@ -42,6 +42,28 @@ class TestOpenupgradelib(unittest.TestCase):
         migrate_with_cr(self.cr, "irrelevant.version")
         migrate_with_env(self.cr, "irrelevant.version")
 
+    def test_delete_translations(self):
+        record = self.env.ref("base.module_base")
+
+        self.assertNotEqual(
+            record.with_context(lang="en_US").description,
+            record.with_context(lang="fr_FR").description,
+        )
+
+        openupgrade.delete_record_translations(self.cr, "base", ["module_base"])
+
+        invalidate_func = getattr(
+            record,
+            "invalidate_recordset",
+            getattr(record, "invalidate_cache", lambda *args: None),
+        )
+        invalidate_func()
+
+        self.assertEqual(
+            record.with_context(lang="en_US").description,
+            record.with_context(lang="fr_FR").description,
+        )
+
     def tearDown(self):
         super().tearDown()
         self.cr.close()

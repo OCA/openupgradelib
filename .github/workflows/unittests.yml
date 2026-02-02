@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Initialize database and install code
         run: |
-          odoo -d $PGDATABASE -i base --stop-after-init
+          odoo -d $PGDATABASE --load-language fr_FR -i base --stop-after-init
           pip install .
       - name: Run tests
         run:
