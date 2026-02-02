@@ -1,0 +1,61 @@
+name: unittests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  unittests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          -  image_name: py3.10-ocb16.0
+          -  image_name: py3.10-ocb17.0
+          -  image_name: py3.10-ocb18.0
+          -  image_name: py3.10-ocb19.0
+          -  image_name: py3.10-odoo16.0
+          -  image_name: py3.10-odoo17.0
+          -  image_name: py3.10-odoo18.0
+          -  image_name: py3.10-odoo19.0
+          -  image_name: py3.9-ocb15.0
+          -  image_name: py3.9-odoo15.0
+# TODO: <=v14 needs more work on how to create the environment in test class
+#          -  image_name: py3.8-ocb14.0
+          -  image_name: py3.8-ocb15.0
+# TODO: see above
+#          -  image_name: py3.8-odoo14.0
+          -  image_name: py3.8-odoo15.0
+# TODO: 3.6 setuptools fails to `pip install .`
+#          -  image_name: py3.6-ocb12.0
+#          -  image_name: py3.6-ocb13.0
+#          -  image_name: py3.6-ocb14.0
+#          -  image_name: py3.6-odoo12.0
+#          -  image_name: py3.6-odoo13.0
+#          -  image_name: py3.6-odoo14.0
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: odoo
+        ports:
+          - 5432:5432
+    container: ghcr.io/oca/oca-ci/${{ matrix.image_name }}:latest
+    name: ${{ matrix.image_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize database and install code
+        run: |
+          odoo -d $PGDATABASE -i base --stop-after-init
+          pip install .
+      - name: Run tests
+        run:
+          coverage run --include "openupgradelib/*.py" --branch -m unittest --verbose
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
