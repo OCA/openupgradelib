@@ -2932,7 +2932,15 @@ def delete_record_translations(cr, module, xml_ids, field_list=None):
                 FROM information_schema.columns isc
                 JOIN ir_model_fields imf ON (
                     imf.name = isc.column_name AND imf.model = %s)
-                WHERE isc.table_name = %s AND imf.translate""",
+                WHERE isc.table_name = %s AND imf.translate"""
+                + (
+                    # translate is a boolean in <19, a select field afterwards
+                    ""
+                    if version_info[0] < 19
+                    else """
+                    IS NOT NULL
+                    """
+                ),
                 (model, table),
             )
             list_columns = [x[0] for x in cr.fetchall()]

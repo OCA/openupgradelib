@@ -1,74 +1,69 @@
-#!/usr/bin/env python
-
-"""
-test_openupgradelib
-----------------------------------
-
-Tests for `openupgradelib` module.
-"""
-import sys
+import os
 import unittest
 
-import mock
+import odoo
 
-# Store original __import__
-orig_import = __import__
-# This will be the openerp module
-openerp_mock = mock.Mock()
-openerp_mock.release = mock.Mock()
-openerp_mock.release.version_info = (8, 0, 0, "final", 0)
-
-
-def import_mock(name, *args):
-    names = name.split(".")
-    if names[0] in ["openerp", "psycopg2"]:
-        return openerp_mock
-    return orig_import(name, *args)
-
-
-if sys.version_info[0] == 3:
-    import builtins  # noqa: F401
-
-    import_str = "builtins.__import__"
-else:
-    import_str = "__builtin__.__import__"
-
-
-def mock_contextmanager():
-    fake_contextmanager = mock.Mock()
-    fake_contextmanager.__enter__ = lambda self: None
-    fake_contextmanager.__exit__ = lambda self, t, v, tb: None
-    return fake_contextmanager
-
-
-with mock.patch(import_str, side_effect=import_mock):
-    from openerp import api
-
-    from openupgradelib import openupgrade
-
-    api.Environment.manage = mock_contextmanager
+# needs to be imported after Odoo initialized, done in test setup
+openupgrade = None
 
 
 class TestOpenupgradelib(unittest.TestCase):
-    def setUp(self):  # pylint: disable=W8106
-        self.cr = mock.Mock()
-        self.cr.savepoint = mock_contextmanager
+    """
+    Test openupgradelib
+    """
+
+    def setUp(self):
+        global openupgrade
+        super().setUp()
+
+        # < v19
+        registry = getattr(odoo, "registry", None)
+        if not registry:
+            # >= v19
+            __import__("odoo", fromlist=["orm"])
+            orm = __import__("odoo.orm", fromlist=["registry"])
+            registry = orm.registry.Registry
+
+        self.registry = registry(os.environ.get("PGDATABASE"))
+        self.cr = self.registry.cursor()
+        self.env = odoo.api.Environment(self.cr, odoo.SUPERUSER_ID, {})
+        openupgradelib = __import__("openupgradelib", fromlist=["openupgrade"])
+        openupgrade = openupgradelib.openupgrade
 
     def test_migrate_env(self):
-        @openupgrade.migrate()
+        @openupgrade.migrate(use_env=False)
         def migrate_with_cr(cr, version):
-            self.assertTrue(isinstance(cr, mock.Mock))
+            self.assertTrue(isinstance(cr, odoo.sql_db.Cursor))
 
         @openupgrade.migrate(use_env=True)
         def migrate_with_env(env, version):
-            self.assertTrue(isinstance(env.cr, mock.Mock))
+            self.assertTrue(isinstance(env, odoo.api.Environment))
 
         migrate_with_cr(self.cr, "irrelevant.version")
         migrate_with_env(self.cr, "irrelevant.version")
 
-    def tearDown(self):  # pylint: disable=W8106
-        pass
+    def test_delete_translations(self):
+        record = self.env.ref("base.module_base")
 
+        self.assertNotEqual(
+            record.with_context(lang="en_US").description,
+            record.with_context(lang="fr_FR").description,
+        )
 
-if __name__ == "__main__":
-    unittest.main()
+        openupgrade.delete_record_translations(self.cr, "base", ["module_base"])
+
+        invalidate_func = getattr(
+            record,
+            "invalidate_recordset",
+            getattr(record, "invalidate_cache", lambda *args: None),
+        )
+        invalidate_func()
+
+        self.assertEqual(
+            record.with_context(lang="en_US").description,
+            record.with_context(lang="fr_FR").description,
+        )
+
+    def tearDown(self):
+        super().tearDown()
+        self.cr.close()
