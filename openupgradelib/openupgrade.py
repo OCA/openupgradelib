@@ -274,10 +274,13 @@ def check_values_selection_field(cr, table_name, field_name, allowed_values):
     .. versionadded:: 8.0
     """
     res = True
-    cr.execute(  # pylint: disable=E8103
-        "SELECT %s, count(*) FROM %s GROUP BY %s;"
-        % (field_name, table_name, field_name)
+    query = sql.SQL(
+        "SELECT {field}, count(*) FROM {table} GROUP BY {field};"
+    ).format(
+        field=sql.Identifier(field_name),
+        table=sql.Identifier(table_name),
     )
+    cr.execute(query)  # pylint: disable=E8103
     for row in cr.fetchall():
         if row[0] not in allowed_values:
             logger.error(

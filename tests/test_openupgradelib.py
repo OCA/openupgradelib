@@ -66,6 +66,46 @@ class TestOpenupgradelib(unittest.TestCase):
         migrate_with_cr(self.cr, "irrelevant.version")
         migrate_with_env(self.cr, "irrelevant.version")
 
+    def test_check_values_selection_field_safe_sql(self):
+        class DummyCursor(object):
+            def __init__(self, rows):
+                self._rows = rows
+                self.executed = []
+
+            def execute(self, query, params=None):
+                self.executed.append((query, params))
+
+            def fetchall(self):
+                return list(self._rows)
+
+        class DummyComposed(object):
+            def __init__(self, template):
+                self.template = template
+                self.formatted_with = None
+
+            def format(self, **kwargs):
+                self.formatted_with = kwargs
+                return self
+
+        cursor = DummyCursor([("invalid", 2), ("ok", 1)])
+        with mock.patch.object(openupgrade.sql, "SQL", side_effect=DummyComposed) as sql_sql, \
+                mock.patch.object(openupgrade.sql, "Identifier", side_effect=lambda name: "<%s>" % name) as sql_ident:
+            result = openupgrade.check_values_selection_field(
+                cursor, "group", "select", {"ok"}
+            )
+
+        self.assertFalse(result)
+        # query is built safely via psycopg2.sql and executed without parameters
+        self.assertEqual(len(cursor.executed), 1)
+        query, params = cursor.executed[0]
+        self.assertIsInstance(query, DummyComposed)
+        self.assertIsNone(params)
+        # identifiers are used for both field and table names (order not important)
+        self.assertCountEqual(
+            [call.args[0] for call in sql_ident.call_args_list], ["select", "group"]
+        )
+        self.assertEqual(sql_sql.call_count, 1)
+
     def tearDown(self):  # pylint: disable=W8106
         pass
 
