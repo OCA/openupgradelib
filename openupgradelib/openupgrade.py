@@ -1988,6 +1988,8 @@ def get_many2one_references(cr):
                 FROM ir_model_fields
                 WHERE store AND relation_model_field IS NOT NULL
             ) as sub ON sub.model = imf.model AND imf.name = sub.relation_model_field
+            LEFT JOIN ir_model_fields imf2 ON imf.model = imf2.model AND imf2.name = split_part(imf.related, '.', 1)
+            WHERE imf.store OR imf2.relation = 'ir.model'
             """
         )
         many2one_reference_relations = cr.fetchall()
@@ -2010,10 +2012,6 @@ def get_many2one_references(cr):
         if is_module_installed(cr, "rating"):
             many2one_reference_relations += [
                 ("rating.rating", "res_id", "res_model", "res_model_id"),
-            ]
-        if is_module_installed(cr, "base_automation"):
-            many2one_reference_relations += [
-                ("base.automation", "trg_field_ref", "trg_field_ref_model_name", ""),
             ]
         if is_module_installed(cr, "loyalty"):
             many2one_reference_relations += [
