@@ -2013,6 +2013,15 @@ def get_many2one_references(cr):
             many2one_reference_relations += [
                 ("rating.rating", "res_id", "res_model", "res_model_id"),
             ]
+            if version_info[0] > 10:
+                many2one_reference_relations += [
+                    (
+                        "rating.rating",
+                        "parent_res_id",
+                        "parent_res_model",
+                        "parent_res_model_id",
+                    ),
+                ]
         if is_module_installed(cr, "loyalty"):
             many2one_reference_relations += [
                 ("loyalty.history", "order_id", "order_model", ""),
