@@ -1,0 +1,189 @@
+name: migration run
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  migration:
+    name: Run migrations
+    env:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: odoo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out openupgrade 14.0
+        uses: actions/checkout@v6
+        with:
+          repository: oca/openupgrade
+          ref: "14.0"
+          path: openupgrade-14.0
+      - name: Check out openupgrade 15.0
+        uses: actions/checkout@v6
+        with:
+          repository: oca/openupgrade
+          ref: "15.0"
+          path: openupgrade-15.0
+      - name: Check out openupgrade 16.0
+        uses: actions/checkout@v6
+        with:
+          repository: oca/openupgrade
+          ref: "16.0"
+          path: openupgrade-16.0
+      - name: Check out openupgrade 17.0
+        uses: actions/checkout@v6
+        with:
+          repository: oca/openupgrade
+          ref: "17.0"
+          path: openupgrade-17.0
+      - name: Check out openupgrade 18.0
+        uses: actions/checkout@v6
+        with:
+          repository: oca/openupgrade
+          ref: "18.0"
+          path: openupgrade-18.0
+      - name: Run migrations
+        run: |
+          echo Init testdb
+
+          docker run -d\
+            --quiet\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            --name db\
+            postgres:9.6
+
+          docker run\
+            --quiet\
+            --link db:db -v $(realpath tests/addons/v13):/mnt/extra-addons\
+            odoo:13.0\
+            odoo -d $POSTGRES_DB -i openupgradelib_tests --stop-after-init
+
+          echo "[run]
+          branch = True
+          [paths]
+          openupgradelib =
+            ${{ github.workspace }}
+            /mnt/openupgradelib
+          " > .coveragerc
+          cat .coveragerc
+
+          echo Run v14 migration
+          docker run\
+            --quiet\
+            --link db:postgres\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            -v $(realpath tests/addons/v14):/mnt/test-addons\
+            -v $(realpath openupgrade-14.0):/mnt/openupgrade\
+            -v $(realpath .):/mnt/openupgradelib\
+            ghcr.io/oca/oca-ci/py3.8-ocb14.0\
+            sh -c "
+            pip install -e /mnt/openupgradelib
+            cp -r /mnt/test-addons/* /opt/odoo/addons
+            cp -r /mnt/openupgrade/* /opt/odoo/addons
+            coverage run --data-file=/mnt/openupgradelib/.coverage.14 --rcfile=/mnt/openupgradelib/.coveragerc -- \$(which odoo) -d $POSTGRES_DB --load=openupgrade_framework -u all --stop-after-init
+            "
+
+          echo Run v15 migration
+          docker run\
+            --quiet\
+            --link db:postgres\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            -v $(realpath tests/addons/v15):/mnt/test-addons\
+            -v $(realpath openupgrade-15.0):/mnt/openupgrade\
+            -v $(realpath .):/mnt/openupgradelib\
+            ghcr.io/oca/oca-ci/py3.8-ocb15.0\
+            sh -c "
+            pip install -e /mnt/openupgradelib
+            cp -r /mnt/test-addons/* /opt/odoo/addons
+            cp -r /mnt/openupgrade/* /opt/odoo/addons
+            coverage run --data-file=/mnt/openupgradelib/.coverage.15 --rcfile=/mnt/openupgradelib/.coveragerc -- \$(which odoo) -d $POSTGRES_DB --load=openupgrade_framework -u all --stop-after-init
+            "
+
+          echo migrate postgres 9.6 to 12.0
+          docker run -d\
+            --quiet\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            --name db12\
+            postgres:12.0
+
+          docker exec -tu postgres db pg_dump -Fc -U $POSTGRES_USER --file /tmp/dump $POSTGRES_DB
+          docker cp db:/tmp/dump .
+          docker cp dump db12:/tmp
+          while ! docker exec -tu postgres db12 pg_isready -U $POSTGRES_USER; do
+            echo waiting for postgres
+            sleep 1
+          done
+          docker exec -tu postgres db12 pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean --if-exists /tmp/dump
+
+          echo Run v16 migration
+          docker run\
+            --quiet\
+            --link db12:postgres\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            -v $(realpath tests/addons/v16):/mnt/test-addons\
+            -v $(realpath openupgrade-16.0):/mnt/openupgrade\
+            -v $(realpath .):/mnt/openupgradelib\
+            ghcr.io/oca/oca-ci/py3.10-ocb16.0\
+            sh -c "
+            pip install -e /mnt/openupgradelib
+            cp -r /mnt/test-addons/* /opt/odoo/addons
+            cp -r /mnt/openupgrade/* /opt/odoo/addons
+            coverage run --data-file=/mnt/openupgradelib/.coverage.16 --rcfile=/mnt/openupgradelib/.coveragerc -- \$(which odoo) -d $POSTGRES_DB --load=openupgrade_framework -u all --stop-after-init
+            "
+
+          echo Run v17 migration
+          docker run\
+            --quiet\
+            --link db12:postgres\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            -v $(realpath tests/addons/v17):/mnt/test-addons\
+            -v $(realpath openupgrade-17.0):/mnt/openupgrade\
+            -v $(realpath .):/mnt/openupgradelib\
+            ghcr.io/oca/oca-ci/py3.10-ocb17.0\
+            sh -c "
+            pip install -e /mnt/openupgradelib
+            cp -r /mnt/test-addons/* /opt/odoo/addons
+            cp -r /mnt/openupgrade/* /opt/odoo/addons
+            coverage run --data-file=/mnt/openupgradelib/.coverage.17 --rcfile=/mnt/openupgradelib/.coveragerc -- \$(which odoo) -d $POSTGRES_DB --load=openupgrade_framework -u all --stop-after-init
+            "
+
+          echo Run v18 migration
+          docker run\
+            --quiet\
+            --link db12:postgres\
+            -e POSTGRES_USER=$POSTGRES_USER\
+            -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD\
+            -e POSTGRES_DB=$POSTGRES_DB\
+            -v $(realpath tests/addons/v18):/mnt/test-addons\
+            -v $(realpath openupgrade-18.0):/mnt/openupgrade\
+            -v $(realpath .):/mnt/openupgradelib\
+            ghcr.io/oca/oca-ci/py3.10-ocb18.0\
+            sh -c "
+            pip install -e /mnt/openupgradelib
+            cp -r /mnt/test-addons/* /opt/odoo/addons
+            cp -r /mnt/openupgrade/* /opt/odoo/addons
+            coverage run --data-file=/mnt/openupgradelib/.coverage.18 --rcfile=/mnt/openupgradelib/.coveragerc -- \$(which odoo) -d $POSTGRES_DB --load=openupgrade_framework -u all --stop-after-init
+            "
+
+          pip install coverage
+          coverage combine --debug COVERAGE_DEBUG
+
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
