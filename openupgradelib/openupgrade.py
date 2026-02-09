@@ -1164,9 +1164,8 @@ def merge_models(cr, old_model, new_model, ref_field):
             model_name_column,
             model_id_column,
         ) in get_many2one_references(cr)
-        if model_name not in ("mail.followers", "card.card")
+        if model_name not in ("mail.followers",)
         # mail_followers: special case handled below
-        # card_card: handled below
     ]
     renames += [
         ("ir_filters", "model_id", "", ""),
@@ -1184,10 +1183,24 @@ def merge_models(cr, old_model, new_model, ref_field):
         else:
             renames.append(("mail_activity_type", "res_model", "", ""))
     if is_module_installed(cr, "marketing_card"):
-        renames += [
-            ("card_campaign", "res_model", "", ""),
-            ("card_card", "", "res_id", ""),
-        ]
+        renames.append(("card_campaign", "res_model", "", ""))
+        query = """
+            UPDATE card_card c
+            SET res_id = mt.id, campaign_id = cc2.id
+            FROM {model_table} mt, card_campaign cc, card_campaign cc2
+            WHERE cc.res_model = {old_model} AND cc2.res_model = {new_model}
+                AND mt.{ref_field} = c.res_id AND AND c.campaign_id = cc.id"""
+        logged_query(
+            cr,
+            sql.SQL(query).format(
+                model_table=sql.Identifier(model_table),
+                ref_field=sql.Identifier(ref_field),
+            ),
+            {
+                "old_model": old_model,
+                "new_model": new_model,
+            },
+        )
     for (table, model_name_column, res_id_column, model_id_column) in renames:
         if not table_exists(cr, table):
             continue
@@ -1200,10 +1213,7 @@ def merge_models(cr, old_model, new_model, ref_field):
                 FROM {model_table} mt"""
             query_2b = """ AND mt.{ref_field} = t.{res_id_column}"""
             if not model_name_column and not model_id_column:
-                query_1a, query_1b = "", ""
-                query_2a = """{res_id_column} = mt.id
-                    FROM {model_table} mt"""
-                query_2b = """mt.{ref_field} = t.{res_id_column}"""
+                continue
         if model_id_column:
             pre_query = """
                 SELECT id
@@ -1978,6 +1988,8 @@ def get_many2one_references(cr):
                 FROM ir_model_fields
                 WHERE store AND relation_model_field IS NOT NULL
             ) as sub ON sub.model = imf.model AND imf.name = sub.relation_model_field
+            LEFT JOIN ir_model_fields imf2 ON imf.model = imf2.model AND imf2.name = split_part(imf.related, '.', 1)
+            WHERE imf.store OR imf2.relation = 'ir.model'
             """
         )
         many2one_reference_relations = cr.fetchall()
@@ -2001,10 +2013,15 @@ def get_many2one_references(cr):
             many2one_reference_relations += [
                 ("rating.rating", "res_id", "res_model", "res_model_id"),
             ]
-        if is_module_installed(cr, "base_automation"):
-            many2one_reference_relations += [
-                ("base.automation", "trg_field_ref", "trg_field_ref_model_name", ""),
-            ]
+            if version_info[0] > 10:
+                many2one_reference_relations += [
+                    (
+                        "rating.rating",
+                        "parent_res_id",
+                        "parent_res_model",
+                        "parent_res_model_id",
+                    ),
+                ]
         if is_module_installed(cr, "loyalty"):
             many2one_reference_relations += [
                 ("loyalty.history", "order_id", "order_model", ""),
@@ -2012,10 +2029,6 @@ def get_many2one_references(cr):
         if is_module_installed(cr, "mass_mailing"):
             many2one_reference_relations += [
                 ("mailing.trace", "res_id", "model", ""),
-            ]
-        if is_module_installed(cr, "marketing_card"):
-            many2one_reference_relations += [
-                ("card.card", "res_id", "res_model", "campaign_id"),
             ]
     return many2one_reference_relations
 
