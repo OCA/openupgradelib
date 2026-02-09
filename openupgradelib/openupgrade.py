@@ -1809,10 +1809,11 @@ def update_module_names(cr, namespec, merge_modules=False):
         of just a renaming.
     """
     for (old_name, new_name) in namespec:
-        query = "SELECT id FROM ir_module_module WHERE name = %s"
+        query = "SELECT state FROM ir_module_module WHERE name = %s"
         cr.execute(query, [new_name])
         row = cr.fetchone()
-        if row and merge_modules:
+        replace = row and (row[0] == "uninstalled" or merge_modules)
+        if replace:
             # Delete meta entries, that will avoid the entry removal
             # They will be recreated by the new module anyhow.
             query = "SELECT id FROM ir_module_module WHERE name = %s"
@@ -1854,7 +1855,7 @@ def update_module_names(cr, namespec, merge_modules=False):
         if version_info[0] > 7 and version_info[0] < 16:
             query = "UPDATE ir_translation SET module = %s WHERE module = %s"
             logged_query(cr, query, (new_name, old_name))
-        if merge_modules:
+        if merge_modules or replace:
             # Conserve old_name's state if new_name is uninstalled
             logged_query(
                 cr,
