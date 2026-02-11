@@ -424,8 +424,14 @@ def apply_operations_by_field_type(
         if operation == "first_not_null":
             field_vals.reverse()
             field_val = {}
+            lang = env.user.lang or "en_US"
             for x in field_vals:
-                field_val |= x or {}
+                if isinstance(x, str) and x.strip():
+                    # Normalize: convert string to dict with default language
+                    field_val[lang] = x
+                elif isinstance(x, dict):
+                    # Serialized field can be a dictionary
+                    field_val.update(x)
             if field_val:
                 if method == "sql":
                     if field_type == "serialized":
@@ -437,7 +443,7 @@ def apply_operations_by_field_type(
 
                         vals[column] = Json(field_val)
                 else:
-                    vals[column] = field_val
+                    vals[column] = field_val.get(lang) or field_val
     elif field_type in ("integer", "float", "monetary"):
         if operation or field_type != "integer":
             field_vals = [0 if not x else x for x in field_vals]
@@ -633,7 +639,7 @@ def _adjust_merged_values_orm(
         field_type = (
             field.type if not (version_info[0] > 15 and field.translate) else "jsonb"
         )
-        if field.type in ("properties", "properties_definition"):
+        if field.type in ("properties", "properties_definition", "serialized"):
             field_type = "jsonb"
         field_vals, field_o2m_changes = apply_operations_by_field_type(
             env,
@@ -653,13 +659,21 @@ def _adjust_merged_values_orm(
         return
     # Curate values that haven't changed
     new_vals = {}
-    for f in vals:
-        if model._fields[f].type != "many2many":
-            if vals[f] != getattr(target_record, f):
-                new_vals[f] = vals[f]
+    for f, new_val in vals.items():
+        field = model._fields[f]
+        current_val = getattr(target_record, f)
+
+        if field.type == "many2many":
+            # Convert to set of IDs to avoid list-in-list comparison issues
+            new_ids = {x[1] for x in new_val}  # new_val is like [(4, id), ...]
+            current_ids = set(current_val.ids)
+            if new_ids != current_ids:
+                new_vals[f] = new_val
         else:
-            if [x[1] for x in vals[f]] not in getattr(target_record, f).ids:
-                new_vals[f] = vals[f]
+            # Safe comparison: convert recordset to ID if applicable
+            current_raw = current_val.id if hasattr(current_val, "id") else current_val
+            if new_val != current_raw:
+                new_vals[f] = new_val
     if delete:
         _delete_records_orm(env, model_name, record_ids, target_record_id)
     if new_vals:
