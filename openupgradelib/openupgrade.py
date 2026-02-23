@@ -2174,6 +2174,7 @@ def map_values(
     'orm') that the new values are written to
     :param mapping: list of tuples [(old value, new value)]
         Old value True represents "is set", False "is not set".
+        New value False represents "is not set".
     :param model: used for writing if 'write' is 'orm', or to retrieve the \
     table if 'table' is not given.
     :param table: the database table used to query the old values, and write \
@@ -2204,7 +2205,10 @@ def map_values(
             source_column,
         )
     for old, new in mapping:
-        new = "'%s'" % new
+        if new is False:
+            new = "NULL"
+        else:
+            new = "'%s'" % new
 
         if old is True:
             old = "NOT NULL"
