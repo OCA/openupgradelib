@@ -3587,7 +3587,10 @@ def chunked(records, single=True):
     """Memory and performance friendly method to iterate over a potentially
     large number of records. Yields either a whole chunk or a single record
     at the time. Don't nest calls to this method."""
-    size = core.models.PREFETCH_MAX
+    # PREFETCH_MAX lives in models in <v19, and tools.constants afterwards
+    size = (
+        getattr(core.models, "PREFETCH_MAX", None) or core.tools.constants.PREFETCH_MAX
+    )
     model = records._name
     ids = records.with_context(prefetch_fields=False).ids
     for i in range(0, len(ids), size):
