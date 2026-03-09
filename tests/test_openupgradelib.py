@@ -64,6 +64,19 @@ class TestOpenupgradelib(unittest.TestCase):
             record.with_context(lang="fr_FR").description,
         )
 
+    def test_chunked(self):
+        records = self.env["ir.module.module"].search([])
+
+        chunked_records = self.env["ir.module.module"]
+        for chunk in openupgrade.chunked(records):
+            chunked_records += chunk
+        self.assertEqual(records, chunked_records)
+
+        chunked_records = self.env["ir.module.module"]
+        for chunk in openupgrade.chunked(records, single=True):
+            chunked_records += chunk
+        self.assertEqual(records, chunked_records)
+
     def tearDown(self):
         super().tearDown()
         self.cr.close()
