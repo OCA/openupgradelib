@@ -170,6 +170,7 @@ __all__ = [
     "remove_tables_fks",
     "rename_columns",
     "rename_fields",
+    "rename_field_references",
     "rename_tables",
     "rename_models",
     "merge_models",
@@ -756,6 +757,28 @@ def rename_fields(env, field_spec, no_deep=False):
                 """,
                 (new_field, model, old_field),
             )
+        rename_field_references(env, [(model, old_field, new_field)])
+
+
+def rename_field_references(env, field_spec):
+    """
+    Rename references to a field, such as in exports or filters.
+
+    Note that this function doesn't touch a field itself, use rename_fields for that
+    (which in turn calls rename_field_references)
+
+    Use this function when a field changes type from many2one to x2many and is renamed
+    at the same time. In such a case most filters (and many expressions) will keep
+    working by just renaming the references to the field.
+
+    :param env: Odoo Environment
+    :param field_spec: a list of tuples with the following elements:
+      * Model name. The name of the Odoo model
+      * Old field name. The name of the old field.
+      * New field name. The name of the new field.
+    """
+    cr = env.cr
+    for model, old_field, new_field in field_spec:
         # Rename appearances on export profiles
         # TODO: Rename when the field is part of a submodel (ex. m2one.field)
         cr.execute(

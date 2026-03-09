@@ -77,6 +77,21 @@ class TestOpenupgradelib(unittest.TestCase):
             chunked_records += chunk
         self.assertEqual(records, chunked_records)
 
+    def test_rename_field_references(self):
+        test_filter = self.env["ir.filters"].create(
+            {
+                "name": "test filter",
+                "model_id": "ir.module.module",
+                "domain": "[('name', '=', 'test')]",
+            }
+        )
+        openupgrade.rename_field_references(
+            self.env,
+            [("ir.module.module", "name", "renamed_name")],
+        )
+        openupgrade.openupgrade_tools.invalidate_cache(self.env, flush=True)
+        self.assertEqual(test_filter.domain, "[('renamed_name', '=', 'test')]")
+
     def tearDown(self):
         super().tearDown()
         self.cr.close()
