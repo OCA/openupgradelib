@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g5fd7c971c documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gd02f73434 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=27596ef1"></script>
+      <script src="_static/documentation_options.js?v=204b5618"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -86,6 +86,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.reactivate_workflow_transitions"><code class="docutils literal notranslate"><span class="pre">reactivate_workflow_transitions()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.remove_tables_fks"><code class="docutils literal notranslate"><span class="pre">remove_tables_fks()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.rename_columns"><code class="docutils literal notranslate"><span class="pre">rename_columns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.rename_field_references"><code class="docutils literal notranslate"><span class="pre">rename_field_references()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.rename_fields"><code class="docutils literal notranslate"><span class="pre">rename_fields()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.rename_models"><code class="docutils literal notranslate"><span class="pre">rename_models()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#openupgradelib.openupgrade.rename_property"><code class="docutils literal notranslate"><span class="pre">rename_property()</span></code></a></li>
@@ -907,6 +908,28 @@ removed too. If a table doesn’t exist, it is skipped.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>column_spec</strong> – a hash with table keys, with lists of tuples as     values. Tuples consist of (old_name, new_name). Use None for new_name     to trigger a conversion of old_name using get_legacy_name()</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="openupgradelib.openupgrade.rename_field_references">
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">rename_field_references</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.rename_field_references" title="Link to this definition"></a></dt>
+<dd><p>Rename references to a field, such as in exports or filters.</p>
+<p>Note that this function doesn’t touch a field itself, use rename_fields for that
+(which in turn calls rename_field_references)</p>
+<p>Use this function when a field changes type from many2one to x2many and is renamed
+at the same time. In such a case most filters (and many expressions) will keep
+working by just renaming the references to the field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – Odoo Environment</p></li>
+<li><p><strong>field_spec</strong> – a list of tuples with the following elements:
+* Model name. The name of the Odoo model
+* Old field name. The name of the old field.
+* New field name. The name of the new field.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
