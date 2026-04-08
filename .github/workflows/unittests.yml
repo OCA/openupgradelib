@@ -52,6 +52,9 @@ jobs:
       - name: Initialize database and install code
         run: |
           odoo -d $PGDATABASE --load-language fr_FR -i base --stop-after-init
+          # Mark working directory as safe for git so that the wheel build can
+          # query git for a version number.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pip install .
       - name: Run tests
         run:
