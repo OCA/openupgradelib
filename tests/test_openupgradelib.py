@@ -1,6 +1,8 @@
 import os
 import unittest
 
+import psycopg2
+
 import odoo
 
 # needs to be imported after Odoo initialized, done in test setup
@@ -91,6 +93,33 @@ class TestOpenupgradelib(unittest.TestCase):
         )
         openupgrade.openupgrade_tools.invalidate_cache(self.env, flush=True)
         self.assertEqual(test_filter.domain, "[('renamed_name', '=', 'test')]")
+
+    def test_lift_constraints(self):
+        self.env.cr.execute("SAVEPOINT test")
+        with self.assertRaises(psycopg2.errors.DependentObjectsStillExist):
+            openupgrade.lift_constraints(
+                self.env.cr,
+                "res_partner",
+                "id",
+            )
+        self.env.cr.execute("ROLLBACK TO SAVEPOINT test")
+        self.env.cr.execute("SAVEPOINT test")
+        admin_partner = self.env.ref("base.user_admin").partner_id
+        with self.assertRaises(psycopg2.errors.ForeignKeyViolation):
+            self.env.cr.execute(
+                "DELETE FROM res_partner WHERE id=%s", (admin_partner.id,)
+            )
+        self.env.cr.execute("ROLLBACK TO SAVEPOINT test")
+        self.env.cr.execute("SAVEPOINT test")
+        openupgrade.lift_constraints(
+            self.env.cr,
+            "res_partner",
+            "id",
+            cascade=True,
+        )
+        self.env.cr.execute("DELETE FROM res_partner WHERE id=%s", (admin_partner.id,))
+        self.assertFalse(admin_partner.exists())
+        self.env.cr.execute("ROLLBACK TO SAVEPOINT test")
 
     def tearDown(self):
         super().tearDown()
