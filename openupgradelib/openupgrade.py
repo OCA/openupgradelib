@@ -2802,11 +2802,13 @@ def is_module_installed(cr, module):
     return bool(cr.fetchone())
 
 
-def lift_constraints(cr, table, column):
+def lift_constraints(cr, table, column, cascade=False):
     """Lift all constraints on column in table.
     Typically, you use this in a pre-migrate script where you adapt references
     for many2one fields with changed target objects.
-    If everything went right, the constraints will be recreated"""
+    Set cascade=True if other constraints depend on the one you want to delete,
+    which ie is the case for primary keys.
+    If everything went right, the constraints will be recreated."""
     cr.execute(
         "select relname, array_agg(conname) from "
         "(select t1.relname, c.conname "
@@ -2830,8 +2832,16 @@ def lift_constraints(cr, table, column):
     )
     for table, constraints in cr.fetchall():
         cr.execute(
-            "alter table %s drop constraint %s",
-            (AsIs(table), AsIs(", drop constraint ".join(constraints))),
+            "alter table %s drop constraint if exists %s",
+            (
+                AsIs(table),
+                AsIs(
+                    ", drop constraint if exists ".join(
+                        (constraint if not cascade else (constraint + " cascade"))
+                        for constraint in constraints
+                    )
+                ),
+            ),
         )
 
 
