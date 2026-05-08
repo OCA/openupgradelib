@@ -18,7 +18,7 @@ try:
 except ImportError:
     from io import StringIO
 
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 try:
     from psycopg2 import IntegrityError, ProgrammingError, errorcodes
@@ -55,6 +55,28 @@ core = None
 # The order matters here. We can import odoo in 9.0, but then we get odoo.py
 try:  # >= 10.0
     import odoo as core
+
+    # Odoo 19 stopped eager-loading these submodules from `odoo/__init__.py`,
+    # so `import odoo as core` no longer makes `core.fields`, `core.api` etc.
+    # accessible as attributes. Earlier versions worked because Odoo's package
+    # init imported them itself. Eager-import them here so the module-level
+    # attribute lookups below (e.g. ``Many2many = core.fields.Many2many``)
+    # keep working on 19+. ImportError is suppressed individually so older
+    # Odoo versions with a slightly different layout still import cleanly;
+    # any submodule that genuinely matters will fail loudly when accessed
+    # below as ``core.<missing>``.
+    for _submod in (
+        "odoo.fields",
+        "odoo.tools",
+        "odoo.tools.mail",
+        "odoo.exceptions",
+        "odoo.api",
+        "odoo.osv",
+        "odoo.release",
+    ):
+        with suppress(ImportError):
+            __import__(_submod)
+    del _submod
     from odoo.modules import registry
 except ImportError:  # < 10.0
     import openerp as core
