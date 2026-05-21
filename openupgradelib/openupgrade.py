@@ -1211,8 +1211,8 @@ def merge_models(cr, old_model, new_model, ref_field):
             UPDATE card_card c
             SET res_id = mt.id, campaign_id = cc2.id
             FROM {model_table} mt, card_campaign cc, card_campaign cc2
-            WHERE cc.res_model = {old_model} AND cc2.res_model = {new_model}
-                AND mt.{ref_field} = c.res_id AND AND c.campaign_id = cc.id"""
+            WHERE cc.res_model = %(old_model)s AND cc2.res_model = %(new_model)s
+                AND mt.{ref_field} = c.res_id AND c.campaign_id = cc.id"""
         logged_query(
             cr,
             sql.SQL(query).format(
