@@ -3425,6 +3425,35 @@ def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
         "fields": tuple(moved_fields),
     }
     # update xml-id entries
+    #
+    # First, drop any old_module XML-IDs that would collide with an already-
+    # existing new_module XML-ID for the same field. The unique constraint on
+    # ir_model_data is (module, name) — the previous `NOT IN (SELECT id ...)`
+    # filter compared on `id`, not on `name`, so when the new_module had
+    # already auto-registered XML-IDs for the moved fields (which is exactly
+    # the case after a major upgrade in which the field's owning module has
+    # changed in the source tree), the subsequent UPDATE crashed with a
+    # UniqueViolation. Deleting the redundant old_module rows first restores
+    # idempotency — the new_module already has the canonical XML-IDs.
+    logged_query(
+        cr,
+        """
+        DELETE FROM ir_model_data imd
+        USING ir_model_fields imf
+        WHERE
+            imf.model = %(model)s AND
+            imf.name IN %(fields)s AND
+            imd.module = %(old_module)s AND
+            imd.model = 'ir.model.fields' AND
+            imd.res_id = imf.id AND
+            EXISTS (
+                SELECT 1 FROM ir_model_data x
+                WHERE x.module = %(new_module)s
+                  AND x.name = imd.name
+            )
+        """,
+        vals,
+    )
     logged_query(
         cr,
         """
@@ -3436,10 +3465,7 @@ def update_module_moved_fields(cr, model, moved_fields, old_module, new_module):
             imf.name IN %(fields)s AND
             imd.module = %(old_module)s AND
             imd.model = 'ir.model.fields' AND
-            imd.res_id = imf.id AND
-            imd.id NOT IN (
-               SELECT id FROM ir_model_data WHERE module = %(new_module)s
-            )
+            imd.res_id = imf.id
         """,
         vals,
     )
