@@ -1,5 +1,7 @@
 import os
 import unittest
+from io import StringIO
+from unittest import mock
 
 import psycopg2
 
@@ -120,6 +122,71 @@ class TestOpenupgradelib(unittest.TestCase):
         self.env.cr.execute("DELETE FROM res_partner WHERE id=%s", (admin_partner.id,))
         self.assertFalse(admin_partner.exists())
         self.env.cr.execute("ROLLBACK TO SAVEPOINT test")
+
+    def test_load_data(self):
+        admin_user = self.env.ref("base.user_admin")
+
+        def patched_file_open(path, *args, **kwargs):
+            if path == "dummy_module/dummy.xml":
+                result = StringIO(
+                    """
+                    <odoo>
+                        <record id="base.user_admin" model="res.users">
+                            <field name="name">Not Administrator</field>
+                            <field name="signature">changed signature</field>
+                        </record>
+                    </odoo>
+                    """
+                )
+            elif path == "dummy_module/dummy-transformation.xml":
+                result = StringIO(
+                    """
+                    <odoo>
+                        <xpath expr="//field[@name='name']" position="replace" />
+                    </odoo>
+                    """
+                )
+            elif path == "dummy_module/dummy-transformation2.xml":
+                result = StringIO(
+                    """
+                    <odoo>
+                        <xpath expr="//field[@name='name']" position="replace" />
+                        <xpath expr="//field[@name='signature']" position="replace" />
+                    </odoo>
+                    """
+                )
+            result.name = "dummy.xml"
+            return result
+
+        env_or_cr = self.env if openupgrade.version_info[0] > 16 else self.cr
+
+        with mock.patch("odoo.tools.file_open") as file_open:
+            file_open.side_effect = patched_file_open
+
+            openupgrade.load_data(env_or_cr, "dummy_module", "dummy.xml")
+            self.assertEqual(admin_user.name, "Not Administrator")
+            self.assertIn("changed signature", admin_user.signature)
+
+            admin_user.name = "Administrator"
+            admin_user.signature = "original signature"
+            openupgrade.load_data(
+                env_or_cr,
+                "dummy_module",
+                "dummy.xml",
+                xml_transformation_filename="dummy-transformation.xml",
+            )
+            self.assertEqual(admin_user.name, "Administrator")
+            self.assertIn("changed signature", admin_user.signature)
+
+            admin_user.signature = "original signature"
+            openupgrade.load_data(
+                env_or_cr,
+                "dummy_module",
+                "dummy.xml",
+                xml_transformation_filename="dummy-transformation2.xml",
+            )
+            self.assertEqual(admin_user.name, "Administrator")
+            self.assertIn("original signature", admin_user.signature)
 
     def tearDown(self):
         super().tearDown()

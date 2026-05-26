@@ -293,7 +293,48 @@ def check_values_selection_field(cr, table_name, field_name, allowed_values):
     return res
 
 
-def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
+def _file_open(module_name, filename):
+    """
+    Search addons paths and upgrade paths for filename and return the opened file,
+    raise if not found
+    """
+    pathname = os.path.join(module_name, filename)
+    try:
+        if version_info[0] >= 11:
+            fp = tools.file_open(pathname, "rb")
+        else:
+            fp = tools.file_open(pathname)
+    except OSError:
+        if tools.config.get("upgrade_path"):
+            if version_info[0] >= 19:
+                upgrade_paths = tools.config["upgrade_path"]
+            else:
+                upgrade_paths = tools.config["upgrade_path"].split(",")
+            for path in upgrade_paths:
+                pathname = os.path.join(path, module_name, filename)
+                try:
+                    fp = open(pathname)
+                    break
+                except OSError:  # pylint: disable=W7938
+                    pass
+            else:
+                raise OSError(
+                    "Couldn't find file %s in the upgrade paths (%s)"
+                    % (filename, tools.config["upgrade_path"])
+                )
+        else:
+            raise
+    return fp
+
+
+def load_data(
+    env_or_cr,
+    module_name,
+    filename,
+    idref=None,
+    mode="init",
+    xml_transformation_filename=None,
+):
     """
     Load an xml, csv or yml data file from your post script. The usual case for
     this is the
@@ -327,6 +368,18 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
         update, standard Odoo would recreate the record if it was deleted,
         but this will fail in cases where there are required fields to be
         filled which are not contained in the data file.
+    :param xml_transformation_filename:
+        if filename is an xml file (like the noupdate_changes.xml file generated
+        by upgrade_analysis), you can pass the name of a transformation file with
+        view inheritance instructions to transform the file being loaded in-place.
+
+        Ie if you pass a file containing::
+
+            <odoo>
+                <xpath expr="//field[@name='uom_id']" position="replace" />
+            </odoo>
+
+        here, you deactivate the first update on a field called `uom_id`.
     """
 
     cr = env_or_cr
@@ -342,33 +395,8 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
         idref = {}
     logger.info("%s: loading %s" % (module_name, filename))
     _, ext = os.path.splitext(filename)
-    pathname = os.path.join(module_name, filename)
 
-    try:
-        if version_info[0] >= 11:
-            fp = tools.file_open(pathname, "rb")
-        else:
-            fp = tools.file_open(pathname)
-    except OSError:
-        if tools.config.get("upgrade_path"):
-            if version_info[0] >= 19:
-                upgrade_paths = tools.config["upgrade_path"]
-            else:
-                upgrade_paths = tools.config["upgrade_path"].split(",")
-            for path in upgrade_paths:
-                pathname = os.path.join(path, module_name, filename)
-                try:
-                    fp = open(pathname)
-                    break
-                except OSError:  # pylint: disable=W7938
-                    pass
-            else:
-                raise OSError(
-                    "Couldn't find file %s in the upgrade paths (%s)"
-                    % (filename, tools.config["upgrade_path"])
-                )
-        else:
-            raise
+    fp = _file_open(module_name, filename)
 
     try:
         if ext == ".csv":
@@ -388,7 +416,17 @@ def load_data(env_or_cr, module_name, filename, idref=None, mode="init"):
                     mode="init",
                 )
         else:
-            tools.convert_xml_import(env_or_cr, module_name, fp, idref, mode=mode)
+            tools.convert_xml_import(
+                env_or_cr,
+                module_name,
+                fp
+                if not xml_transformation_filename
+                else _load_data_xml_transformation(
+                    fp, _file_open(module_name, xml_transformation_filename)
+                ),
+                idref,
+                mode=mode,
+            )
     finally:
         fp.close()
 
@@ -426,6 +464,24 @@ def _get_existing_records(cr, fp, module_name):
                     yield value
 
     return yield_element(etree.parse(fp).getroot())
+
+
+def _load_data_xml_transformation(fp, transformation_fp):
+    """
+    Apply xml_transformation (string of view inheritance style snippets) to xml file
+    fp, return file-like object that can be loaded with etree.parse
+    """
+    from odoo.tools.template_inheritance import apply_inheritance_specs
+
+    transformation_arch = etree.parse(transformation_fp)
+
+    modified = apply_inheritance_specs(
+        etree.parse(fp).getroot(),
+        transformation_arch.getroot().getchildren(),
+    )
+    result = StringIO(etree.tostring(modified, encoding="unicode"))
+    result.name = None
+    return result
 
 
 # for backwards compatibility
