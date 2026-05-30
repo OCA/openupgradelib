@@ -72,6 +72,7 @@ def convert_field_html_string_13to14(
 ):
     """This converts all the values for the given model and field, being
     able to restrict to a domain of affected records.
+
     :param env: Odoo environment.
     :param model_name: Name of the model that contains the field.
     :param field_name: Name of the field that contains the HTML content.
