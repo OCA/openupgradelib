@@ -71,6 +71,16 @@ release.
 .. automodule:: openupgradelib.openupgrade_130
    :members:
 
+Methods for OpenUpgrade 14.0
+----------------------------
+
+The following specific methods for 14.0 are available. These have been
+developed to cover specific needs as per data model changes in that
+release.
+
+.. automodule:: openupgradelib.openupgrade_140
+   :members:
+
 Methods for OpenUpgrade 16.0
 ----------------------------
 
@@ -79,4 +89,14 @@ developed to cover specific needs as per data model changes in that
 release.
 
 .. automodule:: openupgradelib.openupgrade_160
+   :members:
+
+Methods for OpenUpgrade 18.0
+----------------------------
+
+The following specific methods for 18.0 are available. These have been
+developed to cover specific needs as per data model changes in that
+release.
+
+.. automodule:: openupgradelib.openupgrade_180
    :members:
