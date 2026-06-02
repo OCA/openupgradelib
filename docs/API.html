@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gd3b8847d7 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+gd329d4ef7 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=b0a04d0b"></script>
+      <script src="_static/documentation_options.js?v=12f536e3"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -658,7 +658,7 @@ If everything went right, the constraints will be recreated.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.load_data">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_or_cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_or_cr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'init'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_transformation_filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.load_data" title="Link to this definition"></a></dt>
 <dd><p>Load an xml, csv or yml data file from your post script. The usual case for
 this is the
 occurrence of newly added essential or useful data in the module that is
@@ -687,6 +687,17 @@ forcecreate=False set. As those records won’t be recreated during the
 update, standard Odoo would recreate the record if it was deleted,
 but this will fail in cases where there are required fields to be
 filled which are not contained in the data file.</p>
+</p></li>
+<li><p><strong>xml_transformation_filename</strong> – <p>if filename is an xml file (like the noupdate_changes.xml file generated
+by upgrade_analysis), you can pass the name of a transformation file with
+view inheritance instructions to transform the file being loaded in-place.</p>
+<p>Ie if you pass a file containing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">odoo</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">xpath</span> <span class="n">expr</span><span class="o">=</span><span class="s2">&quot;//field[@name=&#39;uom_id&#39;]&quot;</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span> <span class="o">/&gt;</span>
+<span class="o">&lt;/</span><span class="n">odoo</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>here, you deactivate the first update on a field called <cite>uom_id</cite>.</p>
 </p></li>
 </ul>
 </dd>
