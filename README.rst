@@ -14,11 +14,16 @@
    :target: https://pypi.python.org/pypi/openupgradelib
    :alt: Pypi Package
 
+.. image:: https://img.shields.io/badge/license-AGPL--3-blue.png
+   :target: https://www.gnu.org/licenses/agpl-3.0
+   :alt: License: AGPL-3
+
 ===============================
 OpenUpgrade Library
 ===============================
 
 A library with support functions to be called from Odoo migration scripts.
+For information on how to develop and contribute
 
 * Free software: AGPL-3 license
 * Documentation: https://oca.github.io/openupgradelib
@@ -26,11 +31,15 @@ A library with support functions to be called from Odoo migration scripts.
 Install
 -------
 
-Always get the latest version through:
+Always get the latest version through either pip or pip3:
 
-pip/pip3 install --ignore-installed git+https://github.com/OCA/openupgradelib.git@master
+``pip install --ignore-installed git+https://github.com/OCA/openupgradelib.git@master``
 
 Features
 --------
 
-* TODO
+The OpenUpgrade library contains all kinds of helper functions for wrting scripts to migrate between odoo versions, in OpenUpgrade itself or in the migration scripts of your own module (in either major or minor version upgrades). Once installed, it can be used in your scripts as
+
+``from openupgradelib import openupgrade``
+
+* Library Documentation: https://oca.github.io/OpenUpgrade/API.html
