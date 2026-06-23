@@ -202,7 +202,7 @@ class TestOpenupgradelib(unittest.TestCase):
         invalid_filter.active = True
         for field in ("user_id", "user_ids"):
             if field in invalid_filter._fields:
-                invalid_filter[field] = self.env.user
+                invalid_filter[field] = self.env.ref("base.user_admin")
         openupgrade.disable_invalid_filters(self.env)
         self.assertFalse(invalid_filter.active)
 

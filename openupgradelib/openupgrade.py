@@ -3126,7 +3126,7 @@ def disable_invalid_filters(env, verbose=True):
         elif "user_ids" in f._fields and f.user_ids:
             msg += "Filter '%s' for users '%s'" % (
                 f.name,
-                ", ".join(f.user_id.mapped("name")),
+                ", ".join(f.user_ids.mapped("name")),
             )
         else:
             msg += "Global Filter '%s'" % f.name
