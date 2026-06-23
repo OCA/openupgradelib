@@ -3121,8 +3121,13 @@ def disable_invalid_filters(env, verbose=True):
 
     def format_message(f):
         msg = "FILTER DISABLED: "
-        if f.user_id:
+        if "user_id" in f._fields and f.user_id:
             msg += "Filter '%s' for user '%s'" % (f.name, f.user_id.name)
+        elif "user_ids" in f._fields and f.user_ids:
+            msg += "Filter '%s' for users '%s'" % (
+                f.name,
+                ", ".join(f.user_id.mapped("name")),
+            )
         else:
             msg += "Global Filter '%s'" % f.name
         msg += " for model '%s' has been disabled " % f.model_id
