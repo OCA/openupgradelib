@@ -3641,7 +3641,7 @@ def delete_records_safely_by_xml_id(env, xml_ids, delete_childs=False):
             if not record:
                 continue
             if delete_childs:
-                child_and_parent_records = env["ir.ui.view"].search(
+                child_and_parent_records = env[record._name].search(
                     [("inherit_id", "child_of", record.id)], order="id desc"
                 )
                 safe_unlink(child_and_parent_records, do_raise=True)
