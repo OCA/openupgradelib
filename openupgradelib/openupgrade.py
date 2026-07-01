@@ -1879,14 +1879,32 @@ def logged_query(cr, query, args=None, skip_no_result=False):
     return cr.rowcount
 
 
-def update_module_names(cr, namespec, merge_modules=False):
+def update_module_names(cr, namespec, merge_modules=False, environment_namespec=False):
     """Deal with changed module names, making all the needed changes on the
     related tables, like XML-IDs, translations, and so on.
 
     :param namespec: list of tuples of (old name, new name)
     :param merge_modules: Specify if the operation should be a merge instead
         of just a renaming.
+    :param environment_namespec: If ``True``, parse JSON from the appropriate
+        environment variable (``OPENUPGRADE_MERGED_MODULES`` for merges or
+        ``OPENUPGRADE_RENAMED_MODULES`` for renames) and merge the resulting
+        mapping into ``namespec``.
+
     """
+    if environment_namespec:
+        if merge_modules:
+            env_var = "OPENUPGRADE_MERGED_MODULES"
+        else:
+            env_var = "OPENUPGRADE_RENAMED_MODULES"
+        try:
+            env_namespec = json.loads(os.environ.get(env_var, "{}"))
+        except ValueError:
+            raise ValueError(
+                "Environment variable %s doesn't contain valid json" % env_var
+            )
+        namespec = list(namespec)
+        namespec.extend(list(env_namespec.items()))
     for (old_name, new_name) in namespec:
         query = "SELECT id FROM ir_module_module WHERE name = %s"
         cr.execute(query, [new_name])
