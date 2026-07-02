@@ -57,7 +57,9 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pip install .
       - name: Run tests
-        run:
+        run: |
+          export ADDONS_DIR=$(pwd)/tests/addons
+          oca_install_addons
           coverage run --include "openupgradelib/*.py" --branch -m unittest --verbose
       - uses: codecov/codecov-action@v4
         with:
