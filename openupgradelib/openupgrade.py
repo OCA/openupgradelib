@@ -2290,7 +2290,7 @@ def map_values(
             "map_values is called with unknown value for write param: %s", write
         )
     if not table:
-        if not model:
+        if model is None:
             logger.exception("map_values is called with no table and no model")
         table = model._table
     if source_column == target_column:
