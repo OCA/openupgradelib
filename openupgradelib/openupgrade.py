@@ -12,6 +12,7 @@ import sys
 import uuid
 from datetime import datetime
 from functools import wraps
+from itertools import groupby
 
 try:
     from StringIO import StringIO
@@ -210,6 +211,7 @@ __all__ = [
     "delete_record_translations",
     "disable_invalid_filters",
     "safe_unlink",
+    "_get_child_records",
     "delete_records_safely_by_xml_id",
     "delete_sql_constraint_safely",
     "set_xml_ids_noupdate_value",
@@ -3649,7 +3651,28 @@ def safe_unlink(records, do_raise=False):
             logger.info("Error deleting %s#%s: %s", record._name, record.id, repr(e))
 
 
-def delete_records_safely_by_xml_id(env, xml_ids, delete_childs=False):
+def _get_child_records(record, parent_field_name):
+    """Return the descendant records of the given record through the given
+    parent field, ordered leaf first, and excluding the record itself.
+
+    An empty recordset is returned if the model has no such field, as models
+    without a hierarchy simply have no children to remove.
+    """
+    model = record.env[record._name].with_context(active_test=False)
+    if not parent_field_name or parent_field_name not in model._fields:
+        logger.error("Model %s has no parent field to get children from.", record._name)
+        return model.browse()
+    child_records = model.browse()
+    records = record
+    while records:
+        records = model.search([(parent_field_name, "in", records.ids)])
+        child_records = records + child_records
+    return child_records
+
+
+def delete_records_safely_by_xml_id(
+    env, xml_ids, delete_childs=False, parent_field_name=None
+):
     """This removes in the safest possible way the records whose XML-IDs are
     passed as argument.
 
@@ -3660,6 +3683,11 @@ def delete_records_safely_by_xml_id(env, xml_ids, delete_childs=False):
     :param xml_ids: List of XML-ID string identifiers of the records to remove.
     :param delete_childs: If true, also child ids of the given xml_ids will
         be deleted.
+    :param parent_field_name: Name of the many2one field that links a record
+        with its parent one, used for obtaining the child records when
+        `delete_childs` is enabled. It defaults to "inherit_id" for
+        `ir.ui.view` records, and to the `_parent_name` model attribute for
+        the rest of the models.
     """
     errors = (KeyError, IntegrityError)
     if version_info[0] > 6 or version_info[0:2] == (6, 1):
@@ -3676,12 +3704,25 @@ def delete_records_safely_by_xml_id(env, xml_ids, delete_childs=False):
             if not record:
                 continue
             if delete_childs:
-                child_and_parent_records = env["ir.ui.view"].search(
-                    [("inherit_id", "child_of", record.id)], order="id desc"
+                record_parent_field_name = parent_field_name or (
+                    "inherit_id"
+                    if record._name == "ir.ui.view"
+                    else record._parent_name
                 )
-                safe_unlink(child_and_parent_records, do_raise=True)
-            else:
-                safe_unlink(record, do_raise=True)
+                child_records = _get_child_records(record, record_parent_field_name)
+                if child_records:
+                    child_xml_ids = child_records.get_external_id()
+                    for has_xml_id, children in groupby(
+                        child_records, key=lambda x: bool(child_xml_ids.get(x.id))
+                    ):
+                        children = child_records.browse([x.id for x in children])
+                        if has_xml_id:
+                            delete_records_safely_by_xml_id(
+                                env, [child_xml_ids[x.id] for x in children]
+                            )
+                        else:
+                            safe_unlink(children, do_raise=True)
+            safe_unlink(record, do_raise=True)
         except errors as e:
             logger.info("Error deleting XML-ID %s: %s", xml_id, repr(e))
             module, name = xml_id.split(".")
