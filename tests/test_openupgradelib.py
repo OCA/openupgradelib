@@ -9,6 +9,7 @@ import psycopg2
 import odoo
 
 # needs to be imported after Odoo initialized, done in test setup
+openupgradelib = None
 openupgrade = None
 
 
@@ -18,7 +19,7 @@ class TestOpenupgradelib(unittest.TestCase):
     """
 
     def setUp(self):
-        global openupgrade
+        global openupgrade, openupgradelib
         super().setUp()
 
         # < v19
@@ -32,7 +33,9 @@ class TestOpenupgradelib(unittest.TestCase):
         self.registry = registry(os.environ.get("PGDATABASE"))
         self.cr = self.registry.cursor()
         self.env = odoo.api.Environment(self.cr, odoo.SUPERUSER_ID, {})
-        openupgradelib = __import__("openupgradelib", fromlist=["openupgrade"])
+        openupgradelib = __import__(
+            "openupgradelib", fromlist=["openupgrade", "openupgrade_merge_records"]
+        )
         openupgrade = openupgradelib.openupgrade
 
     def test_migrate_env(self):
@@ -254,6 +257,35 @@ class TestOpenupgradelib(unittest.TestCase):
         renamed_module = Mod.search([("name", "=", old)])
         self.assertFalse(dummy_module)
         self.assertFalse(renamed_module)
+
+    def test_merge_records_sql(self):
+        """
+        Test openupgradelib.openupgrade_merge_records
+        """
+        main_company = self.env.ref("base.main_company")
+        # create data that triggers the uniqueness constraint of a many2many relation
+        # table when merging companies
+        new_company = self.env["res.company"].create({"name": "new company"})
+        new_user = self.env["res.users"].create(
+            {
+                "name": "User with only new company",
+                "login": "user_new_company",
+                "company_ids": [(6, 0, new_company.ids)],
+                "company_id": new_company.id,
+            }
+        )
+        self.env.user.write({"company_ids": [(4, new_company.id)]})
+        self.assertEqual(new_user.company_ids, new_company)
+        openupgrade.openupgrade_tools.invalidate_cache(self.env)
+        # merge new_company into main_company
+        with self.assertLogs("odoo.sql_db") as sql_db_logs:
+            openupgradelib.openupgrade_merge_records.merge_records(
+                self.env, "res.company", new_company.ids, main_company.id, method="sql"
+            )
+        expected_log = "(%d, %d) already exists." % (self.env.user.id, main_company.id)
+        self.assertTrue(any(expected_log in output for output in sql_db_logs.output))
+        openupgrade.openupgrade_tools.invalidate_cache(self.env)
+        self.assertEqual(new_user.company_ids, main_company)
 
     def tearDown(self):
         super().tearDown()
