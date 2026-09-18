@@ -255,6 +255,119 @@ class TestOpenupgradelib(unittest.TestCase):
         self.assertFalse(dummy_module)
         self.assertFalse(renamed_module)
 
+    def _create_xml_id(self, record, name):
+        self.env["ir.model.data"].create(
+            {
+                "module": "openupgradelib_tests",
+                "name": name,
+                "model": record._name,
+                "res_id": record.id,
+            }
+        )
+        return "openupgradelib_tests.%s" % name
+
+    def test_delete_records_safely_by_xml_id(self):
+        partner = self.env["res.partner"].create({"name": "Test partner"})
+        child = self.env["res.partner"].create(
+            {"name": "Test child partner", "parent_id": partner.id}
+        )
+        xml_id = self._create_xml_id(partner, "test_partner")
+        openupgrade.delete_records_safely_by_xml_id(self.env, [xml_id])
+        self.assertFalse(partner.exists())
+        self.assertTrue(child.exists())
+        self.assertFalse(self.env.ref(xml_id, raise_if_not_found=False))
+        child.unlink()
+
+    def test_delete_records_safely_by_xml_id_children(self):
+        """The hierarchy is taken from the `_parent_name` model attribute, and
+        the children are removed even if they don't have an XML-ID."""
+        partner = self.env["res.partner"].create({"name": "Test partner"})
+        child = self.env["res.partner"].create(
+            {"name": "Test child partner", "parent_id": partner.id}
+        )
+        grandchild = self.env["res.partner"].create(
+            {"name": "Test grandchild partner", "parent_id": child.id}
+        )
+        xml_id = self._create_xml_id(partner, "test_partner")
+        grandchild_xml_id = self._create_xml_id(grandchild, "test_grandchild_partner")
+        openupgrade.delete_records_safely_by_xml_id(
+            self.env, [xml_id], delete_childs=True
+        )
+        self.assertFalse(partner.exists())
+        self.assertFalse(child.exists())
+        self.assertFalse(grandchild.exists())
+        self.assertFalse(self.env.ref(grandchild_xml_id, raise_if_not_found=False))
+
+    def test_delete_records_safely_by_xml_id_view_children(self):
+        """Views are removed leaf first, as `inherit_id` is `ondelete=restrict`
+        and its hierarchy is not declared in the model. The leaf first order
+        has to be kept when records with and without an XML-ID are mixed."""
+        view = self.env["ir.ui.view"].create(
+            {
+                "name": "Test view",
+                "model": "res.partner",
+                "arch": """<form><field name="name"/></form>""",
+            }
+        )
+        child_view = self.env["ir.ui.view"].create(
+            {
+                "name": "Test child view",
+                "model": "res.partner",
+                "inherit_id": view.id,
+                "arch": """
+                    <field name="name" position="after">
+                        <field name="function"/>
+                    </field>
+                """,
+            }
+        )
+        grandchild_view = self.env["ir.ui.view"].create(
+            {
+                "name": "Test grandchild view",
+                "model": "res.partner",
+                "inherit_id": child_view.id,
+                "arch": """
+                    <field name="function" position="after">
+                        <field name="ref"/>
+                    </field>
+                """,
+            }
+        )
+        xml_id = self._create_xml_id(view, "test_view")
+        child_xml_id = self._create_xml_id(child_view, "test_child_view")
+        openupgrade.delete_records_safely_by_xml_id(
+            self.env, [xml_id], delete_childs=True
+        )
+        self.assertFalse(view.exists())
+        self.assertFalse(child_view.exists())
+        self.assertFalse(grandchild_view.exists())
+        self.assertFalse(self.env.ref(child_xml_id, raise_if_not_found=False))
+
+    def test_delete_records_safely_by_xml_id_parent_field_name(self):
+        """The parent field can be passed explicitly, and archived children
+        are removed as well."""
+        partner = self.env["res.partner"].create({"name": "Test partner"})
+        child = self.env["res.partner"].create(
+            {"name": "Test child partner", "parent_id": partner.id, "active": False}
+        )
+        xml_id = self._create_xml_id(partner, "test_partner")
+        openupgrade.delete_records_safely_by_xml_id(
+            self.env, [xml_id], delete_childs=True, parent_field_name="parent_id"
+        )
+        self.assertFalse(partner.exists())
+        self.assertFalse(child.exists())
+
+    def test_delete_records_safely_by_xml_id_no_hierarchy(self):
+        """Models without a hierarchy are removed without complaining."""
+        group = self.env["res.country.group"].create({"name": "Test country group"})
+        xml_id = self._create_xml_id(group, "test_country_group")
+        with self.assertLogs("OpenUpgrade", level="ERROR") as log_catcher:
+            openupgrade.delete_records_safely_by_xml_id(
+                self.env, [xml_id], delete_childs=True
+            )
+        self.assertIn("has no parent field", log_catcher.output[0])
+        self.assertFalse(group.exists())
+
     def tearDown(self):
         super().tearDown()
         self.cr.close()
