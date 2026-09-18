@@ -49,6 +49,8 @@ jobs:
     name: ${{ matrix.image_name }}
     steps:
       - uses: actions/checkout@v4
+      - run:
+          while ! pg_isready; do sleep 1; done
       - name: Initialize database and install code
         run: |
           odoo -d $PGDATABASE --load-language fr_FR -i base --stop-after-init
