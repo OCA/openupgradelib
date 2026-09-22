@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g7ca5cad34 documentation</title>
+  <title>OpenUpgrade API &mdash; OpenUpgrade Library 0.1.dev1+g53a6692c8 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=7e8201da"></script>
+      <script src="_static/documentation_options.js?v=5a992b88"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -531,7 +531,7 @@ probably.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="openupgradelib.openupgrade.delete_records_safely_by_xml_id">
-<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_records_safely_by_xml_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_childs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_records_safely_by_xml_id" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">openupgradelib.openupgrade.</span></span><span class="sig-name descname"><span class="pre">delete_records_safely_by_xml_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xml_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_childs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_field_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#openupgradelib.openupgrade.delete_records_safely_by_xml_id" title="Link to this definition"></a></dt>
 <dd><p>This removes in the safest possible way the records whose XML-IDs are
 passed as argument.</p>
 <p>If not possible to be removed, and the record is an updatable one
@@ -543,6 +543,11 @@ Odoo performs the regular update cleanup and trying to remove it as well.</p>
 <li><p><strong>xml_ids</strong> – List of XML-ID string identifiers of the records to remove.</p></li>
 <li><p><strong>delete_childs</strong> – If true, also child ids of the given xml_ids will
 be deleted.</p></li>
+<li><p><strong>parent_field_name</strong> – Name of the many2one field that links a record
+with its parent one, used for obtaining the child records when
+<cite>delete_childs</cite> is enabled. It defaults to “inherit_id” for
+<cite>ir.ui.view</cite> records, and to the <cite>_parent_name</cite> model attribute for
+the rest of the models.</p></li>
 </ul>
 </dd>
 </dl>
