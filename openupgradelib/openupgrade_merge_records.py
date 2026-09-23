@@ -81,31 +81,53 @@ def _change_foreign_key_refs(
             elif error.pgcode != UNIQUE_VIOLATION:
                 raise
             # Fallback on setting each row separately
-            m2m_table = not column_exists(env.cr, table, "id")
-            target_column = column if m2m_table else "id"
+            id_or_other_column = "id"
+            m2m_table = False
+            if not column_exists(env.cr, table, "id"):
+                env.cr.execute(
+                    """
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_name=%(table)s
+                    """,
+                    {"table": table},
+                )
+                columns = set(column_name for column_name, in env.cr.fetchall())
+                if len(columns) == 2:
+                    # this is probably a many2many relationship table
+                    id_or_other_column = next(c for c in (columns - {column}))
+                    m2m_table = True
+                else:
+                    logger.warning(
+                        "cannot handle %s because it has neither an id column "
+                        "nor looks like a many2many relationship table - ignoring",
+                        table,
+                    )
+                    continue
             env.cr.execute(
-                """SELECT %(target_column)s FROM %(table)s
+                """SELECT "%(id_or_other_column)s", "%(column)s" FROM "%(table)s"
                 WHERE "%(column)s" in %(record_ids)s""",
                 {
-                    "target_column": AsIs(target_column),
+                    "id_or_other_column": AsIs(id_or_other_column),
                     "table": AsIs(table),
                     "column": AsIs(column),
                     "record_ids": tuple(record_ids),
                 },
             )
-            for row in list(set([x[0] for x in env.cr.fetchall()])):
+            for id_or_other_value, record_id in env.cr.fetchall():
                 env.cr.execute("SAVEPOINT sp2")
                 try:
                     logged_query(
                         env.cr,
-                        """UPDATE %(table)s
+                        """UPDATE "%(table)s"
                         SET "%(column)s" = %(target_record_id)s
-                        WHERE %(target_column)s = %(record_id)s""",
+                        WHERE "%(id_or_other_column)s" = %(id_or_other_value)s
+                        AND "%(column)s" = %(record_id)s""",
                         {
-                            "target_column": AsIs(target_column),
+                            "id_or_other_column": AsIs(id_or_other_column),
+                            "id_or_other_value": id_or_other_value,
                             "table": AsIs(table),
                             "column": AsIs(column),
-                            "record_id": row,
+                            "record_id": record_id,
                             "target_record_id": target_record_id,
                         },
                     )
