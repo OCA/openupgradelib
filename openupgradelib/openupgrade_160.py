@@ -111,13 +111,20 @@ _RTL_REPLACEMENT_ELEMENT = (
 _MARGIN_PADDING_ELEMENT_REPLACEMENT = (
     ("pl", "ps"),
     ("ml", "ms"),
-    ("pr", "pr"),
+    ("pr", "pe"),
     ("mr", "me"),
 )
 
 _MARGIN_PADDING_SIZE = ("0", "1", "2", "3", "4", "5", "auto")
 
-_MARGIN_PADDING = ("sm", "lg")
+_MARGIN_PADDING = ("sm", "md", "lg", "xl")
+
+_EMBED_RESPONSIVE_RATIOS = (
+    ("21by9", "21x9"),
+    ("16by9", "16x9"),
+    ("4by3", "4x3"),
+    ("1by1", "1x1"),
+)
 
 # These replacements are from standard Bootstrap 4 to 5
 _BS5_REPLACEMENTS = (
@@ -142,6 +149,22 @@ _BS5_REPLACEMENTS = (
             _RTL_REPLACEMENT_CONTEXT, _RTL_REPLACEMENT_ELEMENT
         )
     ),
+    *(
+        _r(
+            "%s-%s-%s" % (elem, context, t4),
+            "%s-%s-%s" % (elem, context, t5),
+        )
+        for elem, context, (t4, t5) in product(
+            _RTL_REPLACEMENT_ELEMENT,
+            _MARGIN_PADDING,
+            _RTL_REPLACEMENT_CONTEXT,
+        )
+    ),
+    *(
+        _r("dropdown-menu-%s" % t4, "dropdown-menu-%s" % t5)
+        for t4, t5 in _RTL_REPLACEMENT_CONTEXT
+    ),
+    *(_r("drop%s" % t4, "drop%s" % t5) for t4, t5 in _RTL_REPLACEMENT_CONTEXT),
     _r("pl", "ps"),
     _r("pr", "pe"),
     _r("ml", "ms"),
@@ -160,18 +183,36 @@ _BS5_REPLACEMENTS = (
             _MARGIN_PADDING_ELEMENT_REPLACEMENT, _MARGIN_PADDING, _MARGIN_PADDING_SIZE
         )
     ),
+    # Popovers
+    _r(
+        selector=".popover .arrow",
+        class_rm="arrow",
+        class_add="popover-arrow",
+    ),
+    # Tooltips
+    _r(
+        selector=(
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' tooltip ') "
+            "or @role='tooltip']"
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' arrow ')]"
+        ),
+        selector_mode="xpath",
+        class_rm="arrow",
+        class_add="tooltip-arrow",
+    ),
     # Forms
-    _r("custom-control", "form-control"),
+    _r(class_rm="custom-control"),
     _r("custom-checkbox", "form-check"),
+    _r("custom-radio", "form-check"),
     _r("custom-control-input", "form-check-input"),
     _r("custom-control-label", "form-check-label"),
-    _r("custom-switch", "form-switch"),
+    _r("custom-switch", "form-check form-switch"),
     _r("custom-select", "form-select"),
     _r("custom-select-sm", "form-select-sm"),
     _r("custom-select-lg", "form-select-lg"),
     _r("custom-range", "form-range"),
     _r("form-control-file", "form-control"),
-    _r("form-control-range", "form-control"),
+    _r("form-control-range", "form-range"),
     _r(selector="span.input-group-append", class_rm="input-group-append"),
     _r(
         selector="div.input-group-append",
@@ -198,17 +239,24 @@ _BS5_REPLACEMENTS = (
     _r("text-hide", "visually-hidden"),
     _r("font-weight-normal", "fw-normal"),
     _r("font-weight-bold", "fw-bold"),
+    _r("font-weight-light", "fw-light"),
     _r("font-weight-lighter", "fw-lighter"),
     _r("font-weight-bolder", "fw-bolder"),
     _r("font-weight-medium", "fw-medium"),
-    _r("font-weight-normal", "fw-normal"),
-    _r("font-weight-normal", "fw-normal"),
     _r("font-italic", "fst-italic"),
     _r("font-normal", "fst-normal"),
     _r("rounded-sm", "rounded-1"),
     _r("rounded-lg", "rounded-3"),
     # Helpers
-    _r(selector="embed-responsive-item", class_rm="embed-responsive-item"),
+    _r("embed-responsive", "ratio"),
+    *(
+        _r(
+            "embed-responsive-%s" % old_ratio,
+            "ratio-%s" % new_ratio,
+        )
+        for old_ratio, new_ratio in _EMBED_RESPONSIVE_RATIOS
+    ),
+    _r(selector=".embed-responsive-item", class_rm="embed-responsive-item"),
     _r("sr-only", "visually-hidden"),
     _r("sr-only-focusable", "visually-hidden-focusable"),
     # JavaScript
@@ -308,9 +356,6 @@ _BS5_REPLACEMENTS = (
 _ODOO16_REPLACEMENTS = (
     # Form
     _r(class_rm="form-group", class_add="mb-3"),
-    # Helpers
-    _r(selector="embed-responsive-16by9", class_rm="embed-responsive"),
-    _r("embed-responsive-16by9", "ratio ratio-16x9"),
     # Javascript
     _attr_replace(
         selector="//*[@data-keyboard]",
