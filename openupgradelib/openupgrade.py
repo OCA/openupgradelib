@@ -105,6 +105,11 @@ if version_info[0] > 6 or version_info[0:2] == (6, 1):
         WarningError = core.exceptions.Warning
     if version_info[0] >= 7:
         plaintext2html = tools.mail.plaintext2html
+    try:  # version >= 20: no longer exposed by odoo.tools
+        from odoo.tools.convert import convert_csv_import, convert_xml_import
+    except ImportError:
+        convert_csv_import = tools.convert_csv_import
+        convert_xml_import = tools.convert_xml_import
     if version_info[0] >= 8:
         Many2many = core.fields.Many2many
         One2many = core.fields.One2many
@@ -403,14 +408,14 @@ def load_data(
     try:
         if ext == ".csv":
             noupdate = True
-            tools.convert_csv_import(
+            convert_csv_import(
                 env_or_cr, module_name, pathname, fp.read(), idref, mode, noupdate
             )
         elif ext == ".yml":
             yaml_import(cr, module_name, fp, None, idref=idref, mode=mode)
         elif mode == "init_no_create":
             for fp2 in _get_existing_records(cr, fp, module_name):
-                tools.convert_xml_import(
+                convert_xml_import(
                     env_or_cr,
                     module_name,
                     fp2,
@@ -418,7 +423,7 @@ def load_data(
                     mode="init",
                 )
         else:
-            tools.convert_xml_import(
+            convert_xml_import(
                 env_or_cr,
                 module_name,
                 fp
