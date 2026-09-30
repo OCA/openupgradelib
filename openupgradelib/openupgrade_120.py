@@ -74,7 +74,7 @@ _BS4_REPLACEMENTS = (
     _r(selector="blockquote", class_add="blockquote"),
     _r(selector="blockquote > small", class_add="blockquote-footer"),
     _r("blockquote-reverse", "blockquote text-right"),
-    _r(selector=".list-inline > li", class_add="list-linline-item"),
+    _r(selector=".list-inline > li", class_add="list-inline-item"),
     # .page-header dropped. See https://stackoverflow.com/a/49708022/1468388
     _r("page-header", "pb-2 mt-4 mb-2 border-bottom"),
     # <dl> & co. See https://stackoverflow.com/a/56020841/1468388
@@ -93,6 +93,11 @@ _BS4_REPLACEMENTS = (
     ),
     # Forms
     _r("control-label", "col-form-label"),
+    _r(
+        selector=".form-group .text-help",
+        class_rm="text-help",
+        class_add="form-control-feedback",
+    ),
     _r("form-group-lg", "form-control-lg"),
     _r("form-group-sm", "form-control-sm"),
     _r("input-lg", "form-control-lg"),
@@ -154,26 +159,33 @@ _BS4_REPLACEMENTS = (
     # Dropdowns
     _r("divider", "dropdown-divider", selector=".dropdown-menu > .divider"),
     _r(selector=".dropdown-menu > li > a", class_add="dropdown-item"),
+    _r("in", "show"),
     # List groups
     _r("list-group-item", "list-group-item-action", selector="a.list-group-item"),
     # Navs
     _r(selector=".nav > li", class_add="nav-item"),
     _r(selector=".nav > li > a", class_add="nav-link"),
+    # Handle navbar-nav elements without requiring the generic nav class.
+    _r(selector=".navbar-nav > li", class_add="nav-item"),
+    _r(selector=".navbar-nav > li > a", class_add="nav-link"),
     _r("nav-stacked", "flex-column"),
     # Navbar
-    _r(selector="navbar", class_add="navbar-expand-sm"),
+    _r(selector="nav.navbar", class_add="navbar-expand-lg"),
     _r("navbar-default", "navbar-light"),
     _r("navbar-toggle", "navbar-toggler"),
+    _r("navbar-toggler-right", "ml-auto"),
     _r("navbar-form", "form-inline"),
     _r("navbar-fixed-top", "fixed-top"),
     _r("navbar-btn", "nav-item"),
     _r("navbar-right", "ml-auto"),
+    _r(selector=".navbar-nav > a", class_add="navbar-brand"),
     # Pagination
     _r(selector=".pagination > li", class_add="page-item"),
     _r(selector=".pagination > li > a", class_add="page-link"),
     # Breadcrumbs
     _r(selector=".breadcrumb > li", class_add="breadcrumb-item"),
     # Labels and badges
+    _r("badge", "badge badge-pill"),
     _r("label", "badge"),
     _r("badge-default", "badge-secondary"),
     *(_r("label-%s" % c3, "badge-%s" % c4) for (c3, c4) in _CONTEXTS),
