@@ -277,10 +277,11 @@ def _change_reference_refs_orm(
     env, model_name, record_ids, target_record_id, exclude_columns
 ):
     fields = env["ir.model.fields"].search([("ttype", "=", "reference")])
-    if version_info[0] >= 12:
-        fields |= env.ref("base.field_ir_property__value_reference")
-    else:
+    # ir.property was removed in Odoo 18
+    if version_info[0] < 12:
         fields |= env.ref("base.field_ir_property_value_reference")
+    elif version_info[0] < 18:
+        fields |= env.ref("base.field_ir_property__value_reference")
     for field in fields:
         try:
             model = env[field.model].with_context(active_test=False)

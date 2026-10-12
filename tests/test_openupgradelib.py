@@ -400,6 +400,19 @@ class TestOpenupgradelib(unittest.TestCase):
         openupgrade.openupgrade_tools.invalidate_cache(self.env)
         self.assertEqual(new_user.company_ids, main_company)
 
+    def test_merge_records_orm(self):
+        partner = self.env["res.partner"].create({"name": "Target partner"})
+        duplicate = self.env["res.partner"].create({"name": "Duplicate partner"})
+        child = self.env["res.partner"].create(
+            {"name": "Contact", "parent_id": duplicate.id}
+        )
+        openupgradelib.openupgrade_merge_records.merge_records(
+            self.env, "res.partner", duplicate.ids, partner.id
+        )
+        openupgrade.openupgrade_tools.invalidate_cache(self.env)
+        self.assertFalse(duplicate.exists())
+        self.assertEqual(child.parent_id, partner)
+
     def tearDown(self):
         super().tearDown()
         self.cr.close()
