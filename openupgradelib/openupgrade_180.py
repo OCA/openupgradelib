@@ -40,7 +40,7 @@ def convert_company_dependent(
         "value_%s"
         % {
             "float": "float",
-            "boolean": "integer",
+            "boolean": "integer::boolean",
             "integer": "integer",
             "date": "datetime",
             "datetime": "datetime",
