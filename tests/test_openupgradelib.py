@@ -269,6 +269,33 @@ class TestOpenupgradelib(unittest.TestCase):
         )
         return "openupgradelib_tests.%s" % name
 
+    def test_add_inherits_parent_xmlids(self):
+        """The missing XML ID of the partner of a user is added, but not when
+        the partner already has one of its own, like the one of the admin."""
+        user = self.env["res.users"].create(
+            {"name": "Test user", "login": "test_inherits_parent_xmlids"}
+        )
+        xml_id = self._create_xml_id(user, "test_user")
+        self.assertFalse(
+            self.env.ref(xml_id + "_res_partner", raise_if_not_found=False)
+        )
+        imd_ids = openupgrade.add_inherits_parent_xmlids(
+            self.cr, "res.users", "res.partner", "partner_id"
+        )
+        self.assertEqual(len(imd_ids), 1)
+        imd = self.env["ir.model.data"].browse(imd_ids)
+        self.assertEqual((imd.model, imd.res_id), ("res.partner", user.partner_id.id))
+        self.assertEqual(self.env.ref(xml_id + "_res_partner"), user.partner_id)
+        self.assertFalse(
+            self.env.ref("base.user_admin_res_partner", raise_if_not_found=False)
+        )
+        self.assertEqual(
+            openupgrade.add_inherits_parent_xmlids(
+                self.cr, "res.users", "res.partner", "partner_id"
+            ),
+            [],
+        )
+
     def test_delete_records_safely_by_xml_id(self):
         partner = self.env["res.partner"].create({"name": "Test partner"})
         child = self.env["res.partner"].create(
