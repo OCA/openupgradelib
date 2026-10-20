@@ -177,6 +177,7 @@ __all__ = [
     "merge_models",
     "rename_xmlids",
     "add_xmlid",
+    "add_inherits_parent_xmlids",
     "chunked",
     "drop_columns",
     "delete_model_workflow",
@@ -1509,6 +1510,94 @@ def add_xmlid(cr, module, xmlid, model, res_id, noupdate=False):
             args,
         )
         return True
+
+
+def add_inherits_parent_xmlids(cr, model, parent_model, parent_field):
+    """
+    Adds the missing XML IDs of the ``_inherits`` parent records of a model.
+
+    When a record with an XML ID is created, Odoo also creates the XML ID
+    ``<xmlid>_<parent model>`` of the ``_inherits`` parent record, but records
+    whose parent was created afterwards by a migration script lack it. For
+    example, crons created before 11.0 got their server action with a plain
+    SQL insert, so ``stock.ir_cron_scheduler_action_ir_actions_server`` is
+    missing in those databases. Reloading the data doesn't fix it, as the
+    parent XML ID is only added when the record is created, not when it is
+    updated. Typically called in the pre script.
+
+    As Odoo only adds it when it creates the parent record implicitly, parent
+    records that already have an XML ID of their own are skipped.
+
+    :param model: name of the model, e.g. ``ir.cron``
+    :param parent_model: name of the ``_inherits`` parent model, e.g.
+        ``ir.actions.server``
+    :param parent_field: column of the model table that links to the parent
+        record, e.g. ``ir_actions_server_id``
+    :return: ids of the ``ir.model.data`` records added
+    """
+    fields = [
+        "create_uid",
+        "create_date",
+        "write_uid",
+        "write_date",
+        "noupdate",
+        "name",
+        "module",
+        "model",
+        "res_id",
+    ]
+    values = [
+        "imd.create_uid",
+        "imd.create_date",
+        "imd.write_uid",
+        "imd.write_date",
+        "imd.noupdate",
+        "imd.name || %(suffix)s",
+        "imd.module",
+        "%(parent_model)s",
+        "rec.{parent_field}",
+    ]
+    if version_info[0] < 14:
+        fields += ["date_init", "date_update"]
+        values += ["imd.date_init", "imd.date_update"]
+    parent_field = sql.Identifier(parent_field)
+    query = sql.SQL(
+        """
+        INSERT INTO ir_model_data ({fields})
+        SELECT {values}
+        FROM ir_model_data imd
+        JOIN {table} rec ON rec.id = imd.res_id AND imd.model = %(model)s
+        WHERE rec.{parent_field} IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM ir_model_data parent_imd
+                WHERE (
+                    parent_imd.model = %(parent_model)s
+                    AND parent_imd.res_id = rec.{parent_field}
+                ) OR (
+                    parent_imd.module = imd.module
+                    AND parent_imd.name = imd.name || %(suffix)s
+                )
+            )
+        RETURNING id
+        """
+    ).format(
+        fields=sql.SQL(", ").join(map(sql.Identifier, fields)),
+        values=sql.SQL(", ").join(
+            sql.SQL(value).format(parent_field=parent_field) for value in values
+        ),
+        table=sql.Identifier(get_model2table(model)),
+        parent_field=parent_field,
+    )
+    logged_query(
+        cr,
+        query,
+        {
+            "suffix": "_" + parent_model.replace(".", "_"),
+            "parent_model": parent_model,
+            "model": model,
+        },
+    )
+    return [row[0] for row in cr.fetchall()]
 
 
 def drop_columns(cr, column_spec):
