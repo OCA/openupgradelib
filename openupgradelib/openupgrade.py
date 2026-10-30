@@ -2974,6 +2974,8 @@ def lift_constraints(cr, table, column, cascade=False):
     Set cascade=True if other constraints depend on the one you want to delete,
     which ie is the case for primary keys.
     If everything went right, the constraints will be recreated."""
+    # PostgreSQL 18 stores NOT NULL as a constraint in pg_constraint, and refuses
+    # to drop it while the column is part of a primary key: leave it alone.
     cr.execute(
         "select relname, array_agg(conname) from "
         "(select t1.relname, c.conname "
@@ -2983,12 +2985,14 @@ def lift_constraints(cr, table, column, cascade=False):
         "join pg_class t on t.oid=a.attrelid "
         "join pg_class t1 on t1.oid=c.conrelid "
         "where t.relname=%(table)s and attname=%(column)s "
+        "and c.contype != 'n' "
         "union select t.relname, c.conname "
         "from pg_constraint c "
         "join pg_attribute a "
         "on c.conrelid=a.attrelid and a.attnum=any(c.conkey) "
         "join pg_class t on t.oid=a.attrelid "
-        "where relname=%(table)s and attname=%(column)s) in_out "
+        "where relname=%(table)s and attname=%(column)s "
+        "and c.contype != 'n') in_out "
         "group by relname",
         {
             "table": table,
