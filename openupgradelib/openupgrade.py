@@ -1015,6 +1015,9 @@ def rename_models(cr, model_spec):
     functionality you will want to update references in for instance
     relation fields.
 
+    The model of the related XML IDs (``ir_model_data.model``) is updated as
+    well, so that module data can be loaded again after the rename.
+
     WARNING: This method doesn't rename the associated tables. For that,
     you need to call `rename_tables` method.
     """
@@ -1026,6 +1029,20 @@ def rename_models(cr, model_spec):
         logged_query(
             cr,
             "UPDATE ir_model SET model = %s WHERE model = %s",
+            (
+                new,
+                old,
+            ),
+        )
+        # Update the model of the related XML IDs explicitly. Although
+        # ir.model.data is part of get_many2one_references(), the generic loop
+        # below can miss it when the reference isn't discoverable in
+        # ir_model_fields (or when get_many2one_references() is overridden).
+        # A stale model here breaks the module data load with a KeyError or a
+        # ValidationError.
+        logged_query(
+            cr,
+            "UPDATE ir_model_data SET model = %s WHERE model = %s",
             (
                 new,
                 old,

@@ -100,6 +100,40 @@ class TestOpenupgradelib(unittest.TestCase):
         openupgrade.openupgrade_tools.invalidate_cache(self.env, flush=True)
         self.assertEqual(test_filter.domain, "[('renamed_name', '=', 'test')]")
 
+    def test_rename_models_updates_ir_model_data(self):
+        """Renaming a model also renames the model of its XML IDs.
+
+        This must not depend on ir.model.data being discovered by
+        get_many2one_references(), as that isn't possible on every Odoo
+        version.
+        """
+        self.cr.execute("SAVEPOINT test_rename_models")
+        try:
+            self.cr.execute(
+                """
+                INSERT INTO ir_model_data (module, name, model, res_id, noupdate)
+                VALUES (%s, %s, %s, %s, false)
+                """,
+                ("openupgradelib_tests", "test_rename_models", "res.partner", 1),
+            )
+            with mock.patch.object(
+                openupgrade, "get_many2one_references", return_value=[]
+            ):
+                openupgrade.rename_models(
+                    self.cr, [("res.partner", "res.partner.renamed")]
+                )
+            self.cr.execute(
+                """
+                SELECT model
+                FROM ir_model_data
+                WHERE module = %s AND name = %s
+                """,
+                ("openupgradelib_tests", "test_rename_models"),
+            )
+            self.assertEqual(self.cr.fetchone()[0], "res.partner.renamed")
+        finally:
+            self.cr.execute("ROLLBACK TO SAVEPOINT test_rename_models")
+
     def test_lift_constraints(self):
         self.env.cr.execute("SAVEPOINT test")
         with self.assertRaises(psycopg2.errors.DependentObjectsStillExist):
