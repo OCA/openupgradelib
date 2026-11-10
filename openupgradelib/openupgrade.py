@@ -3780,7 +3780,7 @@ def delete_records_safely_by_xml_id(
     :param parent_field_name: Name of the many2one field that links a record
         with its parent one, used for obtaining the child records when
         `delete_childs` is enabled. It defaults to "inherit_id" for
-        `ir.ui.view` records, and to the `_parent_name` model attribute for
+        `ir.ui.view` records (up to v20), and to the `_parent_name` model attribute for
         the rest of the models.
     """
     errors = (KeyError, IntegrityError)
@@ -3798,11 +3798,14 @@ def delete_records_safely_by_xml_id(
             if not record:
                 continue
             if delete_childs:
-                record_parent_field_name = parent_field_name or (
-                    "inherit_id"
-                    if record._name == "ir.ui.view"
-                    else record._parent_name
-                )
+                if version_info[0] < 21:
+                    record_parent_field_name = parent_field_name or (
+                        "inherit_id"
+                        if record._name == "ir.ui.view"
+                        else record._parent_name
+                    )
+                else:
+                    record_parent_field_name = parent_field_name or record._parent_name
                 child_records = _get_child_records(record, record_parent_field_name)
                 if child_records:
                     child_xml_ids = child_records.get_external_id()
