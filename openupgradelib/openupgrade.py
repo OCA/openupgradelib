@@ -3251,7 +3251,7 @@ def disable_invalid_filters(env, verbose=True):
         msg += " for model '%s' has been disabled " % f.model_id
         return msg
 
-    filters = env["ir.filters"].search([("domain", "!=", "[]")])
+    filters = env["ir.filters"].search([])
     for f in filters:
         if f.model_id not in env:
             continue  # Obsolete or invalid model
@@ -3288,29 +3288,31 @@ def disable_invalid_filters(env, verbose=True):
                 }
             )
         # DOMAIN
-        try:
-            with savepoint(env.cr):
-                # Strange artifact found in a filter
-                domain = f.domain.replace("%%", "%")
-                if version_info[0] < 16:
-                    model.search(
-                        safe_eval(domain, globaldict),
-                        limit=1,
-                        count=True,
-                    )
-                else:
-                    model.search_count(
-                        safe_eval(domain, globaldict),
-                        limit=1,
-                    )
-        except Exception as e:
-            logger.warning(
-                format_message(f) + "as it contains an invalid domain %s. Detail: %s",
-                f.domain,
-                e,
-            )
-            f.active = False
-            continue
+        if f.domain != "[]":
+            try:
+                with savepoint(env.cr):
+                    # Strange artifact found in a filter
+                    domain = f.domain.replace("%%", "%")
+                    if version_info[0] < 16:
+                        model.search(
+                            safe_eval(domain, globaldict),
+                            limit=1,
+                            count=True,
+                        )
+                    else:
+                        model.search_count(
+                            safe_eval(domain, globaldict),
+                            limit=1,
+                        )
+            except Exception as e:
+                logger.warning(
+                    format_message(f)
+                    + "as it contains an invalid domain %s. Detail: %s",
+                    f.domain,
+                    e,
+                )
+                f.active = False
+                continue
         # CONTEXT GROUP BY
         try:
             context = safe_eval(f.context, globaldict)
