@@ -101,9 +101,10 @@ def convert_old_style_tax_tag_to_new(
         UPDATE account_account_tag_account_move_line_rel r
         SET account_account_tag_id = %s
         FROM account_move_line aml
+        LEFT JOIN account_move am ON am.id = aml.account_id
         WHERE
             r.account_move_line_id = aml.id AND
-            aml.debit >= 0 AND
+            am.type IN ('out_invoice', 'in_invoice') AND
             r.account_account_tag_id = %s
     """,
         (new_debit_tag_id, old_tag_id),
@@ -114,9 +115,10 @@ def convert_old_style_tax_tag_to_new(
         UPDATE account_account_tag_account_move_line_rel r
         SET account_account_tag_id = %s
         FROM account_move_line aml
+        LEFT JOIN account_move am ON am.id = aml.account_id
         WHERE
             r.account_move_line_id = aml.id AND
-            aml.credit > 0 AND
+            am.type IN ('out_refund', 'in_refund') AND
             r.account_account_tag_id = %s
     """,
         (new_credit_tag_id, old_tag_id),
