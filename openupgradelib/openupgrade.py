@@ -890,14 +890,13 @@ def rename_field_references(env, field_spec):
             """
             % {
                 "old_pattern": (
-                    r"""$$('group_by'|'col_group_by'|'graph_groupbys'
-                           |'pivot_measures'|'pivot_row_groupby'
-                           |'pivot_column_groupby'
-                        ):([\s*][^\]]*)"""
-                    r"'%s(:day|:week|:month|:year){0,1}'(.*?\])$$"
+                    r"$$(?<='(?:group_by|col_group_by|graph_groupbys"
+                    r"|pivot_measures|pivot_row_groupby"
+                    r"|pivot_column_groupby)'\s*:\s*\[[^\]]*)"
+                    r"'%s(:day|:week|:month|:year)?'$$"
                 )
                 % old_field,
-                "new_pattern": r"$$\1:\2'%s\3'\4$$" % new_field,
+                "new_pattern": r"$$'%s\1'$$" % new_field,
             },
             (model,),
         )
