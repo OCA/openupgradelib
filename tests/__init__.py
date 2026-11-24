@@ -1,1 +1,1 @@
-from . import test_openupgradelib  # noqa: F401
+from . import common  # noqa: F401
