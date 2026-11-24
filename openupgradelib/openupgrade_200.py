@@ -1,6 +1,7 @@
 # Copyright 2026 Hunki Enterprises BV
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import importlib
+import json
 import re
 from pathlib import Path
 
@@ -61,8 +62,8 @@ def migrate_qweb_fields(env, model_name, *field_names):
         if new_val:
             code, params = "%s", [SQL.identifier(field_name)]
             for key, value in new_val.items():
-                code = f"jsonb_set({code}, ARRAY [%s], json_scalar(%s)::jsonb)"
-                params.extend([key, value])
+                code = f"jsonb_set({code}, ARRAY [%s], %s)"
+                params.extend([key, json.dumps(value)])
             return SQL(f"%s={code}", *([SQL.identifier(field_name)] + params))
 
     migration_funcs = {
