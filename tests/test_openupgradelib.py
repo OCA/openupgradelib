@@ -91,14 +91,29 @@ class TestOpenupgradelib(unittest.TestCase):
                 "name": "test filter",
                 "model_id": "ir.module.module",
                 "domain": "[('name', '=', 'test')]",
+                "context": (
+                    "{'group_by': ['start_date:year', "
+                    "'start_date:month', 'name'], "
+                    "'graph_groupbys': ['start_date:week']}"
+                ),
             }
         )
         openupgrade.rename_field_references(
             self.env,
-            [("ir.module.module", "name", "renamed_name")],
+            [
+                ("ir.module.module", "name", "renamed_name"),
+                ("ir.module.module", "start_date", "date_start"),
+            ],
         )
         openupgrade.openupgrade_tools.invalidate_cache(self.env, flush=True)
         self.assertEqual(test_filter.domain, "[('renamed_name', '=', 'test')]")
+        self.assertEqual(
+            test_filter.context,
+            (
+                "{'group_by': ['date_start:year', 'date_start:month', 'renamed_name'], "
+                "'graph_groupbys': ['date_start:week']}"
+            ),
+        )
 
     def test_lift_constraints(self):
         self.env.cr.execute("SAVEPOINT test")
