@@ -879,6 +879,8 @@ def rename_field_references(env, field_spec):
         # {'group_by': ['date_field:month']}
         # {'other_key': value, 'group_by': ['other_field', 'field']}
         # {'group_by': ['other_field'],'col_group_by': ['field']}
+        # {'group_by': ['date_field:quarter', 'date_field:iso_week_number']}
+        # {"group_by": ["field"]}
         cr.execute(
             r"""
             UPDATE ir_filters
@@ -890,18 +892,19 @@ def rename_field_references(env, field_spec):
             """
             % {
                 "old_pattern": (
-                    r"$$(?<='(?:group_by|col_group_by|graph_groupbys"
+                    r"""$$(?<=['"](?:group_by|col_group_by|graph_groupbys"""
                     r"|pivot_measures|pivot_row_groupby"
-                    r"|pivot_column_groupby)'\s*:\s*\[[^\]]*)"
-                    r"'%s(:day|:week|:month|:year)?'$$"
+                    r"""|pivot_column_groupby)['"]\s*:\s*\[[^\]]*)"""
+                    r"""(['"])%s(:[a-z_]+)?\1$$"""
                 )
                 % old_field,
-                "new_pattern": r"$$'%s\1'$$" % new_field,
+                "new_pattern": r"$$\1%s\2\1$$" % new_field,
             },
             (model,),
         )
         # Examples of replaced contexts:
-        # {'graph_measure': 'field'
+        # {'graph_measure': 'field'}
+        # {'graph_measure':'field'}
         cr.execute(
             r"""
             UPDATE ir_filters
@@ -913,10 +916,9 @@ def rename_field_references(env, field_spec):
             """
             % {
                 "old_pattern": (
-                    r"$$'graph_measure':([\s*])'%s" r"(:day|:week|:month|:year){0,1}'$$"
-                )
-                % old_field,
-                "new_pattern": r"$$'graph_measure':\1'%s\2'$$" % new_field,
+                    r"""$$(['"]graph_measure['"]\s*:\s*)(['"])%s\2$$""" % old_field
+                ),
+                "new_pattern": r"$$\1\2%s\2$$" % new_field,
             },
             (model,),
         )
