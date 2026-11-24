@@ -113,6 +113,8 @@ def migrate_qweb_string(qweb_string, migrate_view_inheritance=False):
     Migrate qweb code in qweb_string to v20.
     Return None if nothing has been changed.
     """
+    if not qweb_string:
+        return None
     changed = False
     root_node_added = False
     try:

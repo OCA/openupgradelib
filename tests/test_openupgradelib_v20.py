@@ -27,11 +27,7 @@ class TestOpenupgradelibV20(common.TestOpenupgradelibCommon):
                 "arch_db": """<div><span t-esc="object.value1"/>EN</div>""",
             }
         )
-        view.with_context(lang="fr_FR", delay_translations=True).write(
-            {
-                "arch_db": """<div><span t-esc="object.value1"/>FR</div>""",
-            }
-        )
+        view.update_field_translations("arch_db", {"fr_FR": {"EN": "FR"}})
         inherited_view = self.env["ir.ui.view"].create(
             {
                 "type": "qweb",
