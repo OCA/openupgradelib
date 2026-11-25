@@ -98,6 +98,17 @@ class TestOpenupgradelib(unittest.TestCase):
                 ),
             }
         )
+        test_filter_2 = self.env["ir.filters"].create(
+            {
+                "name": "test filter 2",
+                "model_id": "ir.module.module",
+                "context": (
+                    '{"group_by": ["start_date:quarter", "start_date_2"], '
+                    "'pivot_row_groupby': ['start_date:iso_week_number'], "
+                    "'graph_measure':'name'}"
+                ),
+            }
+        )
         openupgrade.rename_field_references(
             self.env,
             [
@@ -112,6 +123,14 @@ class TestOpenupgradelib(unittest.TestCase):
             (
                 "{'group_by': ['date_start:year', 'date_start:month', 'renamed_name'], "
                 "'graph_groupbys': ['date_start:week']}"
+            ),
+        )
+        self.assertEqual(
+            test_filter_2.context,
+            (
+                '{"group_by": ["date_start:quarter", "start_date_2"], '
+                "'pivot_row_groupby': ['date_start:iso_week_number'], "
+                "'graph_measure':'renamed_name'}"
             ),
         )
 
